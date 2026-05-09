@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/blind_background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- 标题 -->
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:gravity="center"
+            android:text="@string/create_request_title"
+            android:textColor="@color/blind_on_background"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <!-- 位置状态卡片 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            app:cardBackgroundColor="@color/blind_surface"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/blind_primary"
+            app:strokeWidth="1dp">
+
+            <TextView
+                android:id="@+id/tv_location_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:accessibilityLiveRegion="polite"
+                android:gravity="center"
+                android:minHeight="64dp"
+                android:padding="16dp"
+                android:text="@string/create_request_location_loading"
+                android:textColor="@color/blind_on_surface"
+                android:textSize="18sp" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 预计时长标签 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="@string/create_request_duration_label"
+            android:textColor="@color/blind_on_background"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <!-- 时长选择 -->
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/toggle_duration"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_30min"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="72dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/create_request_duration_30"
+                android:text="@string/create_request_duration_30"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_60min"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="72dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/create_request_duration_60"
+                android:text="@string/create_request_duration_60"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_90min"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="72dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/create_request_duration_90"
+                android:text="@string/create_request_duration_90"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_120min"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="72dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/create_request_duration_120"
+                android:text="@string/create_request_duration_120"
+                android:textSize="12sp" />
+
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <!-- 备注输入 -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_notes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:hint="@string/create_request_notes_hint"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_notes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:maxLines="2"
+                android:textColor="@color/blind_on_surface"
+                android:textSize="16sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- 错误提示（通常 GONE） -->
+        <TextView
+            android:id="@+id/tv_error"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:accessibilityLiveRegion="assertive"
+            android:padding="12dp"
+            android:background="@color/blind_warning"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:visibility="gone" />
+
+        <!-- 确认按钮（倒计时时文字变化） -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_confirm"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:layout_marginBottom="12dp"
+            android:text="@string/create_request_btn_confirm"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            app:backgroundTint="@color/blind_primary"
+            app:cornerRadius="12dp" />
+
+        <!-- 修改参数按钮 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_modify"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/create_request_btn_modify"
+            android:textSize="16sp"
+            app:backgroundTint="@color/blind_surface"
+            app:cornerRadius="12dp"
+            app:strokeColor="@color/blind_primary"
+            app:strokeWidth="1dp" />
+
+        <!-- 取消/返回按钮 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_cancel"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="@string/create_request_btn_cancel"
+            android:textSize="18sp"
+            app:backgroundTint="@color/blind_surface"
+            app:cornerRadius="12dp"
+            app:strokeColor="@color/blind_primary"
+            app:strokeWidth="2dp" />
+
+    </LinearLayout>
+</ScrollView>

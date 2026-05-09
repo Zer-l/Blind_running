@@ -1,0 +1,44 @@
+# ========== 编译产物 ==========
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# ========== IDEA 配置 ==========
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# ========== Gradle ==========
+.gradle/
+build/
+
+# ========== Maven wrapper 日志 ==========
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ========== 日志文件 ==========
+*.log
+logs/
+log/
+
+# ========== 配置文件（敏感信息） ==========
+application-local.yml
+application-local.properties
+application.yml
+application-dev.yml
+application-dev.properties
+*.env
+.env
+
+# ========== 系统文件 ==========
+.DS_Store
+Thumbs.db
+
+# ========== 其他 ==========
+*.swp
+*~
+.cache/

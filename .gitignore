@@ -1,0 +1,60 @@
+# ========== Gradle ==========
+.gradle/
+build/
+local.properties
+
+# ========== Android Studio / IDEA ==========
+.idea/
+*.iml
+*.iws
+*.ipr
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ========== 系统文件 ==========
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# ========== 日志 ==========
+*.log
+
+# ========== 签名文件（敏感信息，绝对不能提交） ==========
+*.jks
+*.keystore
+keystore.properties
+
+# ========== 编译产物 ==========
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# ========== 缓存 ==========
+.cache/
+
+# Kotlin
+*.class
+*.jar
+*.war
+
+# Compose
+*.hprof
+
+.claude/
+.codex/
+CLAUDE.md
+PROMPT.md
+docker-compose.yml
+
+DESIGN.md
+PROGRESS.md
+助盲跑产品需求文档PRD.md
+UPDATE.md
+
+keystore/
+
+note/

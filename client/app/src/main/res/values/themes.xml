@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- MainActivity（Compose 页面，使用系统 Material Light 不带 ActionBar） -->
+    <style name="Theme.GuideRun" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!--
+        BlindActivity 高对比度主题：
+        黑底白字 + 黄色 Primary，确保 WCAG AA 对比度 ≥ 4.5:1。
+        继承 Theme.Material3.DayNight.NoActionBar，XML Fragment 可使用 MaterialButton 等组件。
+    -->
+    <style name="Theme.GuideRun.Blind" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/blind_primary</item>
+        <item name="colorOnPrimary">@color/blind_on_primary</item>
+        <item name="colorSurface">@color/blind_surface</item>
+        <item name="colorOnSurface">@color/blind_on_surface</item>
+        <item name="android:windowBackground">@color/blind_background</item>
+        <item name="android:textColor">@color/blind_on_background</item>
+    </style>
+
+</resources>

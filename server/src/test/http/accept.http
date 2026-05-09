@@ -1,0 +1,32 @@
+### 志愿者登录
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{"phone": "13900000010", "smsCode": "123456"}
+
+> {%
+    client.global.set("volunteer_token", response.body.data.accessToken);
+%}
+
+### 查可接单（用东莞理工学院的坐标）
+GET http://localhost:8080/api/v1/run-requests/available?lat=22.91012&lng=113.869346&radius=5000
+Authorization: Bearer {{volunteer_token}}
+
+> {%
+    const items = response.body.data.items || [];
+    client.log("可接单数量: " + items.length);
+    items.forEach(item => {
+        client.log("ID: " + item.id + " | 状态: " + item.status + " | 备注: " + (item.notes || ""));
+    });
+    if (items.length > 0) {
+        client.global.set("requestId", items[0].id);
+    }
+%}
+
+### 接单
+POST http://localhost:8080/api/v1/run-requests/{{requestId}}/accept
+Authorization: Bearer {{volunteer_token}}
+
+> {%
+    client.log("接单结果: " + response.body.data.status);
+%}

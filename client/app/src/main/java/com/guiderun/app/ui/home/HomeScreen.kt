@@ -1,0 +1,256 @@
+package com.guiderun.app.ui.home
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.guiderun.app.R
+import com.guiderun.app.domain.model.UserRole
+
+@Composable
+fun HomeScreen(
+    onLoggedOut: () -> Unit,
+    onEnterBlindFlow: () -> Unit,
+    onEnterBlindSettings: () -> Unit = {},
+    onEnterBlindHistory: () -> Unit = {},
+    onEnterVolunteerFlow: () -> Unit,
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.refreshUser()
+        }
+    }
+
+    LaunchedEffect(uiState.loggedOut) {
+        if (uiState.loggedOut) {
+            viewModel.onNavigated()
+            onLoggedOut()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (uiState.isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(Modifier.height(48.dp))
+
+                // 应用标题
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+
+                Spacer(Modifier.height(32.dp))
+
+                // 用户信息卡片
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.home_welcome, uiState.nickname),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.home_current_role, uiState.activeRole),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                // 功能按钮区域
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    // 视障端入口
+                    if (uiState.activeRoleEnum == UserRole.BLIND_RUNNER) {
+                        HomeMenuItem(
+                            icon = Icons.AutoMirrored.Filled.DirectionsRun,
+                            title = stringResource(R.string.home_btn_start_running),
+                            subtitle = stringResource(R.string.home_btn_start_running_desc),
+                            onClick = onEnterBlindFlow,
+                            isPrimary = true,
+                        )
+                        HomeMenuItem(
+                            icon = Icons.Default.Settings,
+                            title = stringResource(R.string.home_btn_settings),
+                            subtitle = stringResource(R.string.home_btn_settings_desc),
+                            onClick = onEnterBlindSettings,
+                        )
+                        HomeMenuItem(
+                            icon = Icons.Default.History,
+                            title = stringResource(R.string.home_btn_history),
+                            subtitle = stringResource(R.string.home_btn_history_desc),
+                            onClick = onEnterBlindHistory,
+                        )
+                    }
+
+                    // 志愿者端入口
+                    if (uiState.activeRoleEnum == UserRole.VOLUNTEER) {
+                        HomeMenuItem(
+                            icon = Icons.Default.VolunteerActivism,
+                            title = stringResource(R.string.home_btn_enter_volunteer),
+                            subtitle = stringResource(R.string.home_btn_enter_volunteer_desc),
+                            onClick = onEnterVolunteerFlow,
+                            isPrimary = true,
+                        )
+                        HomeMenuItem(
+                            icon = Icons.Default.Person,
+                            title = stringResource(R.string.home_btn_profile),
+                            subtitle = stringResource(R.string.home_btn_profile_desc),
+                            onClick = onNavigateToProfile,
+                        )
+                        HomeMenuItem(
+                            icon = Icons.Default.History,
+                            title = stringResource(R.string.home_btn_history),
+                            subtitle = stringResource(R.string.home_btn_history_desc),
+                            onClick = onNavigateToHistory,
+                        )
+                    }
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                // 退出登录
+                OutlinedButton(
+                    onClick = viewModel::logout,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.btn_logout))
+                }
+
+                Spacer(Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeMenuItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    isPrimary: Boolean = false,
+) {
+    if (isPrimary) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp),
+            shape = MaterialTheme.shapes.large,
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start,
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                )
+            }
+        }
+    } else {
+        OutlinedCard(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}

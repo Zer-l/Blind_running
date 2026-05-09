@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:contentDescription="跑步统计">
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:visibility="invisible" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="跑步统计"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="32dp" />
+
+    <TextView
+        android:id="@+id/tvTotalRuns"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="总计跑步：0 次"
+        android:textSize="20sp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tvTotalDistance"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="总距离：0 公里"
+        android:textSize="20sp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tvTotalDuration"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="总时长：0 分钟"
+        android:textSize="20sp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tvCurrentMonthRuns"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="本月跑步：0 次"
+        android:textSize="20sp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tvAverageDuration"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="平均时长：0 分钟"
+        android:textSize="20sp"
+        android:visibility="gone" />
+
+</LinearLayout>

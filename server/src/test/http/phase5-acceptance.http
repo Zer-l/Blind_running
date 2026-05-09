@@ -1,0 +1,290 @@
+### ========================================
+### 阶段 5 验收测试脚本
+### 运行顺序：从上到下依次执行
+### 前置条件：阶段 2 的登录流程已完成，有可用的 token
+### ========================================
+
+### 0. 环境变量（根据实际情况修改）
+@baseUrl = http://localhost:8080/api/v1
+@blindPhone = 13800000001
+@volunteerPhone = 13900000010
+@smsCode = 123456
+
+### ========================================
+### 1. 登录获取 Token
+### ========================================
+
+### 1.1 登录视障用户
+# @name loginBlind
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "phone": "{{blindPhone}}",
+  "smsCode": "{{smsCode}}"
+}
+
+> {%
+    client.global.set("blindToken", response.body.data.accessToken);
+    client.global.set("blindUserId", response.body.data.user.id);
+%}
+
+### 1.2 登录志愿者
+# @name loginVolunteer
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "phone": "{{volunteerPhone}}",
+  "smsCode": "{{smsCode}}"
+}
+
+> {%
+    client.global.set("volunteerToken", response.body.data.accessToken);
+    client.global.set("volunteerUserId", response.body.data.user.id);
+%}
+
+### ========================================
+### 2. 创建订单并推进到 RUNNING 状态
+### ========================================
+
+### 2.1 视障用户创建跑步请求
+# @name createRequest
+POST {{baseUrl}}/run-requests
+Authorization: Bearer {{blindToken}}
+Content-Type: application/json
+Idempotency-Key: phase5-test-001
+
+{
+  "meetingLocation": {
+    "lat": 39.9042,
+    "lng": 116.4074,
+    "description": "天安门广场"
+  },
+  "expectedDurationMinutes": 30,
+  "notes": "验收测试"
+}
+
+> {%
+    client.global.set("requestId", response.body.data.id);
+    client.global.set("version", response.body.data.version);
+%}
+
+### 2.2 志愿者接单
+# @name acceptRequest
+POST {{baseUrl}}/run-requests/{{requestId}}/accept
+Authorization: Bearer {{volunteerToken}}
+Content-Type: application/json
+
+{
+  "version": {{version}}
+}
+
+> {%
+    client.global.set("version", response.body.data.version);
+%}
+
+### 2.3 志愿者出发
+POST {{baseUrl}}/run-requests/{{requestId}}/depart
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.global.set("version", response.body.data.version);
+%}
+
+### 2.4 志愿者确认到达
+POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.global.set("version", response.body.data.version);
+%}
+
+### 2.5 视障用户确认汇合
+POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.global.set("version", response.body.data.version);
+%}
+
+### 2.6 开始跑步
+POST {{baseUrl}}/run-requests/{{requestId}}/start-run
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.global.set("version", response.body.data.version);
+%}
+
+### ========================================
+### 3. 阶段5新增 API 验收
+### ========================================
+
+### 3.1 志愿者上报轨迹
+# @name uploadTracks
+POST {{baseUrl}}/run-requests/{{requestId}}/tracks
+Authorization: Bearer {{volunteerToken}}
+Content-Type: application/json
+
+{
+  "role": "VOLUNTEER",
+  "points": [
+    {"t": 1714500000000, "lat": 39.9042, "lng": 116.4074, "acc": 5.0, "spd": 1.5},
+    {"t": 1714500005000, "lat": 39.9043, "lng": 116.4075, "acc": 4.0, "spd": 1.6},
+    {"t": 1714500010000, "lat": 39.9044, "lng": 116.4076, "acc": 3.0, "spd": 1.7}
+  ]
+}
+
+### 3.2 查询轨迹
+GET {{baseUrl}}/run-requests/{{requestId}}/tracks
+Authorization: Bearer {{volunteerToken}}
+
+### 3.3 志愿者推送实时指标
+POST {{baseUrl}}/run-requests/{{requestId}}/peer-metrics
+Authorization: Bearer {{volunteerToken}}
+Content-Type: application/json
+
+{
+  "totalDistanceMeters": 1500,
+  "totalDurationSeconds": 900,
+  "currentPaceSeconds": 300,
+  "avgPaceSeconds": 310
+}
+
+### 3.4 紧急求助（不改变状态）
+# @name emergency
+POST {{baseUrl}}/run-requests/{{requestId}}/emergency
+Authorization: Bearer {{volunteerToken}}
+Content-Type: application/json
+
+{
+  "reason": "测试紧急求助",
+  "currentLocation": {
+    "lat": 39.9050,
+    "lng": 116.4080
+  }
+}
+
+### 3.5 确认订单状态仍为 RUNNING（紧急求助不改变状态）
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.log("当前状态: " + response.body.data.status);
+    client.assert(response.body.data.status === "RUNNING", "紧急求助后状态应仍为 RUNNING");
+%}
+
+### ========================================
+### 4. 结束跑步并评价
+### ========================================
+
+### 4.1 结束跑步
+# @name endRun
+POST {{baseUrl}}/run-requests/{{requestId}}/end-run
+Authorization: Bearer {{volunteerToken}}
+Content-Type: application/json
+
+{
+  "actualDistanceMeters": 3000,
+  "actualDurationSeconds": 1800,
+  "avgPaceSeconds": 600
+}
+
+> {%
+    client.global.set("version", response.body.data.version);
+    client.log("结束跑步后状态: " + response.body.data.status);
+%}
+
+### 4.2 志愿者评价视障用户
+POST {{baseUrl}}/run-requests/{{requestId}}/reviews
+Authorization: Bearer {{volunteerToken}}
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "tags": ["友好", "准时"],
+  "comment": "非常好的跑步体验"
+}
+
+### 4.3 视障用户评价志愿者
+POST {{baseUrl}}/run-requests/{{requestId}}/reviews
+Authorization: Bearer {{blindToken}}
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "tags": ["专业", "耐心"],
+  "comment": "志愿者很专业"
+}
+
+### 4.4 查询订单评价
+GET {{baseUrl}}/run-requests/{{requestId}}/reviews
+Authorization: Bearer {{volunteerToken}}
+
+### 4.5 确认订单已关闭（双方评价后自动关闭）
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.log("最终状态: " + response.body.data.status);
+    client.assert(response.body.data.status === "CLOSED", "双方评价后状态应为 CLOSED");
+%}
+
+### ========================================
+### 5. 志愿者统计
+### ========================================
+
+### 5.1 查询志愿者统计
+GET {{baseUrl}}/users/me/volunteer-stats
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.log("总跑步次数: " + response.body.data.totalRuns);
+    client.log("徽章数量: " + response.body.data.badges.length);
+%}
+
+### 5.2 查询用户评价历史
+GET {{baseUrl}}/users/{{volunteerUserId}}/reviews?page=0&size=10
+Authorization: Bearer {{blindToken}}
+
+### ========================================
+### 6. 语音评价（带 voiceUrl）
+### ========================================
+
+### 6.1 上传语音文件（需要实际文件）
+# POST {{baseUrl}}/uploads/voice
+# Authorization: Bearer {{volunteerToken}}
+# Content-Type: multipart/form-data
+#
+# < /path/to/voice.m4a
+
+### 6.2 带语音的评价
+# POST {{baseUrl}}/run-requests/{{requestId}}/reviews
+# Authorization: Bearer {{volunteerToken}}
+# Content-Type: application/json
+#
+# {
+#   "rating": 4,
+#   "tags": ["友好"],
+#   "voiceUrl": "/uploads/voices/2026/04/30/xxx.m4a"
+# }
+
+### ========================================
+### 7. 定时任务手动触发（仅 dev profile）
+### ========================================
+
+### 7.1 手动触发订单自动关闭
+# POST {{baseUrl}}/admin/jobs/close-finished-orders
+# Authorization: Bearer {{blindToken}}
+
+### ========================================
+### 验收完成
+### ========================================
+### 预期结果：
+### 1. 轨迹上传/查询正常
+### 2. 实时指标推送返回 200
+### 3. 紧急求助不改变订单状态
+### 4. 结束跑步后状态变为 FINISHED
+### 5. 双方评价后状态自动变为 CLOSED
+### 6. 志愿者统计包含跑步次数和徽章
+### 7. 评价历史可查询

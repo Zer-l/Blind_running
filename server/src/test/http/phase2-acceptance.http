@@ -1,0 +1,487 @@
+### ========================================
+### 阶段 2 验收测试脚本
+### 运行顺序：从上到下依次执行
+### ========================================
+
+### 0.1 发送验证码 - 视障用户 A（张先生）
+POST {{baseUrl}}/auth/send-sms
+Content-Type: application/json
+
+{
+  "phone": "{{blindPhone}}"
+}
+
+### 0.2 登录 - 视障用户 A
+# @name loginBlind
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "phone": "{{blindPhone}}",
+  "smsCode": "{{smsCode}}"
+}
+
+> {%
+    client.global.set("blindToken", response.body.data.accessToken);
+    client.global.set("blindUserId", response.body.data.user.id);
+    client.log("视障用户 A 登录成功, userId=" + response.body.data.user.id);
+%}
+
+### 0.3 发送验证码 - 志愿者 B（跑者小王）
+POST {{baseUrl}}/auth/send-sms
+Content-Type: application/json
+
+{
+  "phone": "{{volunteerPhone}}"
+}
+
+### 0.4 登录 - 志愿者 B
+# @name loginVolunteerB
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "phone": "{{volunteerPhone}}",
+  "smsCode": "{{smsCode}}"
+}
+
+> {%
+    client.global.set("volunteerBToken", response.body.data.accessToken);
+    client.global.set("volunteerBUserId", response.body.data.user.id);
+    client.log("志愿者 B 登录成功, userId=" + response.body.data.user.id);
+%}
+
+### 0.5 登录 - 志愿者 C（新手机号，如果阶段 1 支持新用户自动注册则会创建新账号，否则手动通过其他方式注册）
+# @name loginVolunteerC
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "phone": "{{volunteerCPhone}}",
+  "smsCode": "{{smsCode}}"
+}
+
+> {%
+    if (response.body.data) {
+        client.global.set("volunteerCToken", response.body.data.accessToken);
+        client.global.set("volunteerCUserId", response.body.data.user.id);
+        client.log("志愿者 C 登录成功, userId=" + response.body.data.user.id);
+    } else {
+        client.log("志愿者 C 登录失败，如需测试抢单冲突场景，请先注册一个志愿者账号");
+    }
+%}
+
+### ========================================
+### 验收场景 1：正常完整流程
+### ========================================
+
+### 1.1 视障用户 A 发起跑步请求
+# @name createRequest
+POST {{baseUrl}}/run-requests
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+Idempotency-Key: phase2-test-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 30,
+  "expectedDistanceMeters": 5000,
+  "expectedPaceSeconds": 420,
+  "meetingLocation": {
+    "lat": 39.9042,
+    "lng": 116.4074,
+    "description": "朝阳公园南门"
+  },
+  "notes": "今天穿蓝色外套"
+}
+
+> {%
+    client.test("创建成功返回 MATCHING", function() {
+        client.assert(response.status === 200 || response.status === 201, "HTTP 状态码应为 200/201");
+        client.assert(response.body.data.status === "MATCHING", "状态应为 MATCHING，实际为 " + response.body.data.status);
+    });
+    client.global.set("requestId", response.body.data.id);
+    client.log("订单创建成功, requestId=" + response.body.data.id + ", status=" + response.body.data.status);
+%}
+
+### 1.2 志愿者 B 查询附近可接单
+GET {{baseUrl}}/run-requests/available?lat=39.9042&lng=116.4074&radius=3000
+Authorization: Bearer {{volunteerBToken}}
+
+> {%
+    client.test("能看到视障用户 A 的订单", function() {
+        client.assert(response.body.data.items !== undefined, "data 应有 items 字段");
+        const found = response.body.data.items.some(item => item.id === client.global.get("requestId"));
+        client.assert(found, "附近可接单列表应包含刚创建的订单");
+    });
+%}
+
+### 1.3 志愿者 B 接单（第一次，应成功）
+POST {{baseUrl}}/run-requests/{{requestId}}/accept
+Authorization: Bearer {{volunteerBToken}}
+
+> {%
+    client.test("接单成功状态变 ACCEPTED", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "ACCEPTED", "状态应为 ACCEPTED");
+        client.assert(response.body.data.volunteer.id === client.global.get("volunteerBUserId"), "volunteer.id 应为 B 的 ID");
+    });
+    client.global.set("requestVersion", response.body.data.version);
+%}
+
+### 1.4 志愿者 B 确认出发
+POST {{baseUrl}}/run-requests/{{requestId}}/depart
+Authorization: Bearer {{volunteerBToken}}
+
+> {%
+    client.test("出发成功状态变 EN_ROUTE", function() {
+        client.assert(response.body.data.status === "EN_ROUTE", "状态应为 EN_ROUTE");
+    });
+%}
+
+### 1.5 视障用户 A 确认汇合（第一次调用，触发转移）
+POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("确认汇合状态变 MET", function() {
+        client.assert(response.body.data.status === "MET", "状态应为 MET");
+    });
+%}
+
+### 1.6 志愿者 B 再次调用确认汇合（幂等，状态应保持 MET）
+POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
+Authorization: Bearer {{volunteerBToken}}
+
+> {%
+    client.test("第二次 confirm-met 幂等返回，状态仍为 MET", function() {
+        client.assert(response.status === 200, "应幂等返回 200");
+        client.assert(response.body.data.status === "MET", "状态应为 MET（幂等）");
+    });
+%}
+
+### 1.7 志愿者 B 开始跑步
+POST {{baseUrl}}/run-requests/{{requestId}}/start-run
+Authorization: Bearer {{volunteerBToken}}
+
+> {%
+    client.test("开始跑步状态变 RUNNING", function() {
+        client.assert(response.body.data.status === "RUNNING", "状态应为 RUNNING");
+    });
+%}
+
+### 1.8 志愿者 B 结束跑步
+POST {{baseUrl}}/run-requests/{{requestId}}/end-run
+Content-Type: application/json
+Authorization: Bearer {{volunteerBToken}}
+
+{
+  "actualDistanceMeters": 5200,
+  "actualDurationSeconds": 1830
+}
+
+> {%
+    client.test("结束跑步状态变 FINISHED", function() {
+        client.assert(response.body.data.status === "FINISHED", "状态应为 FINISHED");
+    });
+%}
+
+### 1.9 视障用户 A 评价志愿者 B
+POST {{baseUrl}}/run-requests/{{requestId}}/reviews
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{
+  "rating": 5,
+  "tags": ["守时", "耐心", "专业"],
+  "comment": "非常棒的陪跑体验"
+}
+
+> {%
+    client.test("评价成功", function() {
+        client.assert(response.status === 200 || response.status === 201, "评价应成功");
+    });
+%}
+
+### 1.10 查询订单详情，状态应仍为 FINISHED（只有一条评价）
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("单方评价完状态仍为 FINISHED", function() {
+        client.assert(response.body.data.status === "FINISHED", "状态应为 FINISHED，实际 " + response.body.data.status);
+    });
+%}
+
+### 1.11 志愿者 B 评价视障用户 A
+POST {{baseUrl}}/run-requests/{{requestId}}/reviews
+Content-Type: application/json
+Authorization: Bearer {{volunteerBToken}}
+
+{
+  "rating": 5,
+  "tags": ["配合好"],
+  "comment": "沟通顺畅"
+}
+
+### 1.12 查询订单详情，双方评价后状态应为 CLOSED
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("双方评价完成后状态为 CLOSED", function() {
+        client.assert(response.body.data.status === "CLOSED", "状态应为 CLOSED，实际 " + response.body.data.status);
+    });
+%}
+
+### 1.13 验证志愿者 B 的冗余统计字段已更新
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{volunteerBToken}}
+
+> {%
+    client.test("志愿者 total_runs 增加", function() {
+        client.assert(response.body.data.totalRuns >= 1, "totalRuns 应 >= 1");
+    });
+    client.log("志愿者 B 当前完成次数: " + response.body.data.totalRuns);
+    client.log("志愿者 B 当前评分: " + response.body.data.rating);
+%}
+
+### ========================================
+### 验收场景 2：抢单冲突（乐观锁）
+### ========================================
+
+### 2.1 视障用户 A 再次发起订单
+# @name createRequest2
+POST {{baseUrl}}/run-requests
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+Idempotency-Key: phase2-conflict-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 30,
+  "meetingLocation": {
+    "lat": 39.9042,
+    "lng": 116.4074,
+    "description": "朝阳公园南门"
+  }
+}
+
+> {%
+    client.global.set("requestId2", response.body.data.id);
+%}
+
+### 2.2 志愿者 B 接单（应成功）
+POST {{baseUrl}}/run-requests/{{requestId2}}/accept
+Authorization: Bearer {{volunteerBToken}}
+
+> {%
+    client.test("B 接单成功", function() {
+        client.assert(response.body.data.status === "ACCEPTED");
+    });
+%}
+
+### 2.3 志愿者 C 尝试接同一订单（应 409 冲突）
+POST {{baseUrl}}/run-requests/{{requestId2}}/accept
+Authorization: Bearer {{volunteerCToken}}
+
+> {%
+    client.test("C 抢单失败返回 400 或 409", function() {
+        client.assert(response.status === 400 || response.status === 409,
+            "应返回 400(状态不允许) 或 409(乐观锁冲突)，实际 " + response.status);
+    });
+%}
+
+### ========================================
+### 验收场景 3：非法状态转移
+### ========================================
+
+### 3.1 对已 ACCEPTED 的订单再次 accept（应 400 INVALID_STATE_TRANSITION）
+POST {{baseUrl}}/run-requests/{{requestId2}}/accept
+Authorization: Bearer {{volunteerBToken}}
+
+> {%
+    client.test("重复 accept 返回 400", function() {
+        client.assert(response.status === 400, "应返回 400，实际 " + response.status);
+        client.assert(response.body.code !== 0, "业务 code 应非 0");
+    });
+%}
+
+### 3.2 视障用户 A 尝试 accept 自己发起的订单（应 403 FORBIDDEN_ACTION）
+# 先准备一个 MATCHING 状态的订单
+POST {{baseUrl}}/run-requests
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+Idempotency-Key: phase2-forbidden-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 30,
+  "meetingLocation": {
+    "lat": 39.9042,
+    "lng": 116.4074,
+    "description": "朝阳公园南门"
+  }
+}
+
+> {%
+    client.global.set("requestId3", response.body.data.id);
+%}
+
+### 3.3 视障用户 A 尝试接自己的单
+POST {{baseUrl}}/run-requests/{{requestId3}}/accept
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("视障用户接单返回 403", function() {
+        client.assert(response.status === 403, "应返回 403，实际 " + response.status);
+    });
+%}
+
+### ========================================
+### 验收场景 4：abandon 与重新匹配
+### ========================================
+
+### 4.1 志愿者 B 接订单 3
+POST {{baseUrl}}/run-requests/{{requestId3}}/accept
+Authorization: Bearer {{volunteerBToken}}
+
+### 4.2 志愿者 B abandon（第一次，应回到 MATCHING）
+POST {{baseUrl}}/run-requests/{{requestId3}}/abandon
+Content-Type: application/json
+Authorization: Bearer {{volunteerBToken}}
+
+{
+  "reason": "临时有事"
+}
+
+> {%
+    client.test("第一次 abandon 回到 MATCHING", function() {
+        client.assert(response.body.data.status === "MATCHING", "状态应为 MATCHING");
+        client.assert(response.body.data.volunteer === null, "volunteer 应被清空");
+    });
+%}
+
+### 4.3 视障用户 A 取消订单（应到 ABORTED）
+POST {{baseUrl}}/run-requests/{{requestId3}}/cancel
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{
+  "reason": "改变主意"
+}
+
+> {%
+    client.test("cancel 到 ABORTED", function() {
+        client.assert(response.body.data.status === "ABORTED", "状态应为 ABORTED");
+    });
+%}
+
+### ========================================
+### 验收场景 5：查询事件历史
+### ========================================
+
+### 5.1 查询订单 1 的完整事件流（如果有此接口）
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("订单 1 完整数据: " + JSON.stringify(response.body.data, null, 2));
+%}
+
+### ========================================
+### 验收场景 6：provisioning 拦截 + release-volunteer
+### ========================================
+
+### 6.1 新手机号登录（自动创建 PENDING_ROLE 账号）
+# @name loginPending
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "phone": "{{pendingPhone}}",
+  "smsCode": "{{smsCode}}"
+}
+
+> {%
+    client.global.set("pendingToken", response.body.data.accessToken);
+    client.test("provisioningStatus 为 PENDING_ROLE", function() {
+        client.assert(response.body.data.provisioningStatus === "PENDING_ROLE",
+            "新账号 provisioningStatus 应为 PENDING_ROLE，实际：" + response.body.data.provisioningStatus);
+    });
+%}
+
+### 6.2 PENDING_ROLE 账号调用业务接口（应 403 PROVISIONING_INCOMPLETE）
+POST {{baseUrl}}/run-requests
+Content-Type: application/json
+Authorization: Bearer {{pendingToken}}
+Idempotency-Key: phase2-pending-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 30,
+  "meetingLocation": { "lat": 39.9042, "lng": 116.4074, "description": "测试" }
+}
+
+> {%
+    client.test("PENDING_ROLE 用户发起请求应返回 403 PROVISIONING_INCOMPLETE", function() {
+        client.assert(response.status === 403, "应返回 403，实际：" + response.status);
+        client.assert(response.body.errorCode === "PROVISIONING_INCOMPLETE",
+            "errorCode 应为 PROVISIONING_INCOMPLETE，实际：" + response.body.errorCode);
+    });
+%}
+
+### 6.3 PENDING_ROLE 账号调用 PATCH /users/me 设置角色（白名单，应放行）
+PATCH {{baseUrl}}/users/me
+Content-Type: application/json
+Authorization: Bearer {{pendingToken}}
+
+{
+  "roles": ["BLIND_RUNNER"]
+}
+
+> {%
+    client.test("设置角色应成功，provisioningStatus 升级为 ACTIVE", function() {
+        client.assert(response.status === 200, "应返回 200，实际：" + response.status);
+        client.assert(response.body.data.provisioningStatus === "ACTIVE",
+            "设置角色后 provisioningStatus 应为 ACTIVE，实际：" + response.body.data.provisioningStatus);
+    });
+%}
+
+### 6.4 升级后再次发起请求（应成功）
+# @name createRequest6
+POST {{baseUrl}}/run-requests
+Content-Type: application/json
+Authorization: Bearer {{pendingToken}}
+Idempotency-Key: phase2-pending-active-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 30,
+  "meetingLocation": { "lat": 39.9042, "lng": 116.4074, "description": "测试" }
+}
+
+> {%
+    client.test("角色设置后应能正常发起请求", function() {
+        client.assert(response.status === 200 || response.status === 201, "应返回 200/201，实际：" + response.status);
+        client.assert(response.body.data.status === "MATCHING", "状态应为 MATCHING");
+    });
+    client.global.set("requestId6", response.body.data.id);
+%}
+
+### 6.5 志愿者 B 接 requestId6
+POST {{baseUrl}}/run-requests/{{requestId6}}/accept
+Authorization: Bearer {{volunteerBToken}}
+
+> {%
+    client.test("志愿者接单成功，状态为 ACCEPTED", function() {
+        client.assert(response.body.data.status === "ACCEPTED", "应为 ACCEPTED");
+    });
+%}
+
+### 6.6 视障用户调用 release-volunteer（5 秒内取消只在客户端，后端直接转移）
+POST {{baseUrl}}/run-requests/{{requestId6}}/release-volunteer
+Authorization: Bearer {{pendingToken}}
+
+> {%
+    client.test("release-volunteer 成功，状态回到 MATCHING，volunteer 为 null", function() {
+        client.assert(response.status === 200, "应返回 200，实际：" + response.status);
+        client.assert(response.body.data.status === "MATCHING", "状态应为 MATCHING");
+        client.assert(response.body.data.volunteer === null, "volunteer 应为 null");
+    });
+%}

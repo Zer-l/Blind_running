@@ -1,0 +1,573 @@
+### ========================================
+### 志愿者端端到端测试脚本
+### 完整流程：登录 → 设置角色 → 查询可接单 → 接单 → 导航 → 汇合 → 跑步 → 评价 → 统计
+### 运行顺序：从上到下依次执行
+### ========================================
+
+### 0. 环境变量
+@baseUrl = http://localhost:8080/api/v1
+@volunteerPhone = 13900000010
+@blindPhone = 13800000001
+@smsCode = 123456
+
+### ========================================
+### 1. 登录认证
+### ========================================
+
+### 1.1 发送验证码
+POST {{baseUrl}}/auth/send-sms
+Content-Type: application/json
+
+{
+  "phone": "{{volunteerPhone}}"
+}
+
+### 1.2 登录获取Token
+# @name loginVolunteer
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "phone": "{{volunteerPhone}}",
+  "smsCode": "{{smsCode}}"
+}
+
+> {%
+    client.test("登录成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.accessToken !== undefined, "应返回 accessToken");
+    });
+    client.global.set("volunteerToken", response.body.data.accessToken);
+    client.global.set("volunteerUserId", response.body.data.user.id);
+    client.log("志愿者登录成功, userId=" + response.body.data.user.id);
+%}
+
+### 1.3 登录视障用户（用于后续模拟）
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "phone": "{{blindPhone}}",
+  "smsCode": "{{smsCode}}"
+}
+
+> {%
+    client.global.set("blindToken", response.body.data.accessToken);
+    client.global.set("blindUserId", response.body.data.user.id);
+%}
+
+### ========================================
+### 2. 用户资料设置
+### ========================================
+
+### 2.1 查询当前用户信息
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.log("当前用户角色: " + JSON.stringify(response.body.data.roles));
+    client.log("provisioningStatus: " + response.body.data.provisioningStatus);
+%}
+
+### 2.2 更新基础信息
+PATCH {{baseUrl}}/users/me
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "nickname": "跑者小王",
+  "gender": "MALE"
+}
+
+### 2.3 更新志愿者档案
+PATCH {{baseUrl}}/users/me/volunteer-profile
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "averagePaceSeconds": 360,
+  "runningLevel": "INTERMEDIATE",
+  "hasGuideExperience": true,
+  "trainingCompleted": true
+}
+
+> {%
+    client.test("志愿者档案更新成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+%}
+
+### 2.4 查询志愿者档案确认
+GET {{baseUrl}}/users/me/volunteer-profile
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.log("平均配速: " + response.body.data.averagePaceSeconds + "秒/公里");
+    client.log("是否有导跑经验: " + response.body.data.hasGuideExperience);
+%}
+
+### ========================================
+### 3. 模拟视障用户创建订单
+### ========================================
+
+### 3.1 视障用户创建跑步请求
+POST {{baseUrl}}/run-requests
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+Idempotency-Key: volunteer-e2e-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 30,
+  "expectedDistanceMeters": 5000,
+  "expectedPaceSeconds": 420,
+  "meetingLocation": {
+    "lat": 39.9042,
+    "lng": 116.4074,
+    "description": "朝阳公园南门"
+  },
+  "notes": "今天穿蓝色外套，手持白色手杖"
+}
+
+> {%
+    client.global.set("requestId", response.body.data.id);
+    client.global.set("version", response.body.data.version);
+    client.log("订单创建成功, requestId=" + response.body.data.id);
+%}
+
+### ========================================
+### 4. 查询附近可接单
+### ========================================
+
+### 4.1 查询附近可接单列表
+GET {{baseUrl}}/run-requests/available?lat=39.9042&lng=116.4074&radius=3000
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("查询可接单列表成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.items !== undefined, "应有 items 字段");
+    });
+    client.log("附近可接单数量: " + response.body.data.items.length);
+    if (response.body.data.items.length > 0) {
+        client.log("最近订单距离: " + response.body.data.items[0].distanceMeters + "米");
+    }
+%}
+
+### 4.2 查询订单详情
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.log("订单状态: " + response.body.data.status);
+    client.log("集合地点: " + response.body.data.meetingLocationDesc);
+    if (response.body.data.blindRunner) {
+        client.log("视障用户: " + response.body.data.blindRunner.nickname);
+    }
+%}
+
+### ========================================
+### 5. 接单
+### ========================================
+
+### 5.1 志愿者接单
+# @name acceptRequest
+POST {{baseUrl}}/run-requests/{{requestId}}/accept
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("接单成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "ACCEPTED", "状态应为 ACCEPTED");
+    });
+    client.global.set("version", response.body.data.version);
+    client.log("接单成功, 状态: " + response.body.data.status);
+%}
+
+### 5.2 确认订单详情
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.log("志愿者: " + response.body.data.volunteer.nickname);
+    client.log("视障用户: " + response.body.data.blindRunner.nickname);
+%}
+
+### ========================================
+### 6. 确认出发
+### ========================================
+
+### 6.1 志愿者确认出发
+POST {{baseUrl}}/run-requests/{{requestId}}/depart
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("出发确认成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "EN_ROUTE", "状态应为 EN_ROUTE");
+    });
+    client.global.set("version", response.body.data.version);
+    client.log("出发确认成功, 状态: " + response.body.data.status);
+%}
+
+### ========================================
+### 7. 位置上报
+### ========================================
+
+### 7.1 上报位置（模拟前往集合点）
+POST {{baseUrl}}/run-requests/{{requestId}}/position
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "lat": 39.9050,
+  "lng": 116.4080,
+  "accuracy": 10.0
+}
+
+> {%
+    client.test("位置上报成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+%}
+
+### 7.2 继续上报位置（接近集合点）
+POST {{baseUrl}}/run-requests/{{requestId}}/position
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "lat": 39.9045,
+  "lng": 116.4076,
+  "accuracy": 8.0
+}
+
+### ========================================
+### 8. 确认到达集合点
+### ========================================
+
+### 8.1 志愿者确认到达
+POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("确认到达成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "MET", "状态应为 MET");
+    });
+    client.global.set("version", response.body.data.version);
+    client.log("确认到达成功, 状态: " + response.body.data.status);
+%}
+
+### ========================================
+### 9. 模拟视障用户确认汇合
+### ========================================
+
+### 9.1 视障用户确认汇合
+POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("视障用户确认汇合成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "MET", "状态应为 MET（幂等）");
+    });
+    client.global.set("version", response.body.data.version);
+%}
+
+### ========================================
+### 10. 开始跑步
+### ========================================
+
+### 10.1 志愿者开始跑步
+POST {{baseUrl}}/run-requests/{{requestId}}/start-run
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("开始跑步成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "RUNNING", "状态应为 RUNNING");
+    });
+    client.global.set("version", response.body.data.version);
+    client.log("开始跑步, 状态: " + response.body.data.status);
+%}
+
+### ========================================
+### 11. 跑步中 - 轨迹上传与实时指标
+### ========================================
+
+### 11.1 上传轨迹点（批量）
+POST {{baseUrl}}/run-requests/{{requestId}}/tracks
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "role": "VOLUNTEER",
+  "points": [
+    {"t": 1714500000000, "lat": 39.9042, "lng": 116.4074, "acc": 5.0, "spd": 1.5},
+    {"t": 1714500005000, "lat": 39.9043, "lng": 116.4075, "acc": 4.0, "spd": 1.6},
+    {"t": 1714500010000, "lat": 39.9044, "lng": 116.4076, "acc": 3.0, "spd": 1.7},
+    {"t": 1714500015000, "lat": 39.9045, "lng": 116.4077, "acc": 4.5, "spd": 1.8},
+    {"t": 1714500020000, "lat": 39.9046, "lng": 116.4078, "acc": 5.0, "spd": 1.9}
+  ]
+}
+
+> {%
+    client.test("轨迹上传成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+%}
+
+### 11.2 查询轨迹
+GET {{baseUrl}}/run-requests/{{requestId}}/tracks
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("轨迹查询成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+    if (response.body.data) {
+        client.log("轨迹点数量: " + response.body.data.length);
+    }
+%}
+
+### 11.3 推送实时指标
+POST {{baseUrl}}/run-requests/{{requestId}}/peer-metrics
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "totalDistanceMeters": 1500,
+  "totalDurationSeconds": 900,
+  "currentPaceSeconds": 300,
+  "avgPaceSeconds": 310
+}
+
+> {%
+    client.test("实时指标推送成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+%}
+
+### 11.4 再次推送实时指标（模拟跑步进程）
+POST {{baseUrl}}/run-requests/{{requestId}}/peer-metrics
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "totalDistanceMeters": 3000,
+  "totalDurationSeconds": 1800,
+  "currentPaceSeconds": 305,
+  "avgPaceSeconds": 308
+}
+
+### ========================================
+### 12. 紧急求助测试
+### ========================================
+
+### 12.1 紧急求助
+POST {{baseUrl}}/run-requests/{{requestId}}/emergency
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "reason": "测试紧急求助",
+  "currentLocation": {
+    "lat": 39.9050,
+    "lng": 116.4080
+  }
+}
+
+> {%
+    client.test("紧急求助接口可用", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+    client.log("紧急求助不应改变订单状态");
+%}
+
+### 12.2 确认紧急求助后状态不变
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("紧急求助后状态不变", function() {
+        client.assert(response.body.data.status === "RUNNING", "状态应仍为 RUNNING");
+    });
+%}
+
+### ========================================
+### 13. 结束跑步
+### ========================================
+
+### 13.1 志愿者结束跑步
+# @name endRun
+POST {{baseUrl}}/run-requests/{{requestId}}/end-run
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "actualDistanceMeters": 5200,
+  "actualDurationSeconds": 1830,
+  "avgPaceSeconds": 352
+}
+
+> {%
+    client.test("结束跑步成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "FINISHED", "状态应为 FINISHED");
+    });
+    client.global.set("version", response.body.data.version);
+    client.log("结束跑步, 状态: " + response.body.data.status);
+%}
+
+### ========================================
+### 14. 评价阶段
+### ========================================
+
+### 14.1 志愿者评价视障用户
+POST {{baseUrl}}/run-requests/{{requestId}}/reviews
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "rating": 5,
+  "tags": ["配合好", "沟通顺畅", "准时"],
+  "comment": "视障用户非常配合，沟通顺畅，跑步体验很好"
+}
+
+> {%
+    client.test("志愿者评价成功", function() {
+        client.assert(response.status === 200 || response.status === 201, "HTTP 200/201");
+    });
+%}
+
+### 14.2 视障用户评价志愿者
+POST {{baseUrl}}/run-requests/{{requestId}}/reviews
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{
+  "rating": 5,
+  "tags": ["守时", "耐心", "专业", "沟通好"],
+  "comment": "志愿者非常专业，全程细心陪伴"
+}
+
+> {%
+    client.test("视障用户评价成功", function() {
+        client.assert(response.status === 200 || response.status === 201, "HTTP 200/201");
+    });
+%}
+
+### 14.3 查询订单状态（双方评价后应为 CLOSED）
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("双方评价后状态为 CLOSED", function() {
+        client.assert(response.body.data.status === "CLOSED", "状态应为 CLOSED");
+    });
+    client.log("订单最终状态: " + response.body.data.status);
+%}
+
+### 14.4 查询评价记录
+GET {{baseUrl}}/run-requests/{{requestId}}/reviews
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    if (response.body.data) {
+        client.log("评价数量: " + response.body.data.items.length);
+    }
+%}
+
+### ========================================
+### 15. 志愿者统计查询
+### ========================================
+
+### 15.1 查询志愿者统计
+GET {{baseUrl}}/users/me/volunteer-stats
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("统计查询成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+    if (response.body.data) {
+        client.log("总跑步次数: " + response.body.data.totalRuns);
+        client.log("总跑步时长: " + response.body.data.totalMinutes + "分钟");
+        client.log("总跑步距离: " + response.body.data.totalMeters + "米");
+        client.log("平均评分: " + response.body.data.avgRating);
+    }
+%}
+
+### 15.2 查询用户评价历史
+GET {{baseUrl}}/users/{{volunteerUserId}}/reviews?page=0&size=10
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("评价历史可查询", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+    if (response.body.data) {
+        client.log("收到的评价数量: " + response.body.data.items.length);
+    }
+%}
+
+### ========================================
+### 16. 历史订单查询
+### ========================================
+
+### 16.1 查询志愿者接单历史
+GET {{baseUrl}}/run-requests?role=volunteer&page=0&size=10
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("历史列表可查询", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.items !== undefined, "应有 items 字段");
+    });
+    client.log("历史订单数量: " + response.body.data.items.length);
+%}
+
+### ========================================
+### 17. 异常场景测试
+### ========================================
+
+### 17.1 重复接单测试（应返回 400）
+POST {{baseUrl}}/run-requests/{{requestId}}/accept
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("重复接单返回 400", function() {
+        client.assert(response.status === 400, "应返回 400 INVALID_STATE_TRANSITION");
+    });
+%}
+
+### 17.2 非法状态转移测试（从 CLOSED 状态出发应失败）
+POST {{baseUrl}}/run-requests/{{requestId}}/depart
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("非法状态转移返回 400", function() {
+        client.assert(response.status === 400, "应返回 400 INVALID_STATE_TRANSITION");
+    });
+%}
+
+### ========================================
+### 志愿者端测试完成
+### ========================================
+### 预期结果：
+### 1. 登录成功获取 token
+### 2. 志愿者档案设置成功
+### 3. 查询可接单列表成功
+### 4. 接单成功（MATCHING → ACCEPTED）
+### 5. 出发确认成功（ACCEPTED → EN_ROUTE）
+### 6. 位置上报成功
+### 7. 到达确认成功（EN_ROUTE → MET）
+### 8. 开始跑步成功（MET → RUNNING）
+### 9. 轨迹上传成功
+### 10. 实时指标推送成功
+### 11. 紧急求助不改变状态
+### 12. 结束跑步成功（RUNNING → FINISHED）
+### 13. 双方评价后状态变为 CLOSED
+### 14. 统计数据正确更新
+### 15. 重复接单返回 400
+### 16. 非法状态转移返回 400

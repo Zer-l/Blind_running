@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/blind_nav_graph"
+    app:startDestination="@id/blindCreateRequestFragment">
+
+    <!-- UI-3：发起请求 -->
+    <fragment
+        android:id="@+id/blindCreateRequestFragment"
+        android:name="com.guiderun.app.ui.blind.CreateRequestFragment"
+        android:label="发起跑步请求">
+        <action
+            android:id="@+id/action_createRequest_to_waitingMatch"
+            app:destination="@id/blindWaitingMatchFragment" />
+        <action
+            android:id="@+id/action_createRequest_to_editRequest"
+            app:destination="@id/blindEditRequestFragment" />
+    </fragment>
+
+    <!-- UI-3b：修改请求参数 -->
+    <fragment
+        android:id="@+id/blindEditRequestFragment"
+        android:name="com.guiderun.app.ui.blind.EditRequestFragment"
+        android:label="修改请求参数">
+        <argument
+            android:name="durationMinutes"
+            app:argType="integer"
+            android:defaultValue="60" />
+        <argument
+            android:name="locationDescription"
+            app:argType="string"
+            android:defaultValue="当前位置" />
+        <argument
+            android:name="notes"
+            app:argType="string"
+            android:defaultValue="" />
+    </fragment>
+
+    <!-- UI-4：匹配等待 -->
+    <fragment
+        android:id="@+id/blindWaitingMatchFragment"
+        android:name="com.guiderun.app.ui.blind.WaitingMatchFragment"
+        android:label="等待匹配">
+        <argument
+            android:name="requestId"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_waitingMatch_to_matched"
+            app:destination="@id/blindMatchedFragment"
+            app:popUpTo="@id/blindCreateRequestFragment" />
+        <action
+            android:id="@+id/action_waitingMatch_to_home"
+            app:destination="@id/blindCreateRequestFragment"
+            app:popUpTo="@id/blindCreateRequestFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <!-- UI-5：已匹配 -->
+    <fragment
+        android:id="@+id/blindMatchedFragment"
+        android:name="com.guiderun.app.ui.blind.MatchedFragment"
+        android:label="已匹配志愿者">
+        <argument
+            android:name="requestId"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_matched_to_waiting"
+            app:destination="@id/blindWaitingMatchFragment"
+            app:popUpTo="@id/blindMatchedFragment"
+            app:popUpToInclusive="true">
+            <argument
+                android:name="requestId"
+                app:argType="string" />
+        </action>
+        <action
+            android:id="@+id/action_matched_to_home"
+            app:destination="@id/blindCreateRequestFragment"
+            app:popUpTo="@id/blindCreateRequestFragment"
+            app:popUpToInclusive="true" />
+        <!-- 阶段5：MET -> RUNNING -->
+        <action
+            android:id="@+id/action_matched_to_running"
+            app:destination="@id/blindRunningFragment"
+            app:popUpTo="@id/blindMatchedFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <!-- 阶段5：跑步中 -->
+    <fragment
+        android:id="@+id/blindRunningFragment"
+        android:name="com.guiderun.app.ui.blind.BlindRunningFragment"
+        android:label="跑步中">
+        <argument
+            android:name="requestId"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_blindRunning_to_review"
+            app:destination="@id/blindReviewFragment"
+            app:popUpTo="@id/blindRunningFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_blindRunning_to_home"
+            app:destination="@id/blindCreateRequestFragment"
+            app:popUpTo="@id/blindCreateRequestFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <!-- 阶段5：评价 -->
+    <fragment
+        android:id="@+id/blindReviewFragment"
+        android:name="com.guiderun.app.ui.blind.BlindReviewFragment"
+        android:label="评价志愿者">
+        <argument
+            android:name="requestId"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_blindReview_to_home"
+            app:destination="@id/blindCreateRequestFragment"
+            app:popUpTo="@id/blindCreateRequestFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_blindReview_to_voiceRecord"
+            app:destination="@id/voiceRecordFragment" />
+    </fragment>
+
+    <!-- 阶段5：语音录制 -->
+    <fragment
+        android:id="@+id/voiceRecordFragment"
+        android:name="com.guiderun.app.ui.blind.VoiceRecordFragment"
+        android:label="语音录制" />
+
+    <!-- 阶段5：历史 -->
+    <fragment
+        android:id="@+id/blindHistoryFragment"
+        android:name="com.guiderun.app.ui.blind.BlindHistoryFragment"
+        android:label="跑步历史">
+        <action
+            android:id="@+id/action_history_to_trackPlayback"
+            app:destination="@id/blindTrackPlaybackFragment" />
+    </fragment>
+
+    <!-- 轨迹回放 -->
+    <fragment
+        android:id="@+id/blindTrackPlaybackFragment"
+        android:name="com.guiderun.app.ui.blind.TrackPlaybackFragment"
+        android:label="轨迹回放">
+        <argument
+            android:name="requestId"
+            app:argType="string" />
+    </fragment>
+
+    <!-- 紧急联系人列表 -->
+    <fragment
+        android:id="@+id/emergencyContactListFragment"
+        android:name="com.guiderun.app.ui.profile.EmergencyContactListFragment"
+        android:label="紧急联系人">
+        <action
+            android:id="@+id/action_contactList_to_contactEdit"
+            app:destination="@id/emergencyContactEditFragment" />
+    </fragment>
+
+    <!-- 编辑紧急联系人 -->
+    <fragment
+        android:id="@+id/emergencyContactEditFragment"
+        android:name="com.guiderun.app.ui.profile.EmergencyContactEditFragment"
+        android:label="编辑紧急联系人">
+        <argument
+            android:name="index"
+            app:argType="integer"
+            android:defaultValue="-1" />
+    </fragment>
+
+    <!-- 编辑个人资料 -->
+    <fragment
+        android:id="@+id/profileEditFragment"
+        android:name="com.guiderun.app.ui.profile.ProfileEditFragment"
+        android:label="编辑个人资料" />
+
+    <!-- 设置主页 -->
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.guiderun.app.ui.profile.SettingsFragment"
+        android:label="设置">
+        <action
+            android:id="@+id/action_settings_to_profileEdit"
+            app:destination="@id/profileEditFragment" />
+        <action
+            android:id="@+id/action_settings_to_emergencyContacts"
+            app:destination="@id/emergencyContactListFragment" />
+        <action
+            android:id="@+id/action_settings_to_blindStats"
+            app:destination="@id/blindStatsFragment" />
+        <action
+            android:id="@+id/action_settings_to_accessibilitySettings"
+            app:destination="@id/accessibilitySettingsFragment" />
+    </fragment>
+
+    <!-- 跑步统计 -->
+    <fragment
+        android:id="@+id/blindStatsFragment"
+        android:name="com.guiderun.app.ui.profile.BlindStatsFragment"
+        android:label="跑步统计" />
+
+    <!-- 无障碍设置 -->
+    <fragment
+        android:id="@+id/accessibilitySettingsFragment"
+        android:name="com.guiderun.app.ui.profile.AccessibilitySettingsFragment"
+        android:label="无障碍设置" />
+
+</navigation>

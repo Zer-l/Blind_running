@@ -1,0 +1,382 @@
+### ========================================
+### 视障端端到端测试脚本
+### 完整流程：登录 → 设置角色 → 发起请求 → 等待匹配 → 汇合 → 跑步 → 评价 → 历史
+### 运行顺序：从上到下依次执行
+### ========================================
+
+### 0. 环境变量
+@baseUrl = http://localhost:8080/api/v1
+@blindPhone = 13800000001
+@smsCode = 123456
+
+### ========================================
+### 1. 登录认证
+### ========================================
+
+### 1.1 发送验证码
+POST {{baseUrl}}/auth/send-sms
+Content-Type: application/json
+
+{
+  "phone": "{{blindPhone}}"
+}
+
+### 1.2 登录获取Token
+# @name loginBlind
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "phone": "{{blindPhone}}",
+  "smsCode": "{{smsCode}}"
+}
+
+> {%
+    client.test("登录成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.accessToken !== undefined, "应返回 accessToken");
+    });
+    client.global.set("blindToken", response.body.data.accessToken);
+    client.global.set("blindUserId", response.body.data.user.id);
+    client.log("视障用户登录成功, userId=" + response.body.data.user.id);
+%}
+
+### ========================================
+### 2. 用户资料设置
+### ========================================
+
+### 2.1 查询当前用户信息
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("当前用户角色: " + JSON.stringify(response.body.data.roles));
+    client.log("provisioningStatus: " + response.body.data.provisioningStatus);
+%}
+
+### 2.2 确保角色为 BLIND_RUNNER（如果需要）
+PATCH {{baseUrl}}/users/me
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{
+  "nickname": "张先生",
+  "gender": "MALE"
+}
+
+### 2.3 更新视障档案
+PATCH {{baseUrl}}/users/me/blind-profile
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{
+  "visionLevel": "TOTAL_BLIND",
+  "preferredPaceSeconds": 420,
+  "emergencyContacts": [
+    {
+      "name": "张妻",
+      "phone": "13800000011",
+      "relationship": "配偶"
+    }
+  ],
+  "medicalNotes": "轻度哮喘，随身携带喷雾",
+  "visualDescription": "身高170，中等身材，戴墨镜"
+}
+
+> {%
+    client.test("视障档案更新成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+%}
+
+### 2.4 查询视障档案确认
+GET {{baseUrl}}/users/me/blind-profile
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("视障级别: " + response.body.data.visionLevel);
+    client.log("期望配速: " + response.body.data.preferredPaceSeconds + "秒/公里");
+%}
+
+### ========================================
+### 3. 发起跑步请求
+### ========================================
+
+### 3.1 创建跑步请求
+# @name createRequest
+POST {{baseUrl}}/run-requests
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+Idempotency-Key: blind-e2e-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 30,
+  "expectedDistanceMeters": 5000,
+  "expectedPaceSeconds": 420,
+  "meetingLocation": {
+    "lat": 39.9042,
+    "lng": 116.4074,
+    "description": "朝阳公园南门"
+  },
+  "notes": "今天穿蓝色外套，手持白色手杖"
+}
+
+> {%
+    client.test("创建请求成功", function() {
+        client.assert(response.status === 200 || response.status === 201, "HTTP 200/201");
+        client.assert(response.body.data.status === "MATCHING", "状态应为 MATCHING");
+    });
+    client.global.set("requestId", response.body.data.id);
+    client.global.set("version", response.body.data.version);
+    client.log("跑步请求创建成功, requestId=" + response.body.data.id);
+%}
+
+### ========================================
+### 4. 等待匹配（模拟轮询）
+### ========================================
+
+### 4.1 查询订单状态（第一次轮询）
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("当前状态: " + response.body.data.status);
+    client.assert(response.body.data.status === "MATCHING", "应处于等待匹配状态");
+%}
+
+### 4.2 查询订单状态（第二次轮询）
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("当前状态: " + response.body.data.status);
+%}
+
+### ========================================
+### 5. 模拟志愿者接单后，视障端确认汇合
+### 注意：实际场景中，志愿者接单后视障端会收到WebSocket推送
+### 此处模拟志愿者已完成接单、出发、到达的过程
+### ========================================
+
+### 5.1 查询订单详情（志愿者应已接单）
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("订单状态: " + response.body.data.status);
+    if (response.body.data.volunteer) {
+        client.log("志愿者: " + response.body.data.volunteer.nickname);
+    }
+    client.global.set("version", response.body.data.version);
+%}
+
+### 5.2 确认汇合（视障用户触发）
+# 注意：此步骤需要志愿者已将状态推进到 EN_ROUTE
+# 如果志愿者尚未操作，此请求会返回 400 INVALID_STATE_TRANSITION
+POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
+Authorization: Bearer {{blindToken}}
+
+> {%
+    if (response.status === 200) {
+        client.test("确认汇合成功", function() {
+            client.assert(response.body.data.status === "MET", "状态应为 MET");
+        });
+        client.global.set("version", response.body.data.version);
+    } else {
+        client.log("确认汇合失败（可能志愿者尚未到达）: " + response.body.message);
+    }
+%}
+
+### ========================================
+### 6. 跑步阶段
+### 注意：此阶段志愿者会推送实时指标
+### ========================================
+
+### 6.1 查询订单状态
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("当前状态: " + response.body.data.status);
+    if (response.body.data.status === "RUNNING") {
+        client.log("跑步已开始！");
+    }
+%}
+
+### 6.2 紧急求助（测试用）
+POST {{baseUrl}}/run-requests/{{requestId}}/emergency
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{
+  "reason": "测试紧急求助",
+  "currentLocation": {
+    "lat": 39.9050,
+    "lng": 116.4080
+  }
+}
+
+> {%
+    client.test("紧急求助接口可用", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+    client.log("紧急求助不应改变订单状态");
+%}
+
+### 6.3 确认紧急求助后状态不变
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("紧急求助后状态不变", function() {
+        client.assert(response.body.data.status !== "ABORTED", "紧急求助不应导致 ABORTED");
+    });
+%}
+
+### ========================================
+### 7. 评价阶段
+### 注意：需要志愿者先结束跑步（状态变为 FINISHED）
+### ========================================
+
+### 7.1 查询订单状态
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("当前状态: " + response.body.data.status);
+%}
+
+### 7.2 评价志愿者
+# 注意：需要订单状态为 FINISHED
+POST {{baseUrl}}/run-requests/{{requestId}}/reviews
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{
+  "rating": 5,
+  "tags": ["守时", "耐心", "专业", "沟通好"],
+  "comment": "志愿者非常专业，跑步体验很好，全程细心陪伴"
+}
+
+> {%
+    if (response.status === 200 || response.status === 201) {
+        client.test("评价提交成功", function() {
+            client.assert(true, "评价成功");
+        });
+    } else {
+        client.log("评价失败（可能订单未完成）: " + response.body.message);
+    }
+%}
+
+### 7.3 查询评价记录
+GET {{baseUrl}}/run-requests/{{requestId}}/reviews
+Authorization: Bearer {{blindToken}}
+
+> {%
+    if (response.body.data) {
+        client.log("评价数量: " + response.body.data.items.length);
+    }
+%}
+
+### ========================================
+### 8. 历史记录查询
+### ========================================
+
+### 8.1 查询我的请求历史
+GET {{baseUrl}}/run-requests?role=blind&page=0&size=10
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("历史列表可查询", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.items !== undefined, "应有 items 字段");
+    });
+    client.log("历史订单数量: " + response.body.data.items.length);
+    if (response.body.data.items.length > 0) {
+        client.log("最新订单状态: " + response.body.data.items[0].status);
+    }
+%}
+
+### 8.2 查询单个订单详情
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("订单最终状态: " + response.body.data.status);
+    client.log("创建时间: " + response.body.data.createdAt);
+    if (response.body.data.volunteer) {
+        client.log("志愿者: " + response.body.data.volunteer.nickname);
+    }
+%}
+
+### ========================================
+### 9. 异常场景测试
+### ========================================
+
+### 9.1 取消请求测试（创建新请求后取消）
+POST {{baseUrl}}/run-requests
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+Idempotency-Key: blind-cancel-test-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 20,
+  "meetingLocation": {
+    "lat": 39.9042,
+    "lng": 116.4074,
+    "description": "测试取消场景"
+  }
+}
+
+> {%
+    client.global.set("cancelRequestId", response.body.data.id);
+%}
+
+### 9.2 取消刚创建的请求
+POST {{baseUrl}}/run-requests/{{cancelRequestId}}/cancel
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{
+  "reason": "改变主意了"
+}
+
+> {%
+    client.test("取消请求成功", function() {
+        client.assert(response.body.data.status === "ABORTED", "状态应为 ABORTED");
+    });
+%}
+
+### ========================================
+### 10. Token刷新测试
+### ========================================
+
+### 10.1 刷新Token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{blindRefreshToken}}"
+}
+
+> {%
+    if (response.status === 200) {
+        client.log("Token 刷新成功");
+    } else {
+        client.log("Token 刷新测试（需要有效的 refreshToken）");
+    }
+%}
+
+### ========================================
+### 视障端测试完成
+### ========================================
+### 预期结果：
+### 1. 登录成功获取 token
+### 2. 视障档案设置成功
+### 3. 跑步请求创建成功（MATCHING 状态）
+### 4. 轮询查询正常
+### 5. 汇合确认接口可用
+### 6. 紧急求助不改变状态
+### 7. 评价接口可用
+### 8. 历史列表可查询
+### 9. 取消请求成功（ABORTED 状态）

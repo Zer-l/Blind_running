@@ -1,0 +1,36 @@
+### 1. 视障用户登录
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{"phone": "13800000001", "smsCode": "123456"}
+
+> {%
+    client.global.set("blindToken", response.body.data.accessToken);
+    client.log("视障用户登录成功");
+%}
+
+### 2. 发起跑步请求
+POST http://localhost:8080/api/v1/run-requests
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+Idempotency-Key: test-create-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 30,
+  "expectedDistanceMeters": 3000,
+  "meetingLocation": {
+    "lat": 22.91012,
+    "lng": 113.869346,
+    "description": "东莞理工学院"
+  },
+  "notes": "测试订单"
+}
+
+> {%
+    client.test("创建成功", function() {
+        client.assert(response.status === 200 || response.status === 201, "HTTP 状态码应为 200/201，实际 " + response.status);
+        client.assert(response.body.data.status === "MATCHING", "状态应为 MATCHING，实际 " + response.body.data.status);
+    });
+    client.global.set("requestId", response.body.data.id);
+    client.log("订单创建成功 ID: " + response.body.data.id + " 状态: " + response.body.data.status);
+%}
