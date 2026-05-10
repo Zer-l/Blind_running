@@ -41,7 +41,6 @@ data class CreateReviewRequestDto(
     val rating: Int,
     val tags: List<String> = emptyList(),
     val comment: String? = null,
-    val voiceUrl: String? = null,
 )
 
 @Serializable
@@ -98,8 +97,7 @@ data class ReviewResponseDto(
     val revieweeId: String,
     val rating: Int,
     val tags: List<String>,
-    val comment: String?,
-    val voiceUrl: String?,
+    val comment: String? = null,
     val createdAt: Long,
 )
 
@@ -137,6 +135,8 @@ data class UserSummaryDto(
     val gender: String? = null,
     val rating: Float? = null,
     val totalRuns: Int = 0,
+    /** 仅在 ACCEPTED 之后由服务端下发；其他场景为 null。供视障端音量+键拨号 / 志愿者端电话按钮使用。 */
+    val phone: String? = null,
 )
 
 @Serializable
@@ -191,11 +191,4 @@ data class AvailableRequestItemDto(
     val expectedDurationMinutes: Int,
     val distanceMeters: Int,
     val createdAt: Long,
-)
-
-@Serializable
-data class VoiceCallResponseDto(
-    val requestId: String,
-    val otherPartyPhone: String,
-    val status: String,
 )

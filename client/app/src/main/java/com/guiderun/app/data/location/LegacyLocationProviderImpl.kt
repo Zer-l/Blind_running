@@ -29,13 +29,29 @@ class LegacyLocationProviderImpl(context: Context) : LocationProvider {
             networkLoc != null -> networkLoc
             else -> null
         }
-        return loc?.let { GeoPoint(it.latitude, it.longitude, "", it.accuracy) }
+        return loc?.let {
+            GeoPoint(
+                lat = it.latitude,
+                lng = it.longitude,
+                description = "",
+                accuracy = it.accuracy,
+                realtimeMs = it.elapsedRealtimeNanos / 1_000_000L,
+            )
+        }
     }
 
     @SuppressLint("MissingPermission")
     override fun locationUpdates(intervalMs: Long): Flow<GeoPoint> = callbackFlow {
         val listener = LocationListener { location ->
-            trySend(GeoPoint(location.latitude, location.longitude, "", location.accuracy))
+            trySend(
+                GeoPoint(
+                    lat = location.latitude,
+                    lng = location.longitude,
+                    description = "",
+                    accuracy = location.accuracy,
+                    realtimeMs = location.elapsedRealtimeNanos / 1_000_000L,
+                )
+            )
         }
 
         // 同时注册 GPS 和网络定位

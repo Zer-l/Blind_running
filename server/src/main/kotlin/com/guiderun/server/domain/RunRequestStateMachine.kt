@@ -28,7 +28,7 @@ class RunRequestStateMachine {
         Key(EN_ROUTE, CONFIRM_MET, VOLUNTEER) to MET,
         Key(MET,      START_RUN,   VOLUNTEER) to RUNNING,
         Key(MET,      START_RUN,   BLIND)     to RUNNING,
-        Key(RUNNING,  END_RUN,     VOLUNTEER) to FINISHED,
+        // 跑步结束只能由视障端最终触发；志愿者只能 REQUEST_END_RUN（不改状态）发起协商
         Key(RUNNING,  END_RUN,     BLIND)     to FINISHED,
         // CANCEL 允许的状态和角色
         Key(MATCHING, CANCEL, BLIND)     to ABORTED,

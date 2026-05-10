@@ -10,12 +10,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -34,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
+import com.guiderun.app.ui.common.CallPeerButton
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -65,6 +73,7 @@ fun VolunteerReviewScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.volunteer_review_title)) },
                 actions = {
+                    CallPeerButton(phone = uiState.peerPhone)
                     TextButton(onClick = viewModel::skip) {
                         Text(stringResource(R.string.volunteer_review_skip))
                     }
@@ -74,28 +83,59 @@ fun VolunteerReviewScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+            modifier = Modifier.fillMaxSize().padding(padding),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RatingRow(rating = uiState.rating, onRatingChange = viewModel::setRating)
-
-            Column {
-                Text(stringResource(R.string.volunteer_review_tags_label), style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val tags = listOf(
-                        R.string.volunteer_review_tag_friendly,
-                        R.string.volunteer_review_tag_punctual,
-                        R.string.volunteer_review_tag_patient,
-                        R.string.volunteer_review_tag_professional,
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.volunteer_review_rating_label),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
-                    tags.forEach { resId ->
-                        val tag = stringResource(resId)
-                        FilterChip(
-                            selected = tag in uiState.selectedTags,
-                            onClick = { viewModel.toggleTag(tag) },
-                            label = { Text(tag) },
+                    StarRatingRow(
+                        rating = uiState.rating,
+                        onRatingChange = viewModel::setRating,
+                    )
+                    Text(
+                        text = ratingText(uiState.rating),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    )
+                }
+            }
+
+            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.volunteer_review_tags_label),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val tags = listOf(
+                            R.string.volunteer_review_tag_punctual,
+                            R.string.volunteer_review_tag_cooperative,
+                            R.string.volunteer_review_tag_clear_communication,
+                            R.string.volunteer_review_tag_friendly,
                         )
+                        tags.forEach { resId ->
+                            val tag = stringResource(resId)
+                            FilterChip(
+                                selected = tag in uiState.selectedTags,
+                                onClick = { viewModel.toggleTag(tag) },
+                                label = { Text(tag) },
+                            )
+                        }
                     }
                 }
             }
@@ -104,7 +144,7 @@ fun VolunteerReviewScreen(
                 value = uiState.comment,
                 onValueChange = viewModel::setComment,
                 label = { Text(stringResource(R.string.volunteer_review_comment_hint)) },
-                modifier = Modifier.fillMaxWidth().height(120.dp),
+                modifier = Modifier.fillMaxWidth().height(120.dp).padding(horizontal = 16.dp),
                 maxLines = 4,
             )
 
@@ -112,29 +152,58 @@ fun VolunteerReviewScreen(
 
             Button(
                 onClick = viewModel::submit,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                enabled = !uiState.isSubmitting,
+                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+                enabled = !uiState.isSubmitting && uiState.rating > 0,
             ) {
-                if (uiState.isSubmitting) CircularProgressIndicator()
-                else Text(stringResource(R.string.volunteer_review_submit))
+                if (uiState.isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.volunteer_review_submit),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
             }
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-private fun RatingRow(rating: Int, onRatingChange: (Int) -> Unit) {
-    Column {
-        Text(stringResource(R.string.volunteer_review_rating_label), style = MaterialTheme.typography.titleSmall)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            (1..5).forEach { star ->
-                FilterChip(
-                    selected = star <= rating,
-                    onClick = { onRatingChange(star) },
-                    label = { Text("$star") },
+private fun StarRatingRow(
+    rating: Int,
+    onRatingChange: (Int) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        (1..5).forEach { star ->
+            IconButton(
+                onClick = { onRatingChange(star) },
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    imageVector = if (star <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = "$star 星",
+                    modifier = Modifier.size(36.dp),
+                    tint = if (star <= rating) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
             }
         }
     }
+}
+
+private fun ratingText(rating: Int): String = when (rating) {
+    1 -> "非常不满意"
+    2 -> "不满意"
+    3 -> "一般"
+    4 -> "满意"
+    5 -> "非常满意"
+    else -> "请点击星星评分"
 }

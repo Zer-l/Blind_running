@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.data.local.dao.RunSessionStatsDao
@@ -15,8 +16,10 @@ import com.guiderun.app.data.local.entity.RunTrackBufferEntity
 import com.guiderun.app.domain.repository.LocationProvider
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.util.PaceCalculator
+import com.guiderun.app.util.PaceWindow
 import com.guiderun.app.util.SimpleKalmanFilter
 import java.util.LinkedList
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,8 +29,26 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
-import javax.inject.Inject
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
+/**
+ * 跑步轨迹采集 + 实时数据聚合的前台服务。
+ *
+ * 设计要点：
+ * 1. **唯一写入源**：所有 RunSessionStats 字段（距离/时长/瞬时配速/平均配速）只在该 Service 内部写入，
+ *    上游 ViewModel 仅订阅 stats，不再各自起 ticker —— 避免多源写同字段产生闪烁/跳变。
+ * 2. **单调时钟**：时长基于 [SystemClock.elapsedRealtime]，不受系统时间被改影响；点位时间优先
+ *    使用 [com.guiderun.app.domain.model.GeoPoint.realtimeMs]（来自 Location.elapsedRealtimeNanos）。
+ * 3. **位移 / 速度门控**：
+ *    - 精度差（accuracy > 阈值）→ 丢弃
+ *    - 相邻点位移 < MIN_DELTA_M 且 dt < MIN_DELTA_TIME_MS → 不计入距离（屏蔽静止漂移）
+ *    - 瞬时速度 > MAX_SPEED_MPS（≈ 43 km/h）→ 视为离群点，整帧丢弃
+ * 4. **配速窗口**：使用 [PaceWindow]，"最近 30s 或 100m" 双约束，与采样间隔解耦。
+ * 5. **距离精度**：累加器使用 [Double]，长跑无累加误差。
+ * 6. **写入节奏**：每帧 location 触发一次 stats 写；额外 1 Hz 兜底 tick 保证无新点时时长仍涨。
+ * 7. **写入并发**：通过 [statsMutex] 串行化 stats 读 / 写，避免 location 帧与 1Hz tick 同时 upsert。
+ */
 abstract class RunTrackingService : Service() {
 
     @Inject lateinit var locationProvider: LocationProvider
@@ -39,19 +60,44 @@ abstract class RunTrackingService : Service() {
     protected val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var trackingJob: Job? = null
     private var uploadJob: Job? = null
-    private var startTimeMs: Long = 0L
+    private var tickerJob: Job? = null
+
+    private var startElapsedMs: Long = 0L
+    private var currentRequestId: String = ""
     private var currentUserId: String = ""
-    private var lastValidLat: Double? = null
-    private var lastValidLng: Double? = null
-    private var lastValidTimeMs: Long = 0L
-    private var accumulatedDistanceMeters: Float = 0f
-    private val recentPaces = mutableListOf<Int>()
-    private val bufferedRecentPoints = mutableListOf<Pair<Double, Double>>()
-    private val locationIntervalFlow = MutableStateFlow(locationIntervalMs)
+
+    // 上一个有效"原始点"（用于距离累加：用未平滑坐标，避免滤波系统性低估距离）
+    private var lastRawLat: Double? = null
+    private var lastRawLng: Double? = null
+    private var lastRawRealtimeMs: Long = 0L
+
+    // 上一个"平滑后"点位（用于轨迹写入与展示）
+    private var lastSmoothLat: Double? = null
+    private var lastSmoothLng: Double? = null
+
+    private var accumulatedDistanceM: Double = 0.0
+    private var lastSmoothSpeedMps: Float = 0f
+
+    private val paceWindow = PaceWindow()
+    private val statsMutex = Mutex()
+
+    // 动态采样间隔
+    private val locationIntervalFlow = MutableStateFlow(DEFAULT_INTERVAL_MS)
     private var isStationary = false
     private var stationarySinceMs: Long = -1L
 
-    // 轨迹平滑
+    // 自动暂停（独立于 isStationary）
+    // - isStationary：用于把采集间隔拉到 30s 省电（30s 触发，体感慢）
+    // - isPaused：用于"距离/配速/运动时长 冻结"（10s 触发，体感快）
+    private var isPaused: Boolean = false
+    private var lowSpeedSinceRealtimeMs: Long = -1L
+    private var pendingResumeSinceRealtimeMs: Long = -1L
+
+    // 累计已结束的暂停时长；正在进行中的暂停在 flushStats 内单独扣除
+    private var pausedAccumMs: Long = 0L
+    private var pauseStartedAtRealtimeMs: Long = -1L
+
+    // 滤波（仅用于轨迹与展示坐标，不影响距离计算）
     private val kalmanFilter = SimpleKalmanFilter(processNoise = 0.001, measurementNoise = 5.0)
     private val medianLatBuffer = LinkedList<Double>()
     private val medianLngBuffer = LinkedList<Double>()
@@ -64,22 +110,35 @@ abstract class RunTrackingService : Service() {
     companion object {
         const val EXTRA_REQUEST_ID = "request_id"
         const val DEFAULT_INTERVAL_MS = 3_000L
+
         private const val NOTIFICATION_ID = 1002
         private const val CHANNEL_ID = "run_tracking"
         private const val UPLOAD_BATCH_SIZE = 100
         private const val UPLOAD_INTERVAL_MS = 30_000L
-        private const val STATIONARY_INTERVAL_MS = 30_000L
-        private const val STATIONARY_SPEED_THRESHOLD = 0.5f
-        private const val STATIONARY_DURATION_MS = 30_000L
-        private const val OUTLIER_DISTANCE_THRESHOLD = 50f
-        private const val OUTLIER_TIME_THRESHOLD_MS = 2_000L
+        private const val TICK_INTERVAL_MS = 1_000L
 
         // 精度门控
-        private const val ACCURACY_THRESHOLD = 30f  // 超过30米丢弃
+        private const val ACCURACY_THRESHOLD_M = 30f
 
-        // 动态间隔阈值（米/秒）
-        private const val SPEED_WALK = 2.0f         // 步行
-        private const val SPEED_JOG = 4.0f          // 慢跑
+        // 离群点阈值（按瞬时速度判断，比固定距离阈值更准）
+        private const val MAX_SPEED_MPS = 12f         // ≈ 43 km/h
+        private const val MIN_DELTA_M = 2f            // 位移 < 2m 视为静止漂移
+        private const val MIN_DELTA_TIME_MS = 5_000L  // dt < 5s 内的微位移才屏蔽
+
+        // 静止判定（用于采集间隔降频）
+        private const val STATIONARY_SPEED_MPS = 0.5f
+        private const val STATIONARY_DURATION_MS = 30_000L
+        private const val STATIONARY_INTERVAL_MS = 30_000L
+
+        // 自动暂停判定（用于距离/配速冻结）
+        private const val PAUSE_SPEED_MPS = 0.5f      // 持续低于该速度才入暂停
+        private const val PAUSE_DURATION_MS = 10_000L // 持续 10s 才入暂停
+        private const val RESUME_SPEED_MPS = 1.0f     // 高于该速度即恢复
+        private const val RESUME_DURATION_MS = 0L     // 0 = 首帧高速即恢复（保留 RESUME_SPEED_MPS 门槛）
+
+        // 速度→采集间隔自适应
+        private const val SPEED_WALK = 2.0f
+        private const val SPEED_JOG = 4.0f
         private const val INTERVAL_WALK_MS = 5_000L
         private const val INTERVAL_JOG_MS = 3_000L
         private const val INTERVAL_RUN_MS = 2_000L
@@ -93,12 +152,14 @@ abstract class RunTrackingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val requestId = intent?.getStringExtra(EXTRA_REQUEST_ID)
             ?: run { stopSelf(); return START_NOT_STICKY }
+        currentRequestId = requestId
         startForeground(NOTIFICATION_ID, buildNotification())
-        startTimeMs = System.currentTimeMillis()
+        startElapsedMs = SystemClock.elapsedRealtime()
         locationIntervalFlow.value = locationIntervalMs
         scope.launch {
             currentUserId = userPreferences.getCurrentUserId() ?: ""
             startTracking(requestId)
+            startStatsTicker(requestId)
             startPeriodicUpload(requestId)
         }
         return START_REDELIVER_INTENT
@@ -111,71 +172,169 @@ abstract class RunTrackingService : Service() {
             locationIntervalFlow.flatMapLatest { interval ->
                 locationProvider.locationUpdates(interval)
             }.collect { geoPoint ->
-                val now = System.currentTimeMillis()
-
-                // P0: 精度门控 - 精度过差直接丢弃
-                if (geoPoint.accuracy > ACCURACY_THRESHOLD) {
-                    return@collect
-                }
-
-                // 异常点过滤
-                val prevLat = lastValidLat
-                val prevLng = lastValidLng
-                val prevTimeMs = lastValidTimeMs
-                if (prevLat != null && prevLng != null && prevTimeMs > 0) {
-                    val dist = PaceCalculator.distanceMeters(prevLat, prevLng, geoPoint.lat, geoPoint.lng)
-                    val dtMs = now - prevTimeMs
-                    if (dist > OUTLIER_DISTANCE_THRESHOLD && dtMs < OUTLIER_TIME_THRESHOLD_MS) {
-                        return@collect
-                    }
-                }
-
-                // P1: 中值滤波 - 3点窗口去尖刺
-                val (medianLat, medianLng) = medianFilter(geoPoint.lat, geoPoint.lng)
-
-                // P2: 卡尔曼滤波 - 持续平滑
-                val (smoothLat, smoothLng) = kalmanFilter.update(medianLat, medianLng, geoPoint.accuracy)
-
-                val prevPointLat = lastValidLat
-                val prevPointLng = lastValidLng
-                val prevPointTimeMs = lastValidTimeMs
-
-                lastValidLat = smoothLat
-                lastValidLng = smoothLng
-                lastValidTimeMs = now
-
-                bufferedRecentPoints.add(smoothLat to smoothLng)
-                if (bufferedRecentPoints.size > 60) {
-                    bufferedRecentPoints.removeAt(0)
-                }
-
-                // 动态调整采集间隔
-                adjustIntervalBySpeed()
-
-                val bufferEntity = RunTrackBufferEntity(
-                    requestId = requestId,
-                    userId = currentUserId,
-                    role = role,
-                    timestamp = now,
-                    lat = smoothLat,
-                    lng = smoothLng,
-                    accuracy = geoPoint.accuracy,
-                    speed = null,
-                )
-                trackBufferDao.insert(bufferEntity)
-                accumulateDistance(prevPointLat, prevPointLng, smoothLat, smoothLng)
-                updateSessionStats(requestId, now, prevPointLat, prevPointLng, prevPointTimeMs)
-                checkAndUpdateStationary(now)
+                handleLocation(requestId, geoPoint)
             }
         }
     }
 
-    private fun checkAndUpdateStationary(nowMs: Long) {
-        val avgSpeed = computeRecentAvgSpeed()
-        val nowStationary = avgSpeed != null && avgSpeed < STATIONARY_SPEED_THRESHOLD
+    private suspend fun handleLocation(requestId: String, geo: com.guiderun.app.domain.model.GeoPoint) {
+        // 1. 精度门控
+        if (geo.accuracy > ACCURACY_THRESHOLD_M) return
+
+        // 2. 单调时间戳：优先用 GPS 自带 elapsedRealtime，否则 fallback 到当前 elapsedRealtime
+        val nowRealtimeMs = if (geo.realtimeMs > 0L) geo.realtimeMs else SystemClock.elapsedRealtime()
+        val wallNowMs = System.currentTimeMillis()
+
+        // 3. 离群速度过滤（用原始坐标计算瞬时速度）
+        val prevRawLat = lastRawLat
+        val prevRawLng = lastRawLng
+        val prevRawTime = lastRawRealtimeMs
+
+        var deltaM = 0f
+        var deltaTimeMs = 0L
+        if (prevRawLat != null && prevRawLng != null && prevRawTime > 0L) {
+            deltaM = PaceCalculator.distanceMeters(prevRawLat, prevRawLng, geo.lat, geo.lng)
+            deltaTimeMs = nowRealtimeMs - prevRawTime
+            if (deltaTimeMs <= 0L) return // 时间倒退，丢弃
+            val speed = if (deltaTimeMs > 0L) deltaM / (deltaTimeMs / 1000f) else 0f
+            if (speed > MAX_SPEED_MPS) return // 离群点
+            lastSmoothSpeedMps = speed
+        }
+
+        // 4. 平滑（仅影响轨迹写入与展示坐标，不影响距离）
+        val (medianLat, medianLng) = medianFilter(geo.lat, geo.lng)
+        val (smoothLat, smoothLng) = kalmanFilter.update(medianLat, medianLng, geo.accuracy)
+
+        // 5. 自动暂停状态机（必须在距离累加之前判定，使本帧位移直接被冻结）
+        updatePauseState(nowRealtimeMs)
+
+        // 6. 位移门控 + 暂停冻结：屏蔽静止漂移对距离的污染；暂停期间距离/配速完全不动
+        val isMicroMove = deltaM < MIN_DELTA_M && deltaTimeMs in 1..MIN_DELTA_TIME_MS
+        if (!isPaused && prevRawLat != null && prevRawLng != null && !isMicroMove) {
+            accumulatedDistanceM += deltaM
+            paceWindow.addSegment(deltaM, deltaTimeMs, nowRealtimeMs)
+        }
+
+        // 7. 更新"上一个原始点 / 平滑点"
+        lastRawLat = geo.lat
+        lastRawLng = geo.lng
+        lastRawRealtimeMs = nowRealtimeMs
+        lastSmoothLat = smoothLat
+        lastSmoothLng = smoothLng
+
+        // 8. 写入轨迹缓存（用平滑后的坐标，但保留原始 accuracy）
+        //    暂停期间仍写轨迹点，便于回放看到"停在原地"的轨迹形态。
+        trackBufferDao.insert(
+            RunTrackBufferEntity(
+                requestId = requestId,
+                userId = currentUserId,
+                role = role,
+                timestamp = wallNowMs,
+                lat = smoothLat,
+                lng = smoothLng,
+                accuracy = geo.accuracy,
+                speed = lastSmoothSpeedMps,
+            )
+        )
+
+        // 9. 静止判定 & 自适应间隔
+        checkAndUpdateStationary(nowRealtimeMs)
+        adjustIntervalBySpeed()
+
+        // 10. 持久化 stats
+        flushStats(requestId, wallNowMs)
+    }
+
+    /**
+     * 自动暂停：连续 [PAUSE_DURATION_MS] 速度低于 [PAUSE_SPEED_MPS] → 入暂停；
+     * 连续 [RESUME_DURATION_MS] 速度高于 [RESUME_SPEED_MPS] → 退出暂停。
+     *
+     * 用计时器累加而非速度均值，避免单点抖动让状态来回切换。
+     */
+    private fun updatePauseState(nowRealtimeMs: Long) {
+        val speed = lastSmoothSpeedMps
+        if (!isPaused) {
+            if (speed in 0f..PAUSE_SPEED_MPS) {
+                if (lowSpeedSinceRealtimeMs <= 0L) lowSpeedSinceRealtimeMs = nowRealtimeMs
+                if (nowRealtimeMs - lowSpeedSinceRealtimeMs >= PAUSE_DURATION_MS) {
+                    isPaused = true
+                    // 暂停起点回溯到"开始低速"时刻，前 10s 静止也不计入运动时长
+                    pauseStartedAtRealtimeMs = lowSpeedSinceRealtimeMs
+                    pendingResumeSinceRealtimeMs = -1L
+                }
+            } else {
+                lowSpeedSinceRealtimeMs = -1L
+            }
+        } else {
+            if (speed >= RESUME_SPEED_MPS) {
+                if (pendingResumeSinceRealtimeMs <= 0L) pendingResumeSinceRealtimeMs = nowRealtimeMs
+                if (nowRealtimeMs - pendingResumeSinceRealtimeMs >= RESUME_DURATION_MS) {
+                    isPaused = false
+                    if (pauseStartedAtRealtimeMs > 0L) {
+                        // 把刚结束的暂停段累入暂停总时长（含 RESUME_DURATION_MS 高速判定窗口）
+                        pausedAccumMs += (nowRealtimeMs - pauseStartedAtRealtimeMs).coerceAtLeast(0L)
+                        pauseStartedAtRealtimeMs = -1L
+                    }
+                    lowSpeedSinceRealtimeMs = -1L
+                }
+            } else {
+                pendingResumeSinceRealtimeMs = -1L
+            }
+        }
+    }
+
+    /**
+     * 1Hz 兜底 tick：当采样间隔被拉到 30s（静止）时，仍保证 UI 时长 1 秒一跳。
+     * 该 tick 只更新时长字段，不动距离/配速 —— 距离/配速由 location 帧驱动。
+     */
+    private fun startStatsTicker(requestId: String) {
+        tickerJob?.cancel()
+        tickerJob = scope.launch {
+            while (true) {
+                delay(TICK_INTERVAL_MS)
+                flushStats(requestId, System.currentTimeMillis())
+            }
+        }
+    }
+
+    private suspend fun flushStats(requestId: String, wallNowMs: Long) {
+        statsMutex.withLock {
+            val nowElapsed = SystemClock.elapsedRealtime()
+            // 运动时长 = 总墙钟时长 - 已结束的暂停段 - 进行中暂停段
+            val ongoingPauseMs = if (isPaused && pauseStartedAtRealtimeMs > 0L) {
+                (nowElapsed - pauseStartedAtRealtimeMs).coerceAtLeast(0L)
+            } else 0L
+            val movingMs = (nowElapsed - startElapsedMs - pausedAccumMs - ongoingPauseMs)
+                .coerceAtLeast(0L)
+            val durationSec = (movingMs / 1000L).toInt()
+            val totalDistM = accumulatedDistanceM.toInt()
+            // 暂停时立即把瞬时配速置 null，不再依赖 PaceWindow evict 自然衰减
+            val currentPace = if (isPaused) null
+                else paceWindow.currentPaceSecondsPerKm(nowElapsed)
+            val avgPace = PaceCalculator.avgPace(totalDistM, durationSec)
+            val existing = sessionStatsDao.get(requestId, currentUserId)
+            val maxSpeed = maxOf(existing?.maxSpeedMps ?: 0f, lastSmoothSpeedMps)
+
+            val stats = RunSessionStatsEntity(
+                requestId = requestId,
+                userId = currentUserId,
+                totalDistanceMeters = totalDistM,
+                totalDurationSeconds = durationSec,
+                currentPaceSeconds = currentPace,
+                avgPaceSeconds = avgPace,
+                maxSpeedMps = maxSpeed.takeIf { it > 0f },
+                isPaused = isPaused,
+                lastUpdatedAt = wallNowMs,
+            )
+            sessionStatsDao.upsert(stats)
+        }
+    }
+
+    private fun checkAndUpdateStationary(nowRealtimeMs: Long) {
+        val nowStationary = lastSmoothSpeedMps in 0f..STATIONARY_SPEED_MPS
         if (nowStationary && !isStationary) {
-            if (stationarySinceMs <= 0L) stationarySinceMs = nowMs
-            if (nowMs - stationarySinceMs >= STATIONARY_DURATION_MS) {
+            if (stationarySinceMs <= 0L) stationarySinceMs = nowRealtimeMs
+            if (nowRealtimeMs - stationarySinceMs >= STATIONARY_DURATION_MS) {
                 isStationary = true
                 locationIntervalFlow.value = STATIONARY_INTERVAL_MS
             }
@@ -183,15 +342,12 @@ abstract class RunTrackingService : Service() {
             stationarySinceMs = -1L
             if (isStationary) {
                 isStationary = false
-                // 恢复时根据速度选择间隔
                 adjustIntervalBySpeed()
             }
         }
     }
 
-    /**
-     * 中值滤波：用最近3个点的中值替代当前点，去除尖刺噪声。
-     */
+    /** 中值滤波：3 点窗口去尖刺。 */
     private fun medianFilter(lat: Double, lng: Double): Pair<Double, Double> {
         medianLatBuffer.addLast(lat)
         medianLngBuffer.addLast(lng)
@@ -201,87 +357,26 @@ abstract class RunTrackingService : Service() {
         }
         val sortedLat = medianLatBuffer.sorted()
         val sortedLng = medianLngBuffer.sorted()
-        return Pair(
-            sortedLat[sortedLat.size / 2],
-            sortedLng[sortedLng.size / 2],
-        )
+        return Pair(sortedLat[sortedLat.size / 2], sortedLng[sortedLng.size / 2])
     }
 
-    /**
-     * 根据当前速度动态调整采集间隔。
-     */
     private fun adjustIntervalBySpeed() {
-        if (isStationary) return  // 静止状态不调整
-
-        val avgSpeed = computeRecentAvgSpeed() ?: return
-        val targetInterval = when {
-            avgSpeed < SPEED_WALK -> INTERVAL_WALK_MS    // 步行：5秒
-            avgSpeed < SPEED_JOG  -> INTERVAL_JOG_MS     // 慢跑：3秒
-            else                  -> INTERVAL_RUN_MS     // 快跑：2秒
-        }
-        if (locationIntervalFlow.value != targetInterval) {
-            locationIntervalFlow.value = targetInterval
-        }
-    }
-
-    private fun computeRecentAvgSpeed(): Float? {
-        val points = bufferedRecentPoints
-        if (points.size < 2) return null
-        var totalDist = 0f
-        for (i in 1 until points.size) {
-            val (lat1, lng1) = points[i - 1]
-            val (lat2, lng2) = points[i]
-            totalDist += PaceCalculator.distanceMeters(lat1, lng1, lat2, lng2)
-        }
-        val totalTimeSec = (points.size - 1) * (locationIntervalFlow.value / 1000f)
-        if (totalTimeSec <= 0f) return null
-        return totalDist / totalTimeSec
-    }
-
-    private fun accumulateDistance(prevLat: Double?, prevLng: Double?, curLat: Double, curLng: Double) {
-        if (prevLat != null && prevLng != null) {
-            accumulatedDistanceMeters += PaceCalculator.distanceMeters(prevLat, prevLng, curLat, curLng)
-        }
-    }
-
-    private fun updateSessionStats(
-        requestId: String,
-        nowMs: Long,
-        prevLat: Double?,
-        prevLng: Double?,
-        prevTimeMs: Long,
-    ) {
-        val durationSec = ((nowMs - startTimeMs) / 1000).toInt()
-        val totalDistance = accumulatedDistanceMeters.toInt()
-
-        if (!isStationary && prevLat != null && prevLng != null && prevTimeMs > 0) {
-            val dtSec = ((nowMs - prevTimeMs) / 1000).toInt()
-            if (dtSec > 0) {
-                val dist = PaceCalculator.distanceMeters(prevLat, prevLng, lastValidLat!!, lastValidLng!!)
-                val distKm = dist / 1000f
-                if (distKm > 0.005f && dist / dtSec > 0.5f) {
-                    recentPaces.add((dtSec / distKm).toInt())
-                    if (recentPaces.size > 10) recentPaces.removeAt(0)
-                }
+        // 暂停期间：强制保持高频采样，便于尽早识别"用户又跑起来"。
+        // 不让 isStationary 把间隔拉到 30s —— 否则恢复要等一个 30s 周期，体感卡死。
+        if (isPaused) {
+            if (locationIntervalFlow.value != INTERVAL_RUN_MS) {
+                locationIntervalFlow.value = INTERVAL_RUN_MS
             }
+            return
         }
-
-        val currentPace = PaceCalculator.slidingAverage(recentPaces)
-        val avgPace = PaceCalculator.avgPace(totalDistance, durationSec)
-
-        scope.launch {
-            val existing = sessionStatsDao.get(requestId, currentUserId)
-            val stats = RunSessionStatsEntity(
-                requestId = requestId,
-                userId = currentUserId,
-                totalDistanceMeters = totalDistance,
-                totalDurationSeconds = durationSec,
-                currentPaceSeconds = currentPace,
-                avgPaceSeconds = avgPace,
-                maxSpeedMps = existing?.maxSpeedMps,
-                lastUpdatedAt = nowMs,
-            )
-            sessionStatsDao.upsert(stats)
+        if (isStationary) return
+        val target = when {
+            lastSmoothSpeedMps < SPEED_WALK -> INTERVAL_WALK_MS
+            lastSmoothSpeedMps < SPEED_JOG -> INTERVAL_JOG_MS
+            else -> INTERVAL_RUN_MS
+        }
+        if (locationIntervalFlow.value != target) {
+            locationIntervalFlow.value = target
         }
     }
 
@@ -307,26 +402,22 @@ abstract class RunTrackingService : Service() {
                 spd = it.speed,
             )
         }
-        runCatching {
-            runRequestRepository.uploadTracks(requestId, role, points)
-        }.onSuccess {
-            trackBufferDao.markUploaded(pending.map { it.id })
-        }
+        runCatching { runRequestRepository.uploadTracks(requestId, role, points) }
+            .onSuccess { trackBufferDao.markUploaded(pending.map { it.id }) }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         trackingJob?.cancel()
+        tickerJob?.cancel()
         uploadJob?.cancel()
         scope.launch {
-            if (currentUserId.isNotEmpty()) {
-                val pending = trackBufferDao.getPendingPoints("", 1)
-                pending.firstOrNull()?.requestId?.let { uploadPendingPoints(it) }
-            }
+            if (currentRequestId.isNotEmpty()) uploadPendingPoints(currentRequestId)
         }
         kalmanFilter.reset()
         medianLatBuffer.clear()
         medianLngBuffer.clear()
+        paceWindow.reset()
         scope.cancel()
     }
 

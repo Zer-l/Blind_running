@@ -6,7 +6,6 @@ val localProps = Properties().apply {
 }
 val baseUrl: String = localProps.getProperty("BASE_URL", "http://10.0.2.2:8080/")
 val amapKey: String = localProps.getProperty("AMAP_KEY", "")
-val voiceCallEnabled: String = localProps.getProperty("VOICE_CALL_ENABLED", "true")
 
 plugins {
     alias(libs.plugins.android.application)
@@ -30,7 +29,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
         buildConfigField("String", "AMAP_KEY", "\"$amapKey\"")
-        buildConfigField("boolean", "VOICE_CALL_ENABLED", voiceCallEnabled)
         manifestPlaceholders["AMAP_KEY"] = amapKey
     }
 

@@ -33,6 +33,8 @@ data class MatchedUiState(
     val statusText: String = "",
     val releaseCountdown: Int? = null,
     val isReleasing: Boolean = false,
+    /** 志愿者手机号；接单后下发，供视障端音量+键拨号。 */
+    val peerPhone: String? = null,
 )
 
 sealed interface MatchedNavEvent {
@@ -108,6 +110,7 @@ class MatchedViewModel @Inject constructor(
                     volunteerName = volunteer.nickname,
                     volunteerRating = volunteer.rating,
                     volunteerTotalRuns = volunteer.totalRuns,
+                    peerPhone = volunteer.phone,
                 )
             }
         }
@@ -176,20 +179,6 @@ class MatchedViewModel @Inject constructor(
         _uiState.update { it.copy(releaseCountdown = null) }
     }
 
-    // ★ FIX: 始终返回 true 消费摇动，用 Job.isActive 判断，无竞态
-    fun tryHandleShakeCancel(): Boolean {
-        if (releaseCountdownJob?.isActive == true) {
-            releaseCountdownJob?.cancel()
-            releaseCountdownJob = null
-            _uiState.update { it.copy(releaseCountdown = null) }
-            suppressStatusAnnounce()
-            ttsManager.speak("已取消", TtsManager.Priority.HIGH)
-            return true
-        }
-        // 无倒计时 → 仅消费事件，防止误触 SOS
-        return false
-    }
-
     /** 短按：TTS 提示手势操作方法。 */
     fun onShortPress() {
         suppressStatusAnnounce()
@@ -234,7 +223,7 @@ class MatchedViewModel @Inject constructor(
         hapticFeedback.warning()
         suppressStatusAnnounce()
         releaseCountdownJob = viewModelScope.launch {
-            ttsManager.speakAndWait("5秒后更换志愿者，摇动手机可撤销", TtsManager.Priority.HIGH)
+            ttsManager.speakAndWait("5秒后更换志愿者，再按一次可撤销", TtsManager.Priority.HIGH)
 
             for (i in 5 downTo 1) {
                 ensureActive()
@@ -249,9 +238,11 @@ class MatchedViewModel @Inject constructor(
         }
     }
 
-    /** 按住达到 1 秒阈值时的触觉反馈。 */
+    /** 按住达到 1 秒阈值时的触觉反馈 + 语音提示。 */
     fun onLongPressThreshold1s() {
         hapticFeedback.warning()
+        suppressStatusAnnounce()
+        ttsManager.speak("松开确认汇合")
     }
 
     /** 按住达到 3 秒阈值时的触觉反馈。 */

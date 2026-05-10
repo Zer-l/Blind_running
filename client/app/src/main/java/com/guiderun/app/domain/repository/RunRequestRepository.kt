@@ -7,7 +7,6 @@ import com.guiderun.app.domain.model.Review
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunTrack
 import com.guiderun.app.domain.model.TrackPoint
-import com.guiderun.app.service.VoiceCallInfo
 
 interface RunRequestRepository {
 
@@ -30,6 +29,9 @@ interface RunRequestRepository {
     suspend fun startRun(id: String): Result<RunRequest>
 
     suspend fun endRun(id: String, actualDistanceMeters: Int? = null, actualDurationSeconds: Int? = null, avgPaceSeconds: Int? = null): Result<RunRequest>
+
+    /** 志愿者申请结束跑步：服务端不改状态，仅推送 WS 给视障端等待确认。 */
+    suspend fun requestEndRun(id: String): Result<RunRequest>
 
     suspend fun cancel(id: String, reason: String? = null): Result<RunRequest>
 
@@ -54,8 +56,4 @@ interface RunRequestRepository {
         currentPaceSeconds: Int? = null,
         avgPaceSeconds: Int? = null,
     ): Result<Unit>
-
-    suspend fun initiateVoiceCall(requestId: String): Result<VoiceCallInfo>
-
-    suspend fun endVoiceCall(requestId: String): Result<Unit>
 }

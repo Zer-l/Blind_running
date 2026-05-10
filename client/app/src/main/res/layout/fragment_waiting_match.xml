@@ -4,6 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/blind_background"
+    android:fitsSystemWindows="true"
     android:gravity="center_horizontal"
     android:orientation="vertical"
     android:padding="24dp">
@@ -13,10 +14,10 @@
         android:id="@+id/tv_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
+        android:layout_marginBottom="16dp"
         android:gravity="center"
         android:text="@string/waiting_match_title"
-        android:textColor="@color/blind_on_background"
+        android:textColor="@color/blind_primary"
         android:textSize="24sp"
         android:textStyle="bold" />
 
@@ -26,7 +27,7 @@
         style="@android:style/Widget.ProgressBar.Large"
         android:layout_width="80dp"
         android:layout_height="80dp"
-        android:layout_marginBottom="32dp"
+        android:layout_marginBottom="24dp"
         android:importantForAccessibility="no"
         android:indeterminateTint="@color/blind_primary" />
 

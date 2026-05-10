@@ -37,6 +37,7 @@ fun UserSummaryDto.toDomain() = UserSummary(
     gender = gender,
     rating = rating,
     totalRuns = totalRuns,
+    phone = phone,
 )
 
 fun GeoPointDto.toDomain() = GeoPoint(lat = lat, lng = lng, description = description)
@@ -67,7 +68,6 @@ fun ReviewResponseDto.toDomain() = Review(
     rating = rating,
     tags = tags,
     comment = comment,
-    voiceUrl = voiceUrl,
     createdAt = createdAt,
 )
 

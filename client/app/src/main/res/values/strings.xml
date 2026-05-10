@@ -1,6 +1,17 @@
 <resources>
     <string name="app_name">助盲跑</string>
 
+    <!-- 通用 -->
+    <string name="blind_warning">发生错误</string>
+
+    <!-- 拨打电话（双端通用） -->
+    <string name="call_peer_content_description">拨打对方电话</string>
+    <string name="call_peer_opened_dialer">已为您打开拨号盘</string>
+    <string name="call_peer_failed">拨号失败，请检查 SIM 卡或电话权限</string>
+    <string name="call_peer_no_phone">尚未获取到对方电话</string>
+    <string name="blind_call_calling">正在拨打志愿者电话</string>
+    <string name="blind_call_no_phone">尚未获取到志愿者电话</string>
+
     <!-- 登录 -->
     <string name="login_title">助盲跑</string>
     <string name="login_subtitle">让每一次奔跑都有陪伴</string>
@@ -91,7 +102,7 @@
     <string name="matched_status_accepted">志愿者正在准备，即将出发</string>
     <string name="matched_status_en_route">志愿者正在赶往汇合点，请在约定位置等待</string>
     <string name="matched_status_met">志愿者已到达集合点，请长按屏幕确认汇合</string>
-    <string name="matched_gesture_hint">按住1秒确认汇合 | 按住3秒更换志愿者 | 摇手机求助</string>
+    <string name="matched_gesture_hint">按住1秒确认汇合 | 按住3秒更换志愿者</string>
 
     <!-- 首页志愿者端入口 -->
     <string name="home_btn_enter_volunteer">开始接单（志愿者端）</string>
@@ -108,6 +119,10 @@
     <string name="volunteer_request_location">集合点：%1$s</string>
     <string name="volunteer_request_duration">预计时长：%1$d 分钟</string>
     <string name="volunteer_request_distance">距我 %.1f 公里</string>
+    <string name="volunteer_radius_filter_label">搜索范围</string>
+    <string name="volunteer_radius_3km">3 km</string>
+    <string name="volunteer_radius_5km">5 km</string>
+    <string name="volunteer_radius_10km">10 km</string>
 
     <!-- 接单详情 -->
     <string name="request_detail_title">接单详情</string>
@@ -141,25 +156,26 @@
     <string name="volunteer_running_duration">时长</string>
     <string name="volunteer_running_pace">配速</string>
     <string name="volunteer_running_avg_pace">均速</string>
-    <string name="volunteer_running_end">结束跑步</string>
-    <string name="volunteer_running_call">呼叫视障用户</string>
-    <string name="volunteer_running_end_confirm_title">结束跑步</string>
-    <string name="volunteer_running_end_confirm_message">确定结束本次跑步？</string>
+    <string name="volunteer_running_end">申请结束跑步</string>
+    <string name="volunteer_running_end_pending">等待视障用户确认中…</string>
+    <string name="volunteer_running_end_waiting">已通知视障用户，请等待对方长按 3 秒确认结束</string>
+    <string name="volunteer_running_end_confirm_title">申请结束跑步</string>
+    <string name="volunteer_running_end_confirm_message">将向视障用户发起结束申请，对方确认后双方进入评价。</string>
     <string name="confirm">确认</string>
     <string name="cancel">取消</string>
 
     <!-- 志愿者评价 -->
-    <string name="volunteer_review_title">评价陪跑</string>
+    <string name="volunteer_review_title">评价跑步伙伴</string>
     <string name="volunteer_review_rating_label">评分</string>
     <string name="volunteer_review_tags_label">标签（可多选）</string>
     <string name="volunteer_review_comment_hint">说点什么…（选填）</string>
     <string name="volunteer_review_submit">提交评价</string>
     <string name="volunteer_review_skip">跳过</string>
     <string name="volunteer_review_success">评价已提交</string>
-    <string name="volunteer_review_tag_friendly">友好</string>
-    <string name="volunteer_review_tag_punctual">准时</string>
-    <string name="volunteer_review_tag_patient">耐心</string>
-    <string name="volunteer_review_tag_professional">专业</string>
+    <string name="volunteer_review_tag_punctual">守时</string>
+    <string name="volunteer_review_tag_cooperative">配合度好</string>
+    <string name="volunteer_review_tag_clear_communication">表达清晰</string>
+    <string name="volunteer_review_tag_friendly">友善</string>
 
     <!-- 志愿者历史 -->
     <string name="volunteer_history_title">跑步历史</string>
@@ -178,21 +194,33 @@
     <string name="blind_running_duration_label">时长</string>
     <string name="blind_running_pace_label">配速</string>
     <string name="blind_running_gesture_hint">长按3秒结束跑步</string>
-    <string name="blind_running_end_confirm">5秒后结束跑步，摇动手机可撤销</string>
+    <string name="blind_running_end_confirm">5秒后结束跑步，再按一次可撤销</string>
     <string name="blind_running_ended">跑步已结束</string>
     <string name="blind_running_status_running">跑步进行中</string>
+    <string name="blind_running_end_requested_by_volunteer">志愿者申请结束跑步，长按屏幕 3 秒确认</string>
     <string name="blind_running_status_finished">跑步已完成，正在跳转评价页面</string>
+    <string name="running_paused_label">已自动暂停</string>
 
     <!-- 视障端评价 -->
     <string name="blind_review_title">评价志愿者</string>
-    <string name="blind_review_rating_label">对本次陪伴满意吗？</string>
-    <string name="blind_review_satisfied">满意</string>
-    <string name="blind_review_satisfied_hint">双击屏幕选择</string>
-    <string name="blind_review_unsatisfied">不满意</string>
-    <string name="blind_review_unsatisfied_hint">长按3秒选择，可录制语音反馈</string>
-    <string name="blind_review_comment_hint">说说您的感受（选填）</string>
-    <string name="blind_review_submit">双击提交评价</string>
-    <string name="blind_review_success">评价已提交</string>
+    <string name="blind_review_summary_format">本次跑步 %1$.1f 公里，用时 %2$d 分钟</string>
+    <string name="blind_review_gesture_hint">单击卡片选择，双击屏幕提交，长按3秒跳过</string>
+    <string name="blind_review_rating_1_label">非常不满意（1星）</string>
+    <string name="blind_review_rating_2_label">不满意（2星）</string>
+    <string name="blind_review_rating_3_label">一般（3星）</string>
+    <string name="blind_review_rating_4_label">满意（4星）</string>
+    <string name="blind_review_rating_5_label">非常满意（5星）</string>
+    <string name="blind_review_rating_1_desc">1星，非常不满意</string>
+    <string name="blind_review_rating_2_desc">2星，不满意</string>
+    <string name="blind_review_rating_3_desc">3星，一般</string>
+    <string name="blind_review_rating_4_desc">4星，满意</string>
+    <string name="blind_review_rating_5_desc">5星，非常满意</string>
+    <string name="blind_review_intro_format">本次跑步 %1$.1f 公里，用时 %2$d 分钟。请评价志愿者：单击屏幕中部选择星级，双击屏幕提交，长按3秒跳过</string>
+    <string name="blind_review_selected_format">已选择 %1$s</string>
+    <string name="blind_review_submit_success">评价已提交，感谢您的反馈</string>
+    <string name="blind_review_skipped">已跳过评价</string>
+    <string name="blind_review_submit_failed_format">提交失败：%1$s</string>
+    <string name="blind_review_submit_default_error">请重试</string>
 
     <!-- 视障端历史 -->
     <string name="blind_history_title">跑步历史</string>
@@ -208,24 +236,20 @@
     <string name="blind_history_filter_aborted">已取消</string>
     <string name="blind_history_filter_aborted_desc">只显示已取消的跑步记录</string>
 
-    <!-- 语音通话 -->
-    <string name="incoming_call_title">来电</string>
-    <string name="incoming_call_subtitle">邀请语音通话</string>
-    <string name="incoming_call_accept">接听</string>
-    <string name="incoming_call_reject">拒绝</string>
-
-    <!-- 语音录制 -->
-    <string name="voice_record_title">说出您的反馈</string>
-    <string name="voice_record_recording">录音中…</string>
-    <string name="voice_record_hint">双击屏幕结束录制</string>
-    <string name="voice_record_uploading">正在上传…</string>
-    <string name="voice_record_max">已达到最大时长</string>
+    <!-- 个人设置 -->
+    <string name="settings_title">个人设置</string>
+    <string name="settings_edit_profile">编辑资料</string>
+    <string name="settings_emergency_contacts">紧急联系人</string>
+    <string name="settings_stats_title">跑步统计</string>
+    <string name="settings_voice">语音设置</string>
+    <string name="settings_about">关于</string>
 
     <!-- 修改请求参数（UI-3b） -->
     <string name="edit_request_title">修改请求参数</string>
     <string name="edit_request_location_label">集合地点描述</string>
     <string name="edit_request_location_hint">例如：图书馆南门、操场北侧</string>
     <string name="edit_request_btn_save">保存修改</string>
+    <string name="edit_request_btn_saving">解析地址中…</string>
     <string name="edit_request_btn_cancel">返回</string>
     <string name="create_request_btn_modify">修改参数</string>
 
@@ -235,4 +259,14 @@
     <string name="stats_total_duration">总时长：%1$s</string>
     <string name="stats_current_month_runs">本月跑步：%1$d 次</string>
     <string name="stats_average_duration">平均时长：%1$d 分钟</string>
+
+    <!-- 语音输入（系统 ASR） -->
+    <string name="voice_input_content_description">语音输入</string>
+    <string name="voice_input_listening">请说话…</string>
+    <string name="voice_input_unavailable">当前设备不支持系统语音识别，请手动输入</string>
+    <string name="voice_input_permission_denied">请授予麦克风权限以使用语音输入</string>
+    <string name="voice_input_error_network">网络错误，请重试</string>
+    <string name="voice_input_error_no_match">没听清，请重试</string>
+    <string name="voice_input_error_busy">语音识别繁忙，请稍后重试</string>
+    <string name="voice_input_error_generic">语音识别失败，请重试</string>
 </resources>

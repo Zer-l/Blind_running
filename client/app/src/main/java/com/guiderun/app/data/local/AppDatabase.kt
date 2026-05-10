@@ -15,7 +15,7 @@ import com.guiderun.app.data.local.entity.UserEntity
         RunTrackBufferEntity::class,
         RunSessionStatsEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

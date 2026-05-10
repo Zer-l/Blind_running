@@ -38,7 +38,15 @@ data class AvailableRunRequest(
     val createdAt: Long,
 )
 
-data class GeoPoint(val lat: Double, val lng: Double, val description: String, val accuracy: Float = 0f)
+data class GeoPoint(
+    val lat: Double,
+    val lng: Double,
+    val description: String,
+    val accuracy: Float = 0f,
+    // 单调时钟时间戳（ms，SystemClock.elapsedRealtime 域），仅用于跑步采集，
+    // 来自 LocationProvider 的位置流；其他来源（如手动构造、Mapper）默认 0。
+    val realtimeMs: Long = 0L,
+)
 
 data class UserSummary(
     val id: String,
@@ -47,6 +55,8 @@ data class UserSummary(
     val gender: String?,
     val rating: Float?,
     val totalRuns: Int,
+    /** 对方手机号；仅在订单 ACCEPTED 之后服务端下发，其他场景为 null。 */
+    val phone: String? = null,
 )
 
 data class BlindRunnerSummary(

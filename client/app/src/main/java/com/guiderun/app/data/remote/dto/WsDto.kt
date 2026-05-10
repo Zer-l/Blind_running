@@ -43,20 +43,9 @@ data class WsEmergencyMessage(
     val lng: Double? = null,
 )
 
-// voice_call_invited
+// end_run_requested：志愿者申请结束跑步，推送给视障端等待确认
 @Serializable
-data class WsVoiceCallInvitedMessage(
-    val type: String,
-    val requestId: String,
-    val fromNickname: String,
-    val roomId: String,
-    val userSig: String,
-    val sdkAppId: Int,
-)
-
-// voice_call_ended
-@Serializable
-data class WsVoiceCallEndedMessage(
+data class WsEndRunRequestedMessage(
     val type: String,
     val requestId: String,
 )

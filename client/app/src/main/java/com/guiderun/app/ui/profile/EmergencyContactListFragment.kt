@@ -19,6 +19,7 @@ import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.databinding.FragmentEmergencyContactListBinding
 import com.guiderun.app.databinding.ItemEmergencyContactBinding
 import com.guiderun.app.domain.model.EmergencyContact
+import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -52,6 +53,7 @@ class EmergencyContactListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        EdgeToEdgeHelper.applyInsets(view)
         ttsManager.acquire()
 
         setupRecyclerView()

@@ -99,31 +99,13 @@ class GuideRunWebSocketHandler(
         push(payload, listOf(toUserId))
     }
 
-    fun pushVoiceCallInvited(
-        requestId: String,
-        toUserId: String,
-        fromNickname: String,
-        roomId: String,
-        userSig: String,
-        sdkAppId: Int,
-    ) {
+    /** 志愿者申请结束跑步：推送给视障端，等待视障端确认。 */
+    fun pushEndRunRequested(requestId: String, toUserId: String) {
         val payload = mapOf(
-            "type"        to "voice_call_invited",
-            "requestId"   to requestId,
-            "fromNickname" to fromNickname,
-            "roomId"      to roomId,
-            "userSig"     to userSig,
-            "sdkAppId"    to sdkAppId,
-        )
-        push(payload, listOf(toUserId))
-    }
-
-    fun pushVoiceCallEnded(requestId: String, recipientIds: List<String>) {
-        val payload = mapOf(
-            "type"      to "voice_call_ended",
+            "type"      to "end_run_requested",
             "requestId" to requestId,
         )
-        push(payload, recipientIds)
+        push(payload, listOf(toUserId))
     }
 
     private fun push(payload: Map<String, Any?>, userIds: List<String>) {

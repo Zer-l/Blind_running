@@ -29,9 +29,6 @@ class RunRequestStateMachineTest {
     @Test fun `MET START_RUN VOLUNTEER → RUNNING`() =
         assertEquals(RUNNING, sm.validate(MET, START_RUN, VOLUNTEER))
 
-    @Test fun `RUNNING END_RUN VOLUNTEER → FINISHED`() =
-        assertEquals(FINISHED, sm.validate(RUNNING, END_RUN, VOLUNTEER))
-
     @Test fun `RUNNING END_RUN BLIND → FINISHED`() =
         assertEquals(FINISHED, sm.validate(RUNNING, END_RUN, BLIND))
 
@@ -90,5 +87,9 @@ class RunRequestStateMachineTest {
 
     @Test fun `MET END_RUN VOLUNTEER → 抛异常`() {
         assertThrows<AppException> { sm.validate(MET, END_RUN, VOLUNTEER) }
+    }
+
+    @Test fun `RUNNING END_RUN VOLUNTEER 不允许 → 抛异常`() {
+        assertThrows<AppException> { sm.validate(RUNNING, END_RUN, VOLUNTEER) }
     }
 }

@@ -62,6 +62,8 @@ class WaitingMatchViewModel @Inject constructor(
         const val SUPPRESS_DURATION_MS = 8_000L
     }
 
+    private var hasAnnouncedPage = false
+
     init {
         startElapsedTimer()
         startPolling()
@@ -122,6 +124,10 @@ class WaitingMatchViewModel @Inject constructor(
 
     fun onScreenResumed() {
         ttsManager.acquire()
+        if (!hasAnnouncedPage) {
+            hasAnnouncedPage = true
+            ttsManager.speak("正在等待志愿者接单，短按屏幕查询等待时长，长按2秒取消请求")
+        }
     }
 
     fun onScreenPaused() {
@@ -131,20 +137,6 @@ class WaitingMatchViewModel @Inject constructor(
         _uiState.update { it.copy(cancelCountdown = null) }
     }
 
-    // ★ 摇手机：有倒计时 → 取消并播报；无倒计时 → 仅消费事件，不播报
-    fun tryHandleShakeCancel(): Boolean {
-        if (cancelCountdownJob?.isActive == true) {
-            cancelCountdownJob?.cancel()
-            cancelCountdownJob = null
-            _uiState.update { it.copy(cancelCountdown = null) }
-            suppressAutoAnnounce()
-            ttsManager.speak("已取消", TtsManager.Priority.HIGH)
-            return true
-        }
-        // 无倒计时 → 仅消费摇动事件，防止误触 SOS，不播报
-        return true
-    }
-
     // ★ 长按取消：先播提示语 → 再倒数
     fun onLongPressCancel() {
         if (cancelCountdownJob?.isActive == true) return
@@ -152,7 +144,7 @@ class WaitingMatchViewModel @Inject constructor(
         hapticFeedback.warning()
         suppressAutoAnnounce()
         cancelCountdownJob = viewModelScope.launch {
-            ttsManager.speakAndWait("5秒后取消请求，摇动手机可撤销", TtsManager.Priority.HIGH)
+            ttsManager.speakAndWait("5秒后取消请求，再按一次可撤销", TtsManager.Priority.HIGH)
 
             for (i in 5 downTo 1) {
                 ensureActive()
@@ -167,8 +159,11 @@ class WaitingMatchViewModel @Inject constructor(
         }
     }
 
+    /** 按住达到 2 秒阈值时的触觉反馈 + 语音提示。 */
     fun onLongPressThreshold2s() {
         hapticFeedback.warning()
+        suppressAutoAnnounce()
+        ttsManager.speak("松开取消请求")
     }
 
     // ★ 短按：播报等待时长（唯一入口）

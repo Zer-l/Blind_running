@@ -128,26 +128,6 @@ class MatchedViewModelTest {
         }
 
     @Test
-    fun `tryHandleShakeCancel cancels release countdown`() =
-        runTest(mainDispatcherRule.testScheduler) {
-            viewModel.onReleasePressed()
-            viewModel.uiState.first { it.releaseCountdown != null }
-
-            val consumed = viewModel.tryHandleShakeCancel()
-
-            assertTrue(consumed)
-            val state = viewModel.uiState.first { it.releaseCountdown == null }
-            assertNull(state.releaseCountdown)
-
-            viewModel.viewModelScope.cancel()
-        }
-
-    @Test
-    fun `tryHandleShakeCancel returns false when no action is active`() {
-        assertFalse(viewModel.tryHandleShakeCancel())
-    }
-
-    @Test
     fun `release countdown emits ToWaiting on success`() =
         runTest(mainDispatcherRule.testScheduler) {
             // Override getRunRequest to always return ACCEPTED (not RUNNING) during countdown

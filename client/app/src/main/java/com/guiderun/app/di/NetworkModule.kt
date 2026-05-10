@@ -4,7 +4,6 @@ import com.guiderun.app.BuildConfig
 import com.guiderun.app.data.remote.AuthInterceptor
 import com.guiderun.app.data.remote.api.AuthApi
 import com.guiderun.app.data.remote.api.RunRequestApi
-import com.guiderun.app.data.remote.api.UploadApi
 import com.guiderun.app.data.remote.api.UserApi
 import dagger.Module
 import dagger.Provides
@@ -67,9 +66,4 @@ object NetworkModule {
     @Singleton
     fun provideRunRequestApi(retrofit: Retrofit): RunRequestApi =
         retrofit.create(RunRequestApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideUploadApi(retrofit: Retrofit): UploadApi =
-        retrofit.create(UploadApi::class.java)
 }

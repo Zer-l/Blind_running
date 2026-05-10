@@ -13,15 +13,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
-import com.guiderun.app.BuildConfig
 import com.guiderun.app.R
-import com.guiderun.app.accessibility.ThreeFingerTapDetector
 import com.guiderun.app.databinding.FragmentBlindRunningBinding
-import com.guiderun.app.service.VoiceCallManager
+import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PaceCalculator
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class BlindRunningFragment : Fragment() {
@@ -30,11 +29,9 @@ class BlindRunningFragment : Fragment() {
     private var _binding: FragmentBlindRunningBinding? = null
     private val binding get() = _binding!!
 
-    @Inject lateinit var voiceCallManager: VoiceCallManager
-
     private var pressStartTime = 0L
+    private var pressThresholdJob: Job? = null
     private var savedBrightness: Float = -1f
-    private var threeFingerTapDetector: ThreeFingerTapDetector? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -47,6 +44,7 @@ class BlindRunningFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        EdgeToEdgeHelper.applyInsets(view)
         view.keepScreenOn = true
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -61,10 +59,9 @@ class BlindRunningFragment : Fragment() {
         super.onResume()
         setScreenDim(true)
         viewModel.onScreenResumed()
-        threeFingerTapDetector = ThreeFingerTapDetector { onThreeFingerTap() }
         (activity as? BaseBlindActivity)?.apply {
-            onSingleShakeCallback = { viewModel.announceCurrentStatus() }
             activeRequestId = viewModel.requestId
+            activeCallPeerPhone = viewModel.uiState.value.peerPhone
             touchEventForwarder = ::onGestureEvent
         }
     }
@@ -73,10 +70,11 @@ class BlindRunningFragment : Fragment() {
         super.onPause()
         setScreenDim(false)
         viewModel.onScreenPaused()
-        threeFingerTapDetector = null
+        pressThresholdJob?.cancel()
+        pressThresholdJob = null
         (activity as? BaseBlindActivity)?.apply {
-            onSingleShakeCallback = null
             activeRequestId = null
+            activeCallPeerPhone = null
             touchEventForwarder = null
         }
     }
@@ -99,40 +97,46 @@ class BlindRunningFragment : Fragment() {
         window.attributes = lp
     }
 
-    private fun onThreeFingerTap() {
-        if (BuildConfig.VOICE_CALL_ENABLED) {
-            viewModel.initiateCall(voiceCallManager)
-        } else {
-            viewModel.speakCallUnavailable()
-        }
-    }
-
     private fun onGestureEvent(event: MotionEvent) {
-        threeFingerTapDetector?.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 pressStartTime = SystemClock.elapsedRealtime()
+                pressThresholdJob?.cancel()
+                pressThresholdJob = viewLifecycleOwner.lifecycleScope.launch {
+                    delay(3_000)
+                    viewModel.onLongPressThresholdEndRun()
+                }
             }
             MotionEvent.ACTION_UP -> {
+                pressThresholdJob?.cancel()
+                pressThresholdJob = null
                 val elapsed = SystemClock.elapsedRealtime() - pressStartTime
                 if (elapsed >= 3_000) {
                     viewModel.executeEndRun()
                 }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                pressThresholdJob?.cancel()
+                pressThresholdJob = null
             }
         }
     }
 
     private suspend fun collectUiState() {
         viewModel.uiState.collect { state ->
+            // peer phone 异步加载完成后实时同步给 Activity，供音量+键拨号使用
+            (activity as? BaseBlindActivity)?.activeCallPeerPhone = state.peerPhone
             binding.tvDistance.text = "%.2f".format(state.totalDistanceMeters / 1000.0)
             binding.tvDuration.text = formatDuration(state.totalDurationSeconds)
-            binding.tvPace.text = state.currentPaceSeconds?.let { PaceCalculator.formatPace(it) } ?: "--'--\""
+            // 显示用配速，暂停时为 null → 显示 --'--"
+            binding.tvPace.text = state.displayPaceSeconds?.let { PaceCalculator.formatPace(it) } ?: "--'--\""
+            binding.tvPausedBadge.visibility = if (state.isPaused) View.VISIBLE else View.GONE
 
             val countdown = state.endCountdown
-            binding.tvStatus.text = if (countdown != null) {
-                getString(R.string.blind_running_end_confirm)
-            } else {
-                getString(R.string.blind_running_status_running)
+            binding.tvStatus.text = when {
+                countdown != null -> getString(R.string.blind_running_end_confirm)
+                state.endRequestedByVolunteer -> getString(R.string.blind_running_end_requested_by_volunteer)
+                else -> getString(R.string.blind_running_status_running)
             }
         }
     }

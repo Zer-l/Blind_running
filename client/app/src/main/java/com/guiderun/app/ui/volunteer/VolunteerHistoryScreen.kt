@@ -157,18 +157,8 @@ private fun BadgesSection(badges: List<String>) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                badges.forEachIndexed { index, name ->
-                    var visible by remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(index * 100L)
-                        visible = true
-                    }
-                    AnimatedVisibility(
-                        visible = visible,
-                        enter = scaleIn(initialScale = 0.5f) + fadeIn(),
-                    ) {
-                        BadgeChip(name = name)
-                    }
+                badges.forEach { name ->
+                    BadgeChip(name = name)
                 }
             }
         }

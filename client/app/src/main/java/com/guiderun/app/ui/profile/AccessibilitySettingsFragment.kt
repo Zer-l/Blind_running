@@ -13,6 +13,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.databinding.FragmentAccessibilitySettingsBinding
+import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -39,6 +40,7 @@ class AccessibilitySettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        EdgeToEdgeHelper.applyInsets(view)
         ttsManager.acquire()
 
         setupTtsSpeedSlider()

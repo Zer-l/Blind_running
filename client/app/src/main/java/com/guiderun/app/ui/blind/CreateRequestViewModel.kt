@@ -125,7 +125,14 @@ class CreateRequestViewModel @Inject constructor(
 
     fun onScreenResumed() {
         ttsManager.acquire()
+        // 首次进入播报页面说明
+        if (!hasAnnouncedPage) {
+            hasAnnouncedPage = true
+            ttsManager.speak("发起跑步请求页面。正在获取定位，请稍候")
+        }
     }
+
+    private var hasAnnouncedPage = false
 
     fun onScreenPaused() {
         ttsManager.release()
@@ -195,23 +202,26 @@ class CreateRequestViewModel @Inject constructor(
         }
     }
 
-    fun tryHandleShakeCancel(): Boolean {
-        if (countdownJob?.isActive == true) {
-            countdownJob?.cancel()
-            countdownJob = null
-            _uiState.update { it.copy(confirmCountdown = null) }
-            ttsManager.speak("已取消", TtsManager.Priority.HIGH)
-            return true
-        }
-        return true
-    }
-
-    fun onEditRequestResult(durationMinutes: Int, locationDescription: String, notes: String) {
+    fun onEditRequestResult(
+        durationMinutes: Int,
+        locationDescription: String,
+        notes: String,
+        newLat: Double?,
+        newLng: Double?,
+    ) {
         _uiState.update {
+            // 地理编码成功 → 用新坐标覆盖（即使原状态是 Failed 也能修复"GPS 失败 + 手动输入地址"路径）；
+            // 失败/未变 → locationStatus 不动，保留旧 GPS 坐标兜底
+            val newStatus = if (newLat != null && newLng != null) {
+                LocationStatus.Located(newLat, newLng)
+            } else {
+                it.locationStatus
+            }
             it.copy(
                 selectedDurationMinutes = durationMinutes,
                 locationDescription = locationDescription,
                 notes = notes,
+                locationStatus = newStatus,
             )
         }
     }

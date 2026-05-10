@@ -14,9 +14,9 @@ import androidx.core.graphics.toColorInt
 import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.MapView
 import com.amap.api.maps.model.BitmapDescriptorFactory
-import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.PolylineOptions
+import com.guiderun.app.data.location.Wgs84ToGcj02Converter
 
 data class PolylineConfig(
     val points: List<Pair<Double, Double>>,
@@ -45,24 +45,26 @@ fun GuideRunMap(
         modifier = modifier,
         update = { mv ->
             val map = mv.map
+            // 业务层 GeoPoint 是 WGS-84，必须转 GCJ-02 才能与高德底图对齐，否则会偏移数百米。
+            val converter = Wgs84ToGcj02Converter(mv.context)
             map.moveCamera(
                 CameraUpdateFactory.newLatLngZoom(
-                    LatLng(state.centerLat, state.centerLng),
+                    converter.convert(state.centerLat, state.centerLng),
                     state.zoom,
                 )
             )
             map.clear()
             state.volunteerLatLng?.let { (lat, lng) ->
-                map.addMarker(MarkerOptions().position(LatLng(lat, lng)).title("志愿者"))
+                map.addMarker(MarkerOptions().position(converter.convert(lat, lng)).title("志愿者"))
             }
             state.blindLatLng?.let { (lat, lng) ->
-                map.addMarker(MarkerOptions().position(LatLng(lat, lng)).title("集合点"))
+                map.addMarker(MarkerOptions().position(converter.convert(lat, lng)).title("集合点"))
             }
             state.polylines.forEach { config ->
                 if (config.points.size >= 2) {
                     map.addPolyline(
                         PolylineOptions()
-                            .addAll(config.points.map { (lat, lng) -> LatLng(lat, lng) })
+                            .addAll(config.points.map { (lat, lng) -> converter.convert(lat, lng) })
                             .color(config.colorHex.toColorInt())
                             .width(config.width)
                     )
@@ -71,7 +73,7 @@ fun GuideRunMap(
             state.animatedMarker?.let { (lat, lng) ->
                 map.addMarker(
                     MarkerOptions()
-                        .position(LatLng(lat, lng))
+                        .position(converter.convert(lat, lng))
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
                         .title("当前位置")
                 )

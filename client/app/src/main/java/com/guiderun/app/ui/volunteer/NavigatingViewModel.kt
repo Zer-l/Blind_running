@@ -13,6 +13,7 @@ import com.guiderun.app.domain.repository.LocationProvider
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.service.LocationUpdateService
 import com.guiderun.app.ui.shared.map.GuideRunMapState
+import com.guiderun.app.ui.shared.map.PolylineConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -149,12 +150,36 @@ class NavigatingViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 locationProvider.locationUpdates(5_000L).collect { geoPoint ->
-                    _uiState.update {
-                        it.copy(mapState = it.mapState.copy(volunteerLatLng = geoPoint.lat to geoPoint.lng))
+                    _uiState.update { state ->
+                        val volunteer = geoPoint.lat to geoPoint.lng
+                        val meeting = state.mapState.blindLatLng
+                        // 有集合点时连一条直线指引方向；不是真实步行路线，仅做视觉方向感
+                        val polylines = if (meeting != null) {
+                            listOf(
+                                PolylineConfig(
+                                    points = listOf(volunteer, meeting),
+                                    colorHex = ROUTE_HINT_COLOR,
+                                    width = 12f,
+                                )
+                            )
+                        } else {
+                            emptyList()
+                        }
+                        state.copy(
+                            mapState = state.mapState.copy(
+                                volunteerLatLng = volunteer,
+                                polylines = polylines,
+                            )
+                        )
                     }
                 }
             }
         }
+    }
+
+    private companion object {
+        // Material Blue 600，避免与跑步轨迹的速度色（红/绿）冲突
+        const val ROUTE_HINT_COLOR = "#1E88E5"
     }
 
     private fun syncRequest() {

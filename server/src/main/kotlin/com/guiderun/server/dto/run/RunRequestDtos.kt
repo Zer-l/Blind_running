@@ -56,6 +56,8 @@ data class UserSummaryDto(
     val gender: String?,
     val rating: Float?,
     val totalRuns: Int,
+    /** 仅在 ACCEPTED 之后下发给同订单参与方，用于跑前/跑中拨打电话；其他场景为 null。 */
+    val phone: String?,
 )
 
 data class BlindRunnerSummaryDto(

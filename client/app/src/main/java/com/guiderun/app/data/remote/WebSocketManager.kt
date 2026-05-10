@@ -49,13 +49,9 @@ class WebSocketManager @Inject constructor(private val json: Json) {
     private val _emergency = MutableSharedFlow<WsEmergencyMessage>(replay = 0)
     val emergency: SharedFlow<WsEmergencyMessage> = _emergency.asSharedFlow()
 
-    // 新增：TRTC 通话邀请
-    private val _voiceCallInvited = MutableSharedFlow<WsVoiceCallInvitedMessage>(replay = 0)
-    val voiceCallInvited: SharedFlow<WsVoiceCallInvitedMessage> = _voiceCallInvited.asSharedFlow()
-
-    // 新增：TRTC 通话结束
-    private val _voiceCallEnded = MutableSharedFlow<WsVoiceCallEndedMessage>(replay = 0)
-    val voiceCallEnded: SharedFlow<WsVoiceCallEndedMessage> = _voiceCallEnded.asSharedFlow()
+    // 新增：志愿者申请结束跑步，等待视障端确认
+    private val _endRunRequested = MutableSharedFlow<WsEndRunRequestedMessage>(replay = 0)
+    val endRunRequested: SharedFlow<WsEndRunRequestedMessage> = _endRunRequested.asSharedFlow()
 
     private val _connectionState = MutableStateFlow(WsConnectionState.DISCONNECTED)
     val connectionState: StateFlow<WsConnectionState> = _connectionState.asStateFlow()
@@ -125,8 +121,7 @@ class WebSocketManager @Inject constructor(private val json: Json) {
                 "peer_metrics"      -> _peerMetrics.emit(json.decodeFromString(text))
                 "review_received"   -> _reviewReceived.emit(json.decodeFromString(text))
                 "emergency"         -> _emergency.emit(json.decodeFromString(text))
-                "voice_call_invited" -> _voiceCallInvited.emit(json.decodeFromString(text))
-                "voice_call_ended"  -> _voiceCallEnded.emit(json.decodeFromString(text))
+                "end_run_requested" -> _endRunRequested.emit(json.decodeFromString(text))
             }
         }
     }

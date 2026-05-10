@@ -118,16 +118,7 @@
             app:destination="@id/blindCreateRequestFragment"
             app:popUpTo="@id/blindCreateRequestFragment"
             app:popUpToInclusive="true" />
-        <action
-            android:id="@+id/action_blindReview_to_voiceRecord"
-            app:destination="@id/voiceRecordFragment" />
     </fragment>
-
-    <!-- 阶段5：语音录制 -->
-    <fragment
-        android:id="@+id/voiceRecordFragment"
-        android:name="com.guiderun.app.ui.blind.VoiceRecordFragment"
-        android:label="语音录制" />
 
     <!-- 阶段5：历史 -->
     <fragment

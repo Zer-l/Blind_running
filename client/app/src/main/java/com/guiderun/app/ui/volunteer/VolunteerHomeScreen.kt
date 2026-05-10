@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
@@ -33,8 +34,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -64,6 +69,7 @@ import com.guiderun.app.domain.model.AvailableRunRequest
 fun VolunteerHomeScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateToHistory: () -> Unit = {},
+    onBack: () -> Unit = {},
     viewModel: VolunteerHomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -115,6 +121,11 @@ fun VolunteerHomeScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.volunteer_home_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -128,6 +139,13 @@ fun VolunteerHomeScreen(
                     else viewModel.onToggleOnline(false)
                 },
             )
+
+            if (uiState.isOnline) {
+                RadiusFilter(
+                    selectedMeters = uiState.selectedRadiusMeters,
+                    onSelect = viewModel::onRadiusSelected,
+                )
+            }
 
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
@@ -196,6 +214,44 @@ private fun OnlineStatusCard(isOnline: Boolean, onToggle: (Boolean) -> Unit) {
                 checked = isOnline,
                 onCheckedChange = onToggle,
             )
+        }
+    }
+}
+
+@Composable
+private fun RadiusFilter(
+    selectedMeters: Double,
+    onSelect: (Double) -> Unit,
+) {
+    val options = remember {
+        listOf(
+            3000.0 to R.string.volunteer_radius_3km,
+            5000.0 to R.string.volunteer_radius_5km,
+            10_000.0 to R.string.volunteer_radius_10km,
+        )
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.volunteer_radius_filter_label),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, (meters, labelRes) ->
+                SegmentedButton(
+                    selected = selectedMeters == meters,
+                    onClick = { onSelect(meters) },
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                ) {
+                    Text(stringResource(labelRes))
+                }
+            }
         }
     }
 }

@@ -20,6 +20,7 @@ import com.guiderun.app.databinding.FragmentBlindHistoryBinding
 import com.guiderun.app.databinding.ItemBlindHistoryBinding
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus
+import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -46,6 +47,7 @@ class BlindHistoryFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        EdgeToEdgeHelper.applyInsets(view)
         val lm = LinearLayoutManager(requireContext())
         binding.rvHistory.layoutManager = lm
         binding.rvHistory.adapter = adapter

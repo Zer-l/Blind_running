@@ -10,16 +10,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -38,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
+import com.guiderun.app.ui.common.CallPeerButton
 import com.guiderun.app.util.PaceCalculator
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,43 +74,77 @@ fun VolunteerRunningScreen(
         }
     }
 
+    LaunchedEffect(uiState.infoMessage) {
+        uiState.infoMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.onInfoShown()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.volunteer_running_title)) },
                 actions = {
-                    if (uiState.callEnabled) {
-                        IconButton(onClick = { viewModel.initiateCall() }) {
-                            Icon(Icons.Default.Phone, contentDescription = stringResource(R.string.volunteer_running_call))
-                        }
-                    }
+                    CallPeerButton(phone = uiState.request?.blindRunner?.phone)
                 },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            StatsGrid(
+            // 距离大字
+            DistanceDisplay(
                 distanceMeters = uiState.totalDistanceMeters,
-                durationSeconds = uiState.totalDurationSeconds,
-                currentPace = uiState.currentPaceSeconds,
-                avgPace = uiState.avgPaceSeconds,
-                modifier = Modifier.weight(1f),
+                isPaused = uiState.isPaused,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
             )
-            Spacer(Modifier.height(24.dp))
+
+            // 统计卡片
+            StatsCard(
+                durationSeconds = uiState.totalDurationSeconds,
+                currentPace = uiState.displayPaceSeconds,
+                avgPace = uiState.avgPaceSeconds,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            // 等待视障端确认提示
+            if (uiState.endRequestPending) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                ) {
+                    Text(
+                        text = stringResource(R.string.volunteer_running_end_waiting),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            // 结束按钮
             Button(
                 onClick = { showEndConfirm = true },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                enabled = !uiState.endRequestPending,
+                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             ) {
                 Text(
-                    text = stringResource(R.string.volunteer_running_end),
+                    text = if (uiState.endRequestPending)
+                        stringResource(R.string.volunteer_running_end_pending)
+                    else stringResource(R.string.volunteer_running_end),
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
+            Spacer(Modifier.height(16.dp))
 
             if (showEndConfirm) {
                 androidx.compose.material3.AlertDialog(
@@ -114,7 +154,7 @@ fun VolunteerRunningScreen(
                     confirmButton = {
                         androidx.compose.material3.TextButton(onClick = {
                             showEndConfirm = false
-                            viewModel.endRun()
+                            viewModel.requestEndRun()
                         }) { Text(stringResource(R.string.confirm)) }
                     },
                     dismissButton = {
@@ -129,37 +169,83 @@ fun VolunteerRunningScreen(
 }
 
 @Composable
-private fun StatsGrid(
+private fun DistanceDisplay(
     distanceMeters: Int,
+    isPaused: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (isPaused) {
+            Surface(
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.errorContainer,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Pause,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                    Text(
+                        text = stringResource(R.string.running_paused_label),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+        Text(
+            text = "%.2f".format(distanceMeters / 1000.0),
+            fontSize = 64.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = stringResource(R.string.volunteer_running_distance),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun StatsCard(
     durationSeconds: Int,
     currentPace: Int?,
     avgPace: Int?,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
     ) {
-        StatItem(
-            label = stringResource(R.string.volunteer_running_distance),
-            value = "%.2f km".format(distanceMeters / 1000.0),
-            fontSize = 48,
-        )
-        Spacer(Modifier.height(32.dp))
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            StatItem(
+            RunningStatItem(
+                icon = Icons.Default.Timer,
                 label = stringResource(R.string.volunteer_running_duration),
                 value = formatDuration(durationSeconds),
             )
-            StatItem(
+            RunningStatItem(
+                icon = Icons.Default.Speed,
                 label = stringResource(R.string.volunteer_running_pace),
                 value = currentPace?.let { PaceCalculator.formatPace(it) } ?: "--'--\"",
             )
-            StatItem(
+            RunningStatItem(
+                icon = Icons.AutoMirrored.Filled.DirectionsRun,
                 label = stringResource(R.string.volunteer_running_avg_pace),
                 value = avgPace?.let { PaceCalculator.formatPace(it) } ?: "--'--\"",
             )
@@ -168,11 +254,24 @@ private fun StatsGrid(
 }
 
 @Composable
-private fun StatItem(label: String, value: String, fontSize: Int = 32) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun RunningStatItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
         Text(
             text = value,
-            fontSize = fontSize.sp,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )

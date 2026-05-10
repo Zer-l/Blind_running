@@ -192,6 +192,31 @@ class RunRequestService(
         return buildResponse(entity)
     }
 
+    // ── 志愿者申请结束跑步（不改状态，仅记录事件并推送给视障端） ──────────
+
+    fun requestEndRun(volunteerId: String, requestId: String): RunRequestResponse {
+        log.info("requestEndRun: requestId={}, volunteerId={}", requestId, volunteerId)
+        val entity = loadRequest(requestId)
+        requireAssignedVolunteer(volunteerId, entity)
+        if (entity.status != RunRequestStatus.RUNNING)
+            throw AppException(
+                ErrorCode.INVALID_STATE_TRANSITION,
+                "只有跑步中才能申请结束",
+                HttpStatus.BAD_REQUEST,
+            )
+
+        writeEvent(
+            requestId = requestId,
+            from = entity.status,
+            to = entity.status,
+            role = TriggeredRole.VOLUNTEER,
+            userId = volunteerId,
+            reason = "志愿者申请结束跑步",
+        )
+        wsHandler.pushEndRunRequested(requestId, entity.blindRunnerId)
+        return buildResponse(entity)
+    }
+
     // ── 取消（视障用户专用，从 MATCHING / EN_ROUTE / RUNNING 取消） ─────────
 
     fun cancel(userId: String, requestId: String, reason: String?): RunRequestResponse {

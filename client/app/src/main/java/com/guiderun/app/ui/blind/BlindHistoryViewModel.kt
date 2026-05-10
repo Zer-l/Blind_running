@@ -42,6 +42,7 @@ class BlindHistoryViewModel @Inject constructor(
 
     private var currentPage = 0
     private var allRequests: List<RunRequest> = emptyList()
+    private var hasAnnouncedPage = false
 
     init {
         loadHistory()
@@ -57,7 +58,10 @@ class BlindHistoryViewModel @Inject constructor(
                     if (list.isEmpty()) {
                         ttsManager.speak("暂无跑步记录")
                     } else {
-                        ttsManager.speak("共${list.size}条跑步记录")
+                        val state = _uiState.value
+                        val distText = "%.1f".format(state.totalDistanceKm)
+                        val durText = "%.1f".format(state.totalDurationHours)
+                        ttsManager.speak("共${list.size}条记录，已完成${state.totalRuns}次，总距离${distText}公里，总时长${durText}小时")
                     }
                 }
                 .onFailure {
@@ -141,6 +145,10 @@ class BlindHistoryViewModel @Inject constructor(
 
     fun onScreenResumed() {
         ttsManager.acquire()
+        if (!hasAnnouncedPage) {
+            hasAnnouncedPage = true
+            ttsManager.speak("跑步历史记录页面")
+        }
     }
 
     fun onScreenPaused() {

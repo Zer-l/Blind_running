@@ -14,6 +14,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.databinding.FragmentMatchedBinding
+import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -40,6 +41,7 @@ class MatchedFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        EdgeToEdgeHelper.applyInsets(view)
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -80,6 +82,8 @@ class MatchedFragment : Fragment() {
 
     private suspend fun collectUiState() {
         viewModel.uiState.collect { state ->
+            // peer phone 异步加载完成后实时同步给 Activity，供音量+键拨号使用
+            (activity as? BaseBlindActivity)?.activeCallPeerPhone = state.peerPhone
             binding.tvVolunteerName.text = if (state.volunteerName.isNotEmpty())
                 getString(R.string.matched_volunteer_name, state.volunteerName)
             else ""
@@ -114,6 +118,7 @@ class MatchedFragment : Fragment() {
         viewModel.onScreenResumed()
         (activity as? BaseBlindActivity)?.apply {
             activeRequestId = viewModel.requestId
+            activeCallPeerPhone = viewModel.uiState.value.peerPhone
             touchEventForwarder = ::onGestureEvent
         }
     }
@@ -124,6 +129,7 @@ class MatchedFragment : Fragment() {
         pressThresholdJob?.cancel()
         (activity as? BaseBlindActivity)?.apply {
             activeRequestId = null
+            activeCallPeerPhone = null
             touchEventForwarder = null
         }
     }

@@ -1,13 +1,16 @@
 package com.guiderun.app.ui.blind
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.domain.model.CreateReviewParams
 import com.guiderun.app.domain.repository.RunRequestRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -19,18 +22,25 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class BlindReviewUiState(
+    val selectedRating: Int = DEFAULT_RATING,
     val isSubmitting: Boolean = false,
     val distanceMeters: Int = 0,
     val durationSeconds: Int = 0,
-)
+    /** 志愿者手机号；FINISHED 阶段服务端仍下发，供视障端音量+键拨号。 */
+    val peerPhone: String? = null,
+) {
+    companion object {
+        const val DEFAULT_RATING = 5
+    }
+}
 
 sealed interface BlindReviewNavEvent {
     data object ToHome : BlindReviewNavEvent
-    data object ToVoiceRecord : BlindReviewNavEvent
 }
 
 @HiltViewModel
 class BlindReviewViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     savedStateHandle: SavedStateHandle,
     private val ttsManager: TtsManager,
     private val hapticFeedback: HapticFeedback,
@@ -49,78 +59,83 @@ class BlindReviewViewModel @Inject constructor(
         viewModelScope.launch {
             val req = runRequestRepository.getRunRequest(requestId).getOrNull()
             if (req != null) {
+                val distance = req.actualDistanceMeters ?: 0
+                val duration = req.actualDurationSeconds ?: 0
                 _uiState.update {
                     it.copy(
-                        distanceMeters = req.actualDistanceMeters ?: 0,
-                        durationSeconds = req.actualDurationSeconds ?: 0,
+                        distanceMeters = distance,
+                        durationSeconds = duration,
+                        peerPhone = req.volunteer?.phone,
                     )
                 }
-                val km = (req.actualDistanceMeters ?: 0) / 1000.0
-                val min = (req.actualDurationSeconds ?: 0) / 60
                 ttsManager.speak(
-                    "本次跑步结束，共${"%.1f".format(km)}公里，用时${min}分钟。对志愿者满意吗？",
+                    appContext.getString(
+                        R.string.blind_review_intro_format,
+                        distance / 1000.0,
+                        duration / 60,
+                    ),
                     TtsManager.Priority.HIGH,
                 )
             } else {
-                ttsManager.speak("请评价志愿者", TtsManager.Priority.HIGH)
+                ttsManager.speak(
+                    appContext.getString(R.string.blind_review_gesture_hint),
+                    TtsManager.Priority.HIGH,
+                )
             }
         }
     }
 
-    /** 双击 → 满意(5分) → 直接提交 */
-    fun setSatisfied() {
-        hapticFeedback.confirm()
-        submit(rating = 5, voiceUrl = null)
+    /** 单击卡片：选择评分，TTS 朗读，震动反馈，但不提交。 */
+    fun selectRating(rating: Int) {
+        val clamped = rating.coerceIn(1, 5)
+        if (_uiState.value.selectedRating == clamped) return
+        _uiState.update { it.copy(selectedRating = clamped) }
+        hapticFeedback.tick()
+        ttsManager.speak(
+            appContext.getString(R.string.blind_review_selected_format, ratingLabel(clamped)),
+            TtsManager.Priority.HIGH,
+        )
     }
 
-    /** 长按3秒 → 不满意(3分) → 进入录音 */
-    fun setUnsatisfied() {
-        hapticFeedback.warning()
-        viewModelScope.launch {
-            _navEvent.emit(BlindReviewNavEvent.ToVoiceRecord)
-        }
-    }
-
-    /** 录音完成后提交 */
-    fun submitWithVoice(voiceUrl: String?) {
-        submit(rating = 3, voiceUrl = voiceUrl)
-    }
-
-    private fun submit(rating: Int, voiceUrl: String?) {
+    /** 双击屏幕：提交当前选中评分。 */
+    fun submitSelected() {
+        val state = _uiState.value
+        if (state.isSubmitting) return
         viewModelScope.launch {
             _uiState.update { it.copy(isSubmitting = true) }
             runRequestRepository.createReview(
                 requestId = requestId,
-                params = CreateReviewParams(
-                    rating = rating,
-                    comment = null,
-                    voiceUrl = voiceUrl,
-                ),
+                params = CreateReviewParams(rating = state.selectedRating),
             ).onSuccess {
-                ttsManager.speak("评价已提交，感谢您的反馈", TtsManager.Priority.HIGH)
+                ttsManager.speak(
+                    appContext.getString(R.string.blind_review_submit_success),
+                    TtsManager.Priority.HIGH,
+                )
                 hapticFeedback.confirm()
                 _navEvent.emit(BlindReviewNavEvent.ToHome)
             }.onFailure { e ->
                 _uiState.update { it.copy(isSubmitting = false) }
-                ttsManager.speak("提交失败：${e.message ?: "请重试"}", TtsManager.Priority.HIGH)
+                val reason = e.message
+                    ?: appContext.getString(R.string.blind_review_submit_default_error)
+                ttsManager.speak(
+                    appContext.getString(R.string.blind_review_submit_failed_format, reason),
+                    TtsManager.Priority.HIGH,
+                )
                 hapticFeedback.error()
             }
         }
     }
 
+    /** 长按 3 秒：跳过评价直接回首页。 */
     fun skip() {
         viewModelScope.launch {
-            ttsManager.speak("已跳过评价", TtsManager.Priority.HIGH)
+            ttsManager.speak(
+                appContext.getString(R.string.blind_review_skipped),
+                TtsManager.Priority.HIGH,
+            )
+            hapticFeedback.warning()
             _navEvent.emit(BlindReviewNavEvent.ToHome)
         }
-    }
-
-    /** 播报本次跑步摘要 */
-    fun announceSummary() {
-        val state = _uiState.value
-        val km = state.distanceMeters / 1000.0
-        val min = state.durationSeconds / 60
-        ttsManager.speak("本次跑步${"%.1f".format(km)}公里，用时${min}分钟。双击屏幕满意，长按3秒不满意")
     }
 
     fun onScreenResumed() {
@@ -130,4 +145,14 @@ class BlindReviewViewModel @Inject constructor(
     fun onScreenPaused() {
         ttsManager.release()
     }
+
+    private fun ratingLabel(rating: Int): String = appContext.getString(
+        when (rating) {
+            1 -> R.string.blind_review_rating_1_label
+            2 -> R.string.blind_review_rating_2_label
+            3 -> R.string.blind_review_rating_3_label
+            4 -> R.string.blind_review_rating_4_label
+            else -> R.string.blind_review_rating_5_label
+        },
+    )
 }

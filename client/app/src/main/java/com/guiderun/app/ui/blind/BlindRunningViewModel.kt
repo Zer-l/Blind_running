@@ -15,10 +15,10 @@ import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.service.BlindRunTrackingService
 import com.guiderun.app.service.RunTrackingService
+import com.guiderun.app.util.Ema
 import com.guiderun.app.util.PaceCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,10 +36,19 @@ import javax.inject.Inject
 data class BlindRunningUiState(
     val totalDistanceMeters: Int = 0,
     val totalDurationSeconds: Int = 0,
+    /** 原始瞬时配速。 */
     val currentPaceSeconds: Int? = null,
+    /** 显示用瞬时配速：基于 currentPaceSeconds 做 EMA 平滑。 */
+    val displayPaceSeconds: Int? = null,
     val avgPaceSeconds: Int? = null,
+    /** 本机采集端是否处于自动暂停。 */
+    val isPaused: Boolean = false,
     val statusText: String = "",
     val endCountdown: Int? = null,
+    /** 志愿者已发起结束申请，等待视障端长按 3 秒确认。 */
+    val endRequestedByVolunteer: Boolean = false,
+    /** 志愿者手机号；接单后下发，供视障端音量+键拨号。 */
+    val peerPhone: String? = null,
 )
 
 sealed interface BlindRunningNavEvent {
@@ -72,6 +81,9 @@ class BlindRunningViewModel @Inject constructor(
     private var suppressAnnounceUntil = 0L
     private var lastPeerMetricsTimeMs: Long = 0L
     private var lastAnnouncedKm: Int = 0
+    /** 上次"每 5 分钟整点"播报的"分钟"刻度，避免同一分钟反复触发。 */
+    private var lastAnnouncedMinuteBucket: Int = 0
+    private val paceEma = Ema(alpha = 0.3)
 
     init {
         viewModelScope.launch {
@@ -81,12 +93,18 @@ class BlindRunningViewModel @Inject constructor(
             } catch (e: Exception) {
                 Timber.e(e, "Failed to start tracking service")
             }
+            loadPeerPhone()
             observeSessionStats()
             observePeerMetrics()
             observeWs()
-            startDurationTicker()
             suppressAndSpeak("跑步开始，正在录制轨迹", TtsManager.Priority.HIGH)
         }
+    }
+
+    private suspend fun loadPeerPhone() {
+        runRequestRepository.getRunRequest(requestId)
+            .onSuccess { req -> _uiState.update { it.copy(peerPhone = req.volunteer?.phone) } }
+            .onFailure { Timber.w(it, "load peer phone failed") }
     }
 
     private fun suppressAndSpeak(text: String, priority: TtsManager.Priority = TtsManager.Priority.NORMAL) {
@@ -112,21 +130,45 @@ class BlindRunningViewModel @Inject constructor(
             if (userId.isEmpty()) return@launch
             sessionStatsDao.observe(requestId, userId).collect { stats ->
                 if (stats != null) {
-                    // 仅在 peer metrics 超过 15 秒未更新时使用本地数据作为 fallback
+                    // peer metrics 超过 8 秒未更新时使用本地数据作为 fallback
                     val now = System.currentTimeMillis()
-                    if (now - lastPeerMetricsTimeMs > 15_000L) {
+                    if (now - lastPeerMetricsTimeMs > 8_000L) {
+                        val display = smoothPaceForDisplay(stats.currentPaceSeconds, stats.isPaused)
                         _uiState.update {
                             it.copy(
                                 totalDistanceMeters = stats.totalDistanceMeters,
                                 totalDurationSeconds = stats.totalDurationSeconds,
                                 currentPaceSeconds = stats.currentPaceSeconds,
+                                displayPaceSeconds = display,
                                 avgPaceSeconds = stats.avgPaceSeconds,
+                                isPaused = stats.isPaused,
                             )
                         }
+                        maybeAnnouncePeriodic(stats.totalDurationSeconds, stats.totalDistanceMeters)
                     }
                 }
             }
         }
+    }
+
+    /** UI 配速 EMA 平滑；暂停时重置并返回 null。 */
+    private fun smoothPaceForDisplay(rawPace: Int?, paused: Boolean): Int? {
+        if (paused || rawPace == null) {
+            paceEma.reset()
+            return null
+        }
+        return paceEma.update(rawPace.toDouble()).toInt()
+    }
+
+    /** 每 5 分钟整点播报一次跑步进度，由 stats 1Hz tick 驱动。 */
+    private fun maybeAnnouncePeriodic(durationSec: Int, distanceMeters: Int) {
+        if (durationSec <= 0) return
+        val minute = durationSec / 60
+        if (minute == 0 || minute % 5 != 0) return
+        if (minute == lastAnnouncedMinuteBucket) return
+        lastAnnouncedMinuteBucket = minute
+        val km = distanceMeters / 1000.0
+        suppressAndSpeak("已跑步${minute}分钟，距离${"%.1f".format(km)}公里")
     }
 
     private fun observePeerMetrics() {
@@ -134,15 +176,22 @@ class BlindRunningViewModel @Inject constructor(
             wsManager.peerMetrics.collect { metrics ->
                 if (metrics.requestId != requestId) return@collect
                 lastPeerMetricsTimeMs = System.currentTimeMillis()
+                // 距离单调约束：peer 推送回退时不允许 UI 距离回退（避免 GPS 重算造成视觉跳变）
+                val curDist = _uiState.value.totalDistanceMeters
+                val safeDist = maxOf(curDist, metrics.totalDistanceMeters)
+                // peer 协议未携带 isPaused，按 currentPaceSeconds 是否存在近似判断
+                val display = smoothPaceForDisplay(metrics.currentPaceSeconds, paused = false)
                 _uiState.update {
                     it.copy(
-                        totalDistanceMeters = metrics.totalDistanceMeters,
+                        totalDistanceMeters = safeDist,
                         totalDurationSeconds = metrics.totalDurationSeconds,
                         currentPaceSeconds = metrics.currentPaceSeconds,
+                        displayPaceSeconds = display,
                         avgPaceSeconds = metrics.avgPaceSeconds,
                     )
                 }
-                checkKmAnnouncement(metrics.totalDistanceMeters)
+                checkKmAnnouncement(safeDist)
+                maybeAnnouncePeriodic(metrics.totalDurationSeconds, safeDist)
             }
         }
     }
@@ -156,24 +205,6 @@ class BlindRunningViewModel @Inject constructor(
             val durationSec = state.totalDurationSeconds % 60
             val paceText = state.currentPaceSeconds?.let { "配速${PaceCalculator.formatPace(it)}每公里" } ?: ""
             suppressAndSpeak("已跑${km}公里，用时${durationMin}分${durationSec}秒，$paceText")
-        }
-    }
-
-    private fun startDurationTicker() {
-        viewModelScope.launch {
-            val req = runRequestRepository.getRunRequest(requestId).getOrNull() ?: return@launch
-            val startTimeSec = (req.runStartedAt ?: return@launch) / 1000
-            while (true) {
-                delay(1_000)
-                val elapsed = ((System.currentTimeMillis() / 1000) - startTimeSec).toInt()
-                _uiState.update { it.copy(totalDurationSeconds = elapsed) }
-                // 每5分钟播报一次状态
-                if (elapsed > 0 && elapsed % 300 == 0) {
-                    val dist = _uiState.value.totalDistanceMeters
-                    val km = dist / 1000.0
-                    suppressAndSpeak("已跑步${elapsed / 60}分钟，距离${"%.1f".format(km)}公里")
-                }
-            }
         }
     }
 
@@ -199,41 +230,21 @@ class BlindRunningViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            wsManager.endRunRequested.collect { msg ->
+                if (msg.requestId != requestId) return@collect
+                _uiState.update { it.copy(endRequestedByVolunteer = true) }
+                hapticFeedback.warning()
+                suppressAndSpeak(
+                    "志愿者申请结束跑步，长按屏幕3秒确认结束，或继续跑步忽略",
+                    TtsManager.Priority.HIGH,
+                )
+            }
+        }
+        viewModelScope.launch {
             wsManager.reconnected.collect {
                 runRequestRepository.getRunRequest(requestId)
             }
         }
-    }
-
-    /** 语音通话功能不可用时的提示 */
-    fun speakCallUnavailable() {
-        suppressAndSpeak("语音通话功能即将上线，请通过其他方式联系志愿者")
-    }
-
-    /** 发起语音通话 */
-    fun initiateCall(voiceCallManager: com.guiderun.app.service.VoiceCallManager) {
-        viewModelScope.launch {
-            runRequestRepository.initiateVoiceCall(requestId)
-                .onSuccess { callInfo ->
-                    callInfo.otherPartyPhone?.let { phone ->
-                        voiceCallManager.initiateCall(requestId, phone)
-                    }
-                }
-                .onFailure { e ->
-                    suppressAndSpeak("发起通话失败：${e.message}")
-                }
-        }
-    }
-
-    /** 播报当前跑步状态（距离、时长、配速） */
-    fun announceCurrentStatus() {
-        if (System.currentTimeMillis() < suppressAnnounceUntil) return
-        val state = _uiState.value
-        val km = state.totalDistanceMeters / 1000.0
-        val durationMin = state.totalDurationSeconds / 60
-        val durationSec = state.totalDurationSeconds % 60
-        val paceText = state.currentPaceSeconds?.let { "，配速${PaceCalculator.formatPace(it)}每公里" } ?: ""
-        suppressAndSpeak("已跑${"%.2f".format(km)}公里，用时${durationMin}分${durationSec}秒$paceText")
     }
 
     /** 长按3秒触发结束跑步倒计时 */
@@ -248,7 +259,7 @@ class BlindRunningViewModel @Inject constructor(
 
         hapticFeedback.warning()
         endCountdownJob = viewModelScope.launch {
-            suppressAndSpeak("5秒后结束跑步，摇动手机可撤销", TtsManager.Priority.HIGH)
+            suppressAndSpeak("5秒后结束跑步，再按一次可撤销", TtsManager.Priority.HIGH)
 
             for (i in 5 downTo 1) {
                 ensureActive()
@@ -263,15 +274,10 @@ class BlindRunningViewModel @Inject constructor(
         }
     }
 
-    fun tryHandleShakeCancel(): Boolean {
-        if (endCountdownJob?.isActive == true) {
-            endCountdownJob?.cancel()
-            endCountdownJob = null
-            _uiState.update { it.copy(endCountdown = null) }
-            suppressAndSpeak("已取消", TtsManager.Priority.HIGH)
-            return true
-        }
-        return false
+    /** 长按达到 3 秒阈值瞬时反馈：震动 + 提示松开。 */
+    fun onLongPressThresholdEndRun() {
+        hapticFeedback.warning()
+        suppressAndSpeak("松开结束跑步", TtsManager.Priority.HIGH)
     }
 
     fun executeEndRun() {

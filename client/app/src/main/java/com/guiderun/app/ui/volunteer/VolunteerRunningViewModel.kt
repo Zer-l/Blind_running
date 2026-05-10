@@ -5,7 +5,6 @@ import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.guiderun.app.BuildConfig
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.data.local.dao.RunSessionStatsDao
 import com.guiderun.app.data.local.entity.RunSessionStatsEntity
@@ -15,9 +14,8 @@ import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.repository.LocationProvider
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.service.RunTrackingService
-import com.guiderun.app.service.VoiceCallManager
 import com.guiderun.app.service.VolunteerRunTrackingService
-import com.guiderun.app.util.PaceCalculator
+import com.guiderun.app.util.Ema
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,10 +34,17 @@ data class VolunteerRunningUiState(
     val isLoading: Boolean = true,
     val totalDistanceMeters: Int = 0,
     val totalDurationSeconds: Int = 0,
+    /** 原始瞬时配速（来自 PaceWindow，用于上传/统计）。 */
     val currentPaceSeconds: Int? = null,
+    /** 显示用瞬时配速：基于 currentPaceSeconds 做 EMA 平滑，仅用于 UI。 */
+    val displayPaceSeconds: Int? = null,
     val avgPaceSeconds: Int? = null,
-    val callEnabled: Boolean = false,
+    /** 本机采集端是否处于自动暂停（距离/配速冻结时为 true）。 */
+    val isPaused: Boolean = false,
+    /** 已发送结束申请，等待视障端确认中。 */
+    val endRequestPending: Boolean = false,
     val errorMessage: String? = null,
+    val infoMessage: String? = null,
 )
 
 sealed interface VolunteerRunningNavEvent {
@@ -56,7 +61,6 @@ class VolunteerRunningViewModel @Inject constructor(
     private val userPreferences: UserPreferences,
     private val wsManager: WebSocketManager,
     private val locationProvider: LocationProvider,
-    private val voiceCallManager: VoiceCallManager,
 ) : AndroidViewModel(application) {
 
     private val requestId: String = checkNotNull(savedStateHandle["requestId"])
@@ -68,9 +72,9 @@ class VolunteerRunningViewModel @Inject constructor(
     val navEvent: SharedFlow<VolunteerRunningNavEvent> = _navEvent.asSharedFlow()
 
     private var userId: String = ""
+    private val paceEma = Ema(alpha = 0.3)
 
     init {
-        _uiState.update { it.copy(callEnabled = BuildConfig.VOICE_CALL_ENABLED) }
         viewModelScope.launch {
             userId = userPreferences.getCurrentUserId() ?: ""
             loadRequest()
@@ -81,7 +85,6 @@ class VolunteerRunningViewModel @Inject constructor(
             }
             observeSessionStats()
             observeWs()
-            startDurationTicker()
             pushPeerMetricsPeriodically()
         }
     }
@@ -115,12 +118,15 @@ class VolunteerRunningViewModel @Inject constructor(
             if (userId.isEmpty()) return@launch
             sessionStatsDao.observe(requestId, userId).collect { stats ->
                 if (stats != null) {
+                    val display = smoothPaceForDisplay(stats.currentPaceSeconds, stats.isPaused)
                     _uiState.update {
                         it.copy(
                             totalDistanceMeters = stats.totalDistanceMeters,
                             totalDurationSeconds = stats.totalDurationSeconds,
                             currentPaceSeconds = stats.currentPaceSeconds,
+                            displayPaceSeconds = display,
                             avgPaceSeconds = stats.avgPaceSeconds,
+                            isPaused = stats.isPaused,
                         )
                     }
                 }
@@ -128,16 +134,15 @@ class VolunteerRunningViewModel @Inject constructor(
         }
     }
 
-    private fun startDurationTicker() {
-        viewModelScope.launch {
-            val req = _uiState.value.request ?: return@launch
-            val startTimeSec = (req.runStartedAt ?: return@launch) / 1000
-            while (true) {
-                delay(1_000)
-                val elapsed = ((System.currentTimeMillis() / 1000) - startTimeSec).toInt()
-                _uiState.update { it.copy(totalDurationSeconds = elapsed) }
-            }
+    /**
+     * UI 配速做指数移动平均，避免瞬时跳变；暂停时清空 EMA 并显示 null（"--"）。
+     */
+    private fun smoothPaceForDisplay(rawPace: Int?, paused: Boolean): Int? {
+        if (paused || rawPace == null) {
+            paceEma.reset()
+            return null
         }
+        return paceEma.update(rawPace.toDouble()).toInt()
     }
 
     private fun pushPeerMetricsPeriodically() {
@@ -178,43 +183,32 @@ class VolunteerRunningViewModel @Inject constructor(
         }
     }
 
-    fun initiateCall() {
-        if (!BuildConfig.VOICE_CALL_ENABLED) {
-            _uiState.update { it.copy(errorMessage = "语音通话功能即将上线") }
-            return
-        }
+    /**
+     * 申请结束跑步：服务端不立即改状态，仅推送视障端等待其确认。
+     * 视障端确认后 → 服务端 RUNNING→FINISHED → WS 推送 → 双方进评价页。
+     */
+    fun requestEndRun() {
+        if (_uiState.value.endRequestPending) return
         viewModelScope.launch {
-            runRequestRepository.initiateVoiceCall(requestId)
-                .onSuccess { callInfo ->
-                    callInfo.otherPartyPhone?.let { phone ->
-                        voiceCallManager.initiateCall(requestId, phone)
-                    }
+            _uiState.update { it.copy(endRequestPending = true) }
+            runRequestRepository.requestEndRun(requestId)
+                .onSuccess {
+                    _uiState.update { it.copy(infoMessage = "已通知视障用户，等待对方确认结束") }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(errorMessage = e.message ?: "发起通话失败") }
+                    _uiState.update {
+                        it.copy(endRequestPending = false, errorMessage = e.message ?: "申请结束失败")
+                    }
                 }
-        }
-    }
-
-    fun endRun() {
-        viewModelScope.launch {
-            val state = _uiState.value
-            runRequestRepository.endRun(
-                id = requestId,
-                actualDistanceMeters = state.totalDistanceMeters,
-                actualDurationSeconds = state.totalDurationSeconds,
-                avgPaceSeconds = state.avgPaceSeconds,
-            ).onSuccess {
-                stopTrackingService()
-                _navEvent.emit(VolunteerRunningNavEvent.ToReview(requestId))
-            }.onFailure { e ->
-                _uiState.update { it.copy(errorMessage = e.message) }
-            }
         }
     }
 
     fun onErrorShown() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    fun onInfoShown() {
+        _uiState.update { it.copy(infoMessage = null) }
     }
 
     override fun onCleared() {

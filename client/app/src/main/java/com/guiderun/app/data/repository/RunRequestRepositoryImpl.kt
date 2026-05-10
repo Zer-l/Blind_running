@@ -13,7 +13,6 @@ import com.guiderun.app.domain.exception.RequestNotFoundException
 import com.guiderun.app.domain.exception.UnknownApiException
 import com.guiderun.app.domain.model.*
 import com.guiderun.app.domain.repository.RunRequestRepository
-import com.guiderun.app.service.VoiceCallInfo
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 import java.io.IOException
@@ -67,6 +66,9 @@ class RunRequestRepositoryImpl @Inject constructor(
     override suspend fun endRun(id: String, actualDistanceMeters: Int?, actualDurationSeconds: Int?, avgPaceSeconds: Int?): Result<RunRequest> =
         execute { api.endRun(id, EndRunRequestDto(actualDistanceMeters, actualDurationSeconds, avgPaceSeconds)).requireData().toDomain() }
 
+    override suspend fun requestEndRun(id: String): Result<RunRequest> =
+        execute { api.requestEndRun(id).requireData().toDomain() }
+
     override suspend fun cancel(id: String, reason: String?): Result<RunRequest> =
         execute { api.cancel(id, CancelRequestDto(reason)).requireData().toDomain() }
 
@@ -117,24 +119,7 @@ class RunRequestRepositoryImpl @Inject constructor(
 
     override suspend fun createReview(requestId: String, params: CreateReviewParams): Result<Unit> =
         execute {
-            api.createReview(requestId, CreateReviewRequestDto(params.rating, params.tags, params.comment, params.voiceUrl))
-            Unit
-        }
-
-    override suspend fun initiateVoiceCall(requestId: String): Result<VoiceCallInfo> =
-        execute {
-            val resp = api.initiateVoiceCall(requestId)
-            val data = resp.requireData()
-            VoiceCallInfo(
-                requestId = data.requestId,
-                fromNickname = "",
-                otherPartyPhone = data.otherPartyPhone,
-            )
-        }
-
-    override suspend fun endVoiceCall(requestId: String): Result<Unit> =
-        execute {
-            api.endVoiceCall(requestId)
+            api.createReview(requestId, CreateReviewRequestDto(params.rating, params.tags, params.comment))
             Unit
         }
 

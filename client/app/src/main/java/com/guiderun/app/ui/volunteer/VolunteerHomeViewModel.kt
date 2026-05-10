@@ -23,6 +23,7 @@ data class VolunteerHomeUiState(
     val availableRequests: List<AvailableRunRequest> = emptyList(),
     val errorMessage: String? = null,
     val hasActiveOrder: Boolean = false,
+    val selectedRadiusMeters: Double = 3000.0,
 )
 
 @HiltViewModel
@@ -105,7 +106,8 @@ class VolunteerHomeViewModel @Inject constructor(
     }
 
     private suspend fun fetchAvailable(lat: Double, lng: Double, isRefresh: Boolean = false) {
-        runRequestRepository.getAvailableRequests(lat = lat, lng = lng)
+        val radius = _uiState.value.selectedRadiusMeters
+        runRequestRepository.getAvailableRequests(lat = lat, lng = lng, radiusMeters = radius)
             .onSuccess { list ->
                 _uiState.update {
                     if (isRefresh) it.copy(availableRequests = list, isRefreshing = false)
@@ -118,6 +120,15 @@ class VolunteerHomeViewModel @Inject constructor(
                     else it.copy(isLoading = false, errorMessage = "加载失败：${e.message}")
                 }
             }
+    }
+
+    fun onRadiusSelected(meters: Double) {
+        if (_uiState.value.selectedRadiusMeters == meters) return
+        _uiState.update { it.copy(selectedRadiusMeters = meters) }
+        // 在线时立即重拉；离线时只更新 state，下次上线生效
+        if (_uiState.value.isOnline) {
+            loadAvailableRequests()
+        }
     }
 
     fun onToggleOnline(wantOnline: Boolean) {

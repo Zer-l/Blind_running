@@ -44,17 +44,11 @@ class BlindActivity : BaseBlindActivity() {
             .findFragmentById(R.id.blind_nav_host) as? NavHostFragment
         navController = navHostFragment?.navController
 
-        // 处理返回键
-        onBackPressedDispatcher.addCallback(this) {
-            val controller = navController
-            if (controller != null && controller.previousBackStackEntry != null) {
-                controller.popBackStack()
-            } else {
-                finish()
-            }
-        }
-
-        // 根据目标设置起始目的地
+        // 首次启动：根据 intent 切换起始目的地
+        // 注意：必须用 navInflater 重新 inflate 得到新 NavGraph 引用。
+        // 若复用 navController.graph 同一引用，NavController.setGraph 会走 else 分支只更新节点不重启，
+        // 导致起始目的地切换不生效（落到 XML 默认起点）。
+        // savedInstanceState != null 时由 NavHostFragment 自行恢复 graph，无需在此处理。
         if (savedInstanceState == null) {
             val destination = intent.getStringExtra(EXTRA_DESTINATION) ?: DEST_CREATE_REQUEST
             val startDestId = when (destination) {
@@ -68,12 +62,25 @@ class BlindActivity : BaseBlindActivity() {
                 }
                 else -> R.id.blindCreateRequestFragment
             }
+            navController?.let { controller ->
+                val newGraph = controller.navInflater.inflate(R.navigation.blind_nav_graph).apply {
+                    setStartDestination(startDestId)
+                }
+                controller.setGraph(newGraph, intent.extras)
+            }
+        }
 
-            // 设置导航图并指定起始目的地
-            val navGraph = navController?.graph
-            if (navGraph != null) {
-                navGraph.setStartDestination(startDestId)
-                navController?.setGraph(navGraph, intent.extras)
+        // 处理返回键
+        // 不能用 previousBackStackEntry != null 判断，因为 NavGraph entry 永远在栈中（容器），会误判。
+        // 在起始目的地误调 popBackStack 会清空 backQueue 导致后续 navigate 因 currentDestination=null 抛异常。
+        onBackPressedDispatcher.addCallback(this) {
+            val controller = navController
+            val current = controller?.currentDestination?.id
+            val start = controller?.graph?.startDestinationId
+            if (controller != null && current != null && current != start) {
+                controller.popBackStack()
+            } else {
+                finish()
             }
         }
     }

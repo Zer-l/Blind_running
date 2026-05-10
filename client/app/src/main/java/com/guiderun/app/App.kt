@@ -3,7 +3,6 @@ package com.guiderun.app
 import android.app.Application
 import com.amap.api.maps.MapsInitializer
 import com.guiderun.app.accessibility.TtsManager
-import com.guiderun.app.service.VoiceCallManager
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import javax.inject.Inject
@@ -12,7 +11,6 @@ import javax.inject.Inject
 class App : Application() {
 
     @Inject lateinit var ttsManager: TtsManager
-    @Inject lateinit var voiceCallManager: VoiceCallManager
 
     override fun onCreate() {
         super.onCreate()
@@ -23,6 +21,5 @@ class App : Application() {
         MapsInitializer.updatePrivacyAgree(this, true)
 
         ttsManager.init()
-        voiceCallManager.init()
     }
 }

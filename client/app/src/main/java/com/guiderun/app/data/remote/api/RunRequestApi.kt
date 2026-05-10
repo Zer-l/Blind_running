@@ -46,6 +46,9 @@ interface RunRequestApi {
     @POST("api/v1/run-requests/{id}/end-run")
     suspend fun endRun(@Path("id") id: String, @Body dto: EndRunRequestDto = EndRunRequestDto()): ApiResponse<RunRequestResponseDto>
 
+    @POST("api/v1/run-requests/{id}/request-end-run")
+    suspend fun requestEndRun(@Path("id") id: String, @Body body: Unit = Unit): ApiResponse<RunRequestResponseDto>
+
     @POST("api/v1/run-requests/{id}/cancel")
     suspend fun cancel(@Path("id") id: String, @Body dto: CancelRequestDto = CancelRequestDto()): ApiResponse<RunRequestResponseDto>
 
@@ -91,10 +94,4 @@ interface RunRequestApi {
         @Path("id") id: String,
         @Body dto: PeerMetricsDto,
     ): VoidApiResponse
-
-    @POST("api/v1/run-requests/{id}/voice-call/initiate")
-    suspend fun initiateVoiceCall(@Path("id") id: String): ApiResponse<VoiceCallResponseDto>
-
-    @POST("api/v1/run-requests/{id}/voice-call/end")
-    suspend fun endVoiceCall(@Path("id") id: String): ApiResponse<Unit>
 }

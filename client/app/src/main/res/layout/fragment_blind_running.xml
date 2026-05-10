@@ -4,6 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/blind_background"
+    android:fitsSystemWindows="true"
     android:orientation="vertical"
     android:padding="24dp">
 
@@ -12,12 +13,29 @@
         android:id="@+id/tv_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="12dp"
         android:gravity="center"
         android:text="@string/blind_running_title"
         android:textColor="@color/blind_primary"
         android:textSize="24sp"
         android:textStyle="bold" />
+
+    <!-- 自动暂停角标 -->
+    <TextView
+        android:id="@+id/tv_paused_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="12dp"
+        android:background="@color/blind_primary"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="4dp"
+        android:text="@string/running_paused_label"
+        android:textColor="@color/blind_background"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        android:accessibilityLiveRegion="polite" />
 
     <!-- 跑步统计卡片 -->
     <com.google.android.material.card.MaterialCardView

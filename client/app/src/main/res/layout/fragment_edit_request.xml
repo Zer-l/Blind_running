@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/blind_background"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -19,7 +20,7 @@
             android:layout_marginBottom="20dp"
             android:gravity="center"
             android:text="@string/edit_request_title"
-            android:textColor="@color/blind_on_background"
+            android:textColor="@color/blind_primary"
             android:textSize="24sp"
             android:textStyle="bold" />
 
@@ -119,6 +120,9 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
             android:hint="@string/create_request_notes_hint"
+            app:endIconMode="custom"
+            app:endIconDrawable="@drawable/ic_mic"
+            app:endIconContentDescription="@string/voice_input_content_description"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -140,7 +144,7 @@
             android:textSize="20sp"
             android:textStyle="bold"
             app:backgroundTint="@color/blind_primary"
-            app:cornerRadius="12dp" />
+            app:cornerRadius="16dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_cancel"
@@ -149,7 +153,7 @@
             android:text="@string/edit_request_btn_cancel"
             android:textSize="18sp"
             app:backgroundTint="@color/blind_surface"
-            app:cornerRadius="12dp"
+            app:cornerRadius="16dp"
             app:strokeColor="@color/blind_primary"
             app:strokeWidth="2dp" />
 

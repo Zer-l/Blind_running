@@ -61,6 +61,9 @@ class RunRequestController(
         @RequestBody(required = false) @Valid dto: EndRunDto?,
     ) = ApiResponse.ok(service.endRun(currentUserId, id, dto))
 
+    @PostMapping("/{id}/request-end-run")
+    fun requestEndRun(@PathVariable id: String) = ApiResponse.ok(service.requestEndRun(currentUserId, id))
+
     @PostMapping("/{id}/cancel")
     fun cancel(
         @PathVariable id: String,

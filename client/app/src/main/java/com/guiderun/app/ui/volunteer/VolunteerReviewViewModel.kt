@@ -21,6 +21,8 @@ data class VolunteerReviewUiState(
     val selectedTags: Set<String> = emptySet(),
     val comment: String = "",
     val isSubmitting: Boolean = false,
+    /** 视障用户手机号；FINISHED 阶段服务端已下发，供顶栏拨号按钮使用。 */
+    val peerPhone: String? = null,
     val errorMessage: String? = null,
 )
 
@@ -41,6 +43,15 @@ class VolunteerReviewViewModel @Inject constructor(
 
     private val _navEvent = MutableSharedFlow<VolunteerReviewNavEvent>(replay = 0)
     val navEvent: SharedFlow<VolunteerReviewNavEvent> = _navEvent.asSharedFlow()
+
+    init {
+        viewModelScope.launch {
+            runRequestRepository.getRunRequest(requestId)
+                .onSuccess { req ->
+                    _uiState.update { it.copy(peerPhone = req.blindRunner?.phone) }
+                }
+        }
+    }
 
     fun setRating(rating: Int) {
         _uiState.update { it.copy(rating = rating.coerceIn(1, 5)) }

@@ -19,17 +19,22 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -54,6 +59,7 @@ fun VolunteerProfileEditScreen(
     viewModel: VolunteerProfileEditViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var nickname by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf<Gender?>(null) }
@@ -69,11 +75,15 @@ fun VolunteerProfileEditScreen(
         hasGuideExperience = uiState.hasGuideExperience
     }
 
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { snackbarHostState.showSnackbar(it) }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is VolunteerProfileEditEvent.Saved -> onSaved()
-                is VolunteerProfileEditEvent.Error -> { /* error handled in uiState */ }
+                is VolunteerProfileEditEvent.Error -> { /* handled in uiState */ }
             }
         }
     }
@@ -89,6 +99,7 @@ fun VolunteerProfileEditScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -114,30 +125,38 @@ fun VolunteerProfileEditScreen(
                     singleLine = true,
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "性别",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = gender == Gender.MALE,
-                        onClick = {
-                            gender = if (gender == Gender.MALE) null else Gender.MALE
-                            viewModel.updateGender(gender)
-                        },
-                        label = { Text("男") },
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "性别",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                    FilterChip(
-                        selected = gender == Gender.FEMALE,
-                        onClick = {
-                            gender = if (gender == Gender.FEMALE) null else Gender.FEMALE
-                            viewModel.updateGender(gender)
-                        },
-                        label = { Text("女") },
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = gender == Gender.MALE,
+                            onClick = {
+                                gender = if (gender == Gender.MALE) null else Gender.MALE
+                                viewModel.updateGender(gender)
+                            },
+                            label = { Text("男") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                        )
+                        FilterChip(
+                            selected = gender == Gender.FEMALE,
+                            onClick = {
+                                gender = if (gender == Gender.FEMALE) null else Gender.FEMALE
+                                viewModel.updateGender(gender)
+                            },
+                            label = { Text("女") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                        )
+                    }
                 }
             }
 
@@ -158,38 +177,50 @@ fun VolunteerProfileEditScreen(
                     singleLine = true,
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "跑步等级",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = runningLevel == "BEGINNER",
-                        onClick = {
-                            runningLevel = if (runningLevel == "BEGINNER") "" else "BEGINNER"
-                            viewModel.updateRunningLevel(runningLevel)
-                        },
-                        label = { Text("入门") },
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "跑步等级",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                    FilterChip(
-                        selected = runningLevel == "INTERMEDIATE",
-                        onClick = {
-                            runningLevel = if (runningLevel == "INTERMEDIATE") "" else "INTERMEDIATE"
-                            viewModel.updateRunningLevel(runningLevel)
-                        },
-                        label = { Text("进阶") },
-                    )
-                    FilterChip(
-                        selected = runningLevel == "ADVANCED",
-                        onClick = {
-                            runningLevel = if (runningLevel == "ADVANCED") "" else "ADVANCED"
-                            viewModel.updateRunningLevel(runningLevel)
-                        },
-                        label = { Text("高级") },
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = runningLevel == "BEGINNER",
+                            onClick = {
+                                runningLevel = if (runningLevel == "BEGINNER") "" else "BEGINNER"
+                                viewModel.updateRunningLevel(runningLevel)
+                            },
+                            label = { Text("入门") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                        )
+                        FilterChip(
+                            selected = runningLevel == "INTERMEDIATE",
+                            onClick = {
+                                runningLevel = if (runningLevel == "INTERMEDIATE") "" else "INTERMEDIATE"
+                                viewModel.updateRunningLevel(runningLevel)
+                            },
+                            label = { Text("进阶") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                        )
+                        FilterChip(
+                            selected = runningLevel == "ADVANCED",
+                            onClick = {
+                                runningLevel = if (runningLevel == "ADVANCED") "" else "ADVANCED"
+                                viewModel.updateRunningLevel(runningLevel)
+                            },
+                            label = { Text("高级") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                        )
+                    }
                 }
             }
 
@@ -207,6 +238,7 @@ fun VolunteerProfileEditScreen(
                         Text(
                             text = "是否有陪跑经验",
                             style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
                             text = if (hasGuideExperience) "有陪跑经验" else "暂无陪跑经验",
@@ -220,17 +252,12 @@ fun VolunteerProfileEditScreen(
                             hasGuideExperience = it
                             viewModel.updateHasGuideExperience(it)
                         },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                        ),
                     )
                 }
-            }
-
-            // 错误提示
-            uiState.error?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
             }
 
             // 保存按钮
@@ -240,11 +267,13 @@ fun VolunteerProfileEditScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
+                shape = MaterialTheme.shapes.medium,
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.padding(8.dp),
+                        modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
                     )
                 } else {
                     Text("保存", style = MaterialTheme.typography.titleMedium)
@@ -263,8 +292,9 @@ private fun ProfileSectionCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
+        shape = MaterialTheme.shapes.medium,
     ) {
         Column(
             modifier = Modifier.padding(16.dp),

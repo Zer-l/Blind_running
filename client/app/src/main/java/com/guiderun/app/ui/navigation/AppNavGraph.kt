@@ -81,6 +81,7 @@ fun AppNavGraph(
                 onNavigateToDetail = { requestId ->
                     navController.navigate(Screen.RequestDetail.createRoute(requestId))
                 },
+                onBack = { navController.popBackStack() },
             )
         }
 
