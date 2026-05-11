@@ -42,4 +42,33 @@
         <item name="android:textStyle">bold</item>
     </style>
 
+    <!-- 视障端中断对话框：放大标题/正文/按钮字号，便于低视力用户操作 -->
+    <style name="BlindInterruptDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="materialAlertDialogTitleTextStyle">@style/BlindInterruptDialog.Title</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/BlindInterruptDialog.Body</item>
+        <item name="buttonBarPositiveButtonStyle">@style/BlindInterruptDialog.Button</item>
+        <item name="buttonBarNegativeButtonStyle">@style/BlindInterruptDialog.Button.Destructive</item>
+        <item name="buttonBarNeutralButtonStyle">@style/BlindInterruptDialog.Button</item>
+    </style>
+
+    <style name="BlindInterruptDialog.Title" parent="MaterialAlertDialog.Material3.Title.Text">
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="BlindInterruptDialog.Body" parent="MaterialAlertDialog.Material3.Body.Text">
+        <item name="android:textSize">20sp</item>
+        <item name="android:lineSpacingExtra">6dp</item>
+    </style>
+
+    <style name="BlindInterruptDialog.Button" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textSize">20sp</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingHorizontal">20dp</item>
+    </style>
+
+    <style name="BlindInterruptDialog.Button.Destructive" parent="BlindInterruptDialog.Button">
+        <item name="android:textColor">@android:color/holo_red_dark</item>
+    </style>
+
 </resources>

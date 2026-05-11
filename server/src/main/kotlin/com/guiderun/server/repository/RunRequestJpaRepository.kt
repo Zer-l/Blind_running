@@ -27,4 +27,26 @@ interface RunRequestJpaRepository : JpaRepository<RunRequestEntity, String> {
         status: RunRequestStatus,
         before: java.time.Instant,
     ): List<RunRequestEntity>
+
+    fun findFirstByBlindRunnerIdAndStatusInOrderByCreatedAtDesc(
+        blindRunnerId: String,
+        statuses: Collection<RunRequestStatus>,
+    ): RunRequestEntity?
+
+    fun findFirstByVolunteerIdAndStatusInOrderByCreatedAtDesc(
+        volunteerId: String,
+        statuses: Collection<RunRequestStatus>,
+    ): RunRequestEntity?
+
+    fun findByBlindRunnerIdAndStatusInOrderByCreatedAtDesc(
+        blindRunnerId: String,
+        statuses: Collection<RunRequestStatus>,
+        pageable: Pageable,
+    ): List<RunRequestEntity>
+
+    fun findByVolunteerIdAndStatusInOrderByCreatedAtDesc(
+        volunteerId: String,
+        statuses: Collection<RunRequestStatus>,
+        pageable: Pageable,
+    ): List<RunRequestEntity>
 }

@@ -3,12 +3,14 @@ package com.guiderun.app.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import com.guiderun.app.data.local.UserPreferences
+import kotlinx.coroutines.runBlocking
 import com.guiderun.app.data.local.dao.RunSessionStatsDao
 import com.guiderun.app.data.local.dao.RunTrackBufferDao
 import com.guiderun.app.data.local.entity.RunSessionStatsEntity
@@ -107,6 +109,12 @@ abstract class RunTrackingService : Service() {
     protected abstract val notificationText: String
     protected abstract val locationIntervalMs: Long
 
+    /**
+     * 子类提供点击通知后跳转的 Intent（按角色拉回对应 Running 页）。
+     * 返回 null 时通知不可点击。
+     */
+    protected abstract fun createContentIntent(requestId: String): Intent?
+
     companion object {
         const val EXTRA_REQUEST_ID = "request_id"
         const val DEFAULT_INTERVAL_MS = 3_000L
@@ -150,19 +158,40 @@ abstract class RunTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // START_REDELIVER_INTENT 通常会重传原 intent，但极端情况（进程未启动 + 系统拉起）可能丢失。
+        // 此时降级读 ACTIVE_REQUEST_ID，确保前台服务仍能恢复采集而不是 stopSelf。
         val requestId = intent?.getStringExtra(EXTRA_REQUEST_ID)
+            ?: runBlocking { userPreferences.getActiveRequestId() }
             ?: run { stopSelf(); return START_NOT_STICKY }
         currentRequestId = requestId
-        startForeground(NOTIFICATION_ID, buildNotification())
-        startElapsedMs = SystemClock.elapsedRealtime()
+        startForeground(NOTIFICATION_ID, buildNotification(requestId))
         locationIntervalFlow.value = locationIntervalMs
         scope.launch {
             currentUserId = userPreferences.getCurrentUserId() ?: ""
+            // 杀 App 重启后从 DB 恢复历史累积，避免距离/时长归零
+            restoreFromPersistedStats(requestId)
             startTracking(requestId)
             startStatsTicker(requestId)
             startPeriodicUpload(requestId)
         }
         return START_REDELIVER_INTENT
+    }
+
+    /**
+     * 从 [RunSessionStatsEntity] 恢复杀 App 前的累积距离 / 时长，让 UI 接着算而不是从 0 开始。
+     *
+     * 关键技巧：把 [startElapsedMs] 倒推到 "现在 - 已跑时长"，
+     * 后续 [flushStats] 用单调时钟差计算的 movingMs 自然含上恢复的时长。
+     * pausedAccumMs 保持 0：已经把暂停时段视为合并进 totalDurationSeconds，不再单独还原。
+     */
+    private suspend fun restoreFromPersistedStats(requestId: String) {
+        val prev = sessionStatsDao.get(requestId, currentUserId)
+        if (prev != null) {
+            accumulatedDistanceM = prev.totalDistanceMeters.toDouble()
+            startElapsedMs = SystemClock.elapsedRealtime() - prev.totalDurationSeconds * 1000L
+        } else {
+            startElapsedMs = SystemClock.elapsedRealtime()
+        }
     }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -432,12 +461,24 @@ abstract class RunTrackingService : Service() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun buildNotification(): Notification =
-        NotificationCompat.Builder(this, CHANNEL_ID)
+    private fun buildNotification(requestId: String): Notification {
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(notificationTitle)
             .setContentText(notificationText)
             .setSmallIcon(com.guiderun.app.R.mipmap.ic_launcher)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
-            .build()
+        // 点击通知拉回对应 Running 页（按角色），保证视障/志愿者跑步中按 Home 后能回来
+        createContentIntent(requestId)?.let { intent ->
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            val pi = PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            builder.setContentIntent(pi)
+        }
+        return builder.build()
+    }
 }

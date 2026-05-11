@@ -209,6 +209,33 @@ class NavigatingViewModel @Inject constructor(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
+    /**
+     * 返回键触发的中断：服务端状态机限制不同。
+     * - ACCEPTED：志愿者只能 abandon（放弃接单，订单回 MATCHING 或第3次直接 ABORTED）
+     * - EN_ROUTE：志愿者可以 cancel（取消订单 → ABORTED）
+     * - 其他状态：不应到达此分支（UI 层应已拦截）
+     */
+    fun interruptByUser() {
+        val status = _uiState.value.request?.status ?: return
+        viewModelScope.launch {
+            val result = when (status) {
+                RunRequestStatus.ACCEPTED -> runRequestRepository.abandon(requestId)
+                RunRequestStatus.EN_ROUTE -> runRequestRepository.cancel(requestId, reason = "志愿者主动取消")
+                else                      -> return@launch
+            }
+            result
+                .onSuccess {
+                    stopLocationService()
+                    ttsManager.speakAndWait("已取消接单", TtsManager.Priority.HIGH)
+                    _navEvent.emit(NavigatingNavEvent.ToHome)
+                }
+                .onFailure { e ->
+                    Timber.e(e, "NavigatingVM: interruptByUser failed")
+                    _uiState.update { it.copy(errorMessage = "取消失败：${e.message ?: "请重试"}") }
+                }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         stopLocationService()

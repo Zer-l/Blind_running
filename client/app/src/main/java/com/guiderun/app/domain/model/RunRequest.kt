@@ -25,6 +25,12 @@ data class RunRequest(
     val runEndedAt: Long?,
     val closedAt: Long?,
     val volunteerPosition: GeoPosition? = null,
+    /**
+     * 当前用户是否已对该订单提交过评价。
+     * 仅在带身份上下文的接口（getMyRequests / getById）由服务端填充，其他场景为 null。
+     * UI 据此显示历史页"补评"按钮：仅当 status.isCompleted() && myReviewSubmitted == false 时显示。
+     */
+    val myReviewSubmitted: Boolean? = null,
 )
 
 data class GeoPosition(val lat: Double, val lng: Double, val updatedAt: Long)
@@ -73,8 +79,19 @@ enum class RunRequestStatus {
     CREATED,
     MATCHING, ACCEPTED, EN_ROUTE, MET, RUNNING, FINISHED, CLOSED, ABORTED;
 
-    fun isTerminal() = this == CLOSED || this == ABORTED
+    /**
+     * 终态包含 FINISHED：跑步结束即视为订单完成。
+     * 评价是独立行为，不再影响订单"活跃"状态，不再阻塞首页横幅 / 冷启动恢复。
+     * 服务端 FINISHED→CLOSED 仍由 24h 定时器 / 双方评价完成触发，用于落 totalRuns/rating 统计。
+     */
+    fun isTerminal() = this == CLOSED || this == ABORTED || this == FINISHED
     fun isActive() = !isTerminal()
+
+    /**
+     * 成功完成（用于历史页的"已完成"分类与累计统计），区别于 ABORTED 异常终止。
+     * FINISHED 视为已完成 —— 只是双方还未评价完，等 24h 定时器或双方评价完成才推进 CLOSED。
+     */
+    fun isCompleted() = this == CLOSED || this == FINISHED
 }
 
 enum class AbortBy { BLIND, VOLUNTEER, SYSTEM, ADMIN }

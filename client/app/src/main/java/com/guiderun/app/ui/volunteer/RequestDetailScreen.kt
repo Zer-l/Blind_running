@@ -51,6 +51,7 @@ fun RequestDetailScreen(
     viewModel: RequestDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val activeRequest by viewModel.activeRequest.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -87,6 +88,10 @@ fun RequestDetailScreen(
                 uiState.request != null -> RequestDetailContent(
                     request = uiState.request!!,
                     isAccepting = uiState.isAccepting,
+                    // "已有别的活跃订单"判定：排除当前这单
+                    // —— 否则刚 accept 成功 trackActive 写入 activeRequest 到 navEvent 跳转之间
+                    // 会有 1-2 帧把"自己刚接的单"误显示成"被别的订单挡住"
+                    hasActiveOrder = activeRequest != null && activeRequest?.id != uiState.request!!.id,
                     onAccept = viewModel::onAccept,
                 )
             }
@@ -98,6 +103,7 @@ fun RequestDetailScreen(
 private fun RequestDetailContent(
     request: RunRequest,
     isAccepting: Boolean,
+    hasActiveOrder: Boolean,
     onAccept: () -> Unit,
 ) {
     Column(
@@ -148,10 +154,28 @@ private fun RequestDetailContent(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // 接单按钮
+        // 有进行中订单时的提示横幅
+        if (hasActiveOrder) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                ),
+            ) {
+                Text(
+                    text = stringResource(R.string.request_detail_blocked_by_active),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
+        // 接单按钮（有进行中订单或正在接单中时禁用）
         Button(
             onClick = onAccept,
-            enabled = !isAccepting,
+            enabled = !isAccepting && !hasActiveOrder,
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
         ) {
             if (isAccepting) {

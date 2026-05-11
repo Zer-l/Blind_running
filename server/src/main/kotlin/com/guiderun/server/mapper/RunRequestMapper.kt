@@ -5,7 +5,11 @@ import com.guiderun.server.dto.run.*
 import com.guiderun.server.entity.RunRequestEntity
 import com.guiderun.server.entity.UserEntity
 
-fun RunRequestEntity.toResponse(blindRunner: UserEntity?, volunteer: UserEntity?): RunRequestResponse {
+fun RunRequestEntity.toResponse(
+    blindRunner: UserEntity?,
+    volunteer: UserEntity?,
+    myReviewSubmitted: Boolean? = null,
+): RunRequestResponse {
     // 仅在双方已匹配（ACCEPTED 及之后的非终止状态）时下发对方手机号，
     // 用于跑前/跑中拨打电话；MATCHING/CLOSED/ABORTED 不下发，避免泄露隐私。
     val includePhone = status in PEER_PHONE_VISIBLE_STATUSES
@@ -36,6 +40,7 @@ fun RunRequestEntity.toResponse(blindRunner: UserEntity?, volunteer: UserEntity?
         volunteerPosition = if (volunteerLat != null && volunteerLng != null)
             GeoPositionDto(volunteerLat!!, volunteerLng!!, volunteerPositionUpdatedAt?.toEpochMilli() ?: 0L)
         else null,
+        myReviewSubmitted = myReviewSubmitted,
     )
 }
 

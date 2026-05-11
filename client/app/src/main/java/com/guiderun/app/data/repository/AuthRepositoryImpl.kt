@@ -4,6 +4,7 @@ import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.data.local.dao.UserDao
 import com.guiderun.app.data.mapper.toDomain
 import com.guiderun.app.data.mapper.toEntity
+import com.guiderun.app.data.remote.WebSocketManager
 import com.guiderun.app.data.remote.api.AuthApi
 import com.guiderun.app.data.remote.dto.LoginRequestDto
 import com.guiderun.app.data.remote.dto.SendSmsRequestDto
@@ -18,6 +19,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val authApi: AuthApi,
     private val userPreferences: UserPreferences,
     private val userDao: UserDao,
+    private val webSocketManager: WebSocketManager,
 ) : AuthRepository {
 
     override suspend fun sendSms(phone: String): Result<Unit> = runCatching {
@@ -37,6 +39,9 @@ class AuthRepositoryImpl @Inject constructor(
         userPreferences.saveUserSession(user.id, activeRole)
         userDao.upsert(user.toEntity())
 
+        // 登录成功后立刻连接 WebSocket，保证后续订单状态变化能实时同步到所有页面
+        webSocketManager.connect(data.accessToken)
+
         val provisioningStatus = runCatching {
             ProvisioningStatus.valueOf(data.provisioningStatus)
         }.getOrDefault(ProvisioningStatus.ACTIVE)
@@ -50,6 +55,7 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun logout(): Result<Unit> = runCatching {
         runCatching { authApi.logout() } // best-effort
+        webSocketManager.disconnect()
         userPreferences.clearAll()
         userDao.deleteAll()
     }

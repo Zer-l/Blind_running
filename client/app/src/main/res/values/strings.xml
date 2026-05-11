@@ -36,6 +36,7 @@
     <string name="home_current_role">当前角色：%1$s</string>
     <string name="home_btn_start_running">开始跑步</string>
     <string name="home_btn_start_running_desc">发起跑步请求，寻找志愿者</string>
+    <string name="home_btn_disabled_has_active">您有进行中订单，请点击上方横幅恢复</string>
     <string name="home_btn_settings">个人设置</string>
     <string name="home_btn_settings_desc">查看和修改个人资料</string>
     <string name="home_btn_history">跑步历史</string>
@@ -131,6 +132,9 @@
     <string name="request_detail_duration">预计时长：%1$d 分钟</string>
     <string name="request_detail_notes">备注：%1$s</string>
     <string name="request_detail_btn_accept">接受陪跑</string>
+    <string name="request_detail_blocked_by_active">您已有进行中的陪跑订单，请先完成当前订单后再接新单</string>
+    <string name="blind_history_btn_review">补充评价</string>
+    <string name="volunteer_history_btn_review">补充评价</string>
 
     <!-- 前往集合点 -->
     <string name="navigating_title">前往集合点</string>
@@ -259,6 +263,34 @@
     <string name="stats_total_duration">总时长：%1$s</string>
     <string name="stats_current_month_runs">本月跑步：%1$d 次</string>
     <string name="stats_average_duration">平均时长：%1$d 分钟</string>
+
+    <!-- 订单中断确认（返回键拦截） -->
+    <string name="interrupt_title_leave_create">放弃创建？</string>
+    <string name="interrupt_message_leave_create">尚未发起跑步请求，确定离开吗？</string>
+    <string name="interrupt_title_leave_waiting">取消跑步请求？</string>
+    <string name="interrupt_message_leave_waiting">订单还在匹配中，离开后将取消请求。</string>
+    <string name="interrupt_title_leave_matched">取消订单？</string>
+    <string name="interrupt_message_leave_matched">志愿者已接单，取消会通知对方放弃任务。</string>
+    <string name="interrupt_title_leave_met">已到达汇合点</string>
+    <string name="interrupt_message_leave_met">现在不能取消订单，请长按屏幕确认汇合开始跑步。</string>
+    <string name="interrupt_title_leave_running">跑步中不能退出</string>
+    <string name="interrupt_message_leave_running">长按屏幕 3 秒结束跑步，或选择最小化保留进度。</string>
+    <string name="interrupt_title_leave_review">未完成评价</string>
+    <string name="interrupt_message_leave_review">未提交评价，确定离开吗？</string>
+    <string name="interrupt_btn_discard">放弃创建</string>
+    <string name="interrupt_btn_cancel_order">取消订单</string>
+    <string name="interrupt_btn_leave">确定离开</string>
+    <string name="interrupt_btn_stay">留在此页</string>
+    <string name="interrupt_btn_back_home">返回首页（订单后台继续）</string>
+    <string name="interrupt_btn_continue_review">继续评价</string>
+
+    <!-- 中断对话框 message 后缀：提示订单可从首页横幅恢复 -->
+    <string name="interrupt_hint_resume">您可以从首页横幅或通知栏随时找回。</string>
+
+    <!-- 进行中订单横幅（首页） -->
+    <string name="active_order_banner_title">您有进行中的订单</string>
+    <string name="active_order_banner_action">点击恢复</string>
+    <string name="active_order_banner_content_desc">您有进行中的订单：%1$s，双击恢复</string>
 
     <!-- 语音输入（系统 ASR） -->
     <string name="voice_input_content_description">语音输入</string>

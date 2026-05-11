@@ -18,6 +18,9 @@ interface RunRequestApi {
         @Query("radius") radius: Double,
     ): ApiResponse<ListResponseDto<AvailableRequestItemDto>>
 
+    @GET("api/v1/run-requests/active")
+    suspend fun getActive(@Query("role") role: String): ApiResponse<RunRequestResponseDto>
+
     @GET("api/v1/run-requests/{id}")
     suspend fun getById(@Path("id") id: String): ApiResponse<RunRequestResponseDto>
 
@@ -26,6 +29,7 @@ interface RunRequestApi {
         @Query("role") role: String,
         @Query("page") page: Int,
         @Query("size") size: Int = 20,
+        @Query("status") status: String? = null,
     ): ApiResponse<ListResponseDto<RunRequestResponseDto>>
 
     @POST("api/v1/run-requests/{id}/accept")

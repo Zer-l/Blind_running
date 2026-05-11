@@ -19,6 +19,7 @@ import com.guiderun.app.util.Ema
 import com.guiderun.app.util.PaceCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -83,6 +84,8 @@ class BlindRunningViewModel @Inject constructor(
     private var lastAnnouncedKm: Int = 0
     /** 上次"每 5 分钟整点"播报的"分钟"刻度，避免同一分钟反复触发。 */
     private var lastAnnouncedMinuteBucket: Int = 0
+    /** 上次观测到的暂停状态，用于检测切换并触发 TTS+震动反馈。 */
+    private var lastIsPaused: Boolean? = null
     private val paceEma = Ema(alpha = 0.3)
 
     init {
@@ -130,6 +133,8 @@ class BlindRunningViewModel @Inject constructor(
             if (userId.isEmpty()) return@launch
             sessionStatsDao.observe(requestId, userId).collect { stats ->
                 if (stats != null) {
+                    // 暂停状态切换：朗读 + 震动，视障用户无屏幕反馈也能感知
+                    announcePauseToggleIfChanged(stats.isPaused)
                     // peer metrics 超过 8 秒未更新时使用本地数据作为 fallback
                     val now = System.currentTimeMillis()
                     if (now - lastPeerMetricsTimeMs > 8_000L) {
@@ -148,6 +153,20 @@ class BlindRunningViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    /** 检测 isPaused 翻转：进入暂停→警告震动+TTS "已暂停"；恢复→确认震动+TTS "继续跑步"。 */
+    private fun announcePauseToggleIfChanged(nowPaused: Boolean) {
+        val prev = lastIsPaused
+        lastIsPaused = nowPaused
+        if (prev == null || prev == nowPaused) return
+        if (nowPaused) {
+            hapticFeedback.warning()
+            suppressAndSpeak("已暂停")
+        } else {
+            hapticFeedback.confirm()
+            suppressAndSpeak("继续跑步")
         }
     }
 
@@ -233,7 +252,12 @@ class BlindRunningViewModel @Inject constructor(
             wsManager.endRunRequested.collect { msg ->
                 if (msg.requestId != requestId) return@collect
                 _uiState.update { it.copy(endRequestedByVolunteer = true) }
+                // 跑步中手机多在臂带，单次双脉冲易被忽略；连续震两轮放大感知
                 hapticFeedback.warning()
+                viewModelScope.launch {
+                    delay(700)
+                    hapticFeedback.warning()
+                }
                 suppressAndSpeak(
                     "志愿者申请结束跑步，长按屏幕3秒确认结束，或继续跑步忽略",
                     TtsManager.Priority.HIGH,

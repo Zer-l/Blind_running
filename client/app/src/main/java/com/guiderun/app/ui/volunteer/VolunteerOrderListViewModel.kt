@@ -5,37 +5,44 @@ import androidx.lifecycle.viewModelScope
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.data.remote.WebSocketManager
 import com.guiderun.app.domain.model.AvailableRunRequest
+import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.repository.LocationProvider
 import com.guiderun.app.domain.repository.RunRequestRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class VolunteerHomeUiState(
+data class VolunteerOrderListUiState(
     val isOnline: Boolean = true,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val availableRequests: List<AvailableRunRequest> = emptyList(),
     val errorMessage: String? = null,
-    val hasActiveOrder: Boolean = false,
     val selectedRadiusMeters: Double = 3000.0,
 )
 
 @HiltViewModel
-class VolunteerHomeViewModel @Inject constructor(
+class VolunteerOrderListViewModel @Inject constructor(
     private val runRequestRepository: RunRequestRepository,
     private val locationProvider: LocationProvider,
     private val userPreferences: UserPreferences,
     private val wsManager: WebSocketManager,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(VolunteerHomeUiState())
+    private val _uiState = MutableStateFlow(VolunteerOrderListUiState())
     val uiState = _uiState.asStateFlow()
+
+    /** 进行中的订单（订阅 Repository 单一数据源）。null 时不显示横幅。 */
+    val activeRequest: StateFlow<RunRequest?> = runRequestRepository.activeRequest
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private var locationJob: Job? = null
 
@@ -47,18 +54,9 @@ class VolunteerHomeViewModel @Inject constructor(
         viewModelScope.launch {
             wsManager.reconnected.collect { loadAvailableRequests() }
         }
-        checkActiveOrder()
-    }
-
-    private fun checkActiveOrder() {
+        // 冷启动 / 重新进入时主动刷新一次活跃订单（Repository 内部维护 StateFlow）
         viewModelScope.launch {
-            runRequestRepository.getMyRequests("VOLUNTEER")
-                .onSuccess { requests ->
-                    _uiState.update { it.copy(hasActiveOrder = requests.any { r -> r.status.isActive() }) }
-                }
-                .onFailure {
-                    // 查询失败不阻塞流程，保持当前状态
-                }
+            runRequestRepository.refreshActiveRequest("VOLUNTEER")
         }
     }
 
@@ -134,19 +132,14 @@ class VolunteerHomeViewModel @Inject constructor(
     fun onToggleOnline(wantOnline: Boolean) {
         if (wantOnline) {
             _uiState.update { it.copy(isOnline = true) }
-            checkActiveOrder()
+            viewModelScope.launch { runRequestRepository.refreshActiveRequest("VOLUNTEER") }
             loadAvailableRequests()
         } else {
             locationJob?.cancel()
             _uiState.update { it.copy(isOnline = false, availableRequests = emptyList()) }
-            // 异步检查是否有活跃订单，有则提醒但不阻止下线
-            viewModelScope.launch {
-                runRequestRepository.getMyRequests("VOLUNTEER")
-                    .onSuccess { requests ->
-                        if (requests.any { it.status.isActive() }) {
-                            _uiState.update { it.copy(hasActiveOrder = true, errorMessage = "你有进行中的陪跑订单，上线后可继续处理") }
-                        }
-                    }
+            // 下线时若有活跃订单，提示用户但不阻止
+            if (activeRequest.value != null) {
+                _uiState.update { it.copy(errorMessage = "你有进行中的陪跑订单，上线后可继续处理") }
             }
         }
     }

@@ -1,6 +1,8 @@
 package com.guiderun.app.data.repository
 
+import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.data.mapper.toDomain
+import com.guiderun.app.data.remote.WebSocketManager
 import com.guiderun.app.data.remote.api.RunRequestApi
 import com.guiderun.app.data.remote.dto.*
 import com.guiderun.app.domain.exception.AlreadyReviewedException
@@ -13,6 +15,13 @@ import com.guiderun.app.domain.exception.RequestNotFoundException
 import com.guiderun.app.domain.exception.UnknownApiException
 import com.guiderun.app.domain.model.*
 import com.guiderun.app.domain.repository.RunRequestRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 import java.io.IOException
@@ -23,7 +32,75 @@ import javax.inject.Singleton
 class RunRequestRepositoryImpl @Inject constructor(
     private val api: RunRequestApi,
     private val json: Json,
+    private val userPreferences: UserPreferences,
+    private val webSocketManager: WebSocketManager,
 ) : RunRequestRepository {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val _activeRequest = MutableStateFlow<RunRequest?>(null)
+    override val activeRequest: StateFlow<RunRequest?> = _activeRequest.asStateFlow()
+
+    init {
+        // WS 重连后若有活跃订单，主动同步一次最新状态
+        scope.launch {
+            webSocketManager.reconnected.collect {
+                userPreferences.getActiveRequestId()?.let { id ->
+                    runCatching { api.getById(id).requireData().toDomain() }
+                        .onSuccess { trackActive(it) }
+                }
+            }
+        }
+        // WS 推送状态变化时，若是当前活跃订单，刷新本地缓存
+        scope.launch {
+            webSocketManager.messages.collect { msg ->
+                val activeId = userPreferences.getActiveRequestId() ?: return@collect
+                if (msg.requestId == activeId) {
+                    runCatching { api.getById(activeId).requireData().toDomain() }
+                        .onSuccess { trackActive(it) }
+                }
+            }
+        }
+    }
+
+    private suspend fun trackActive(req: RunRequest) {
+        // 仅当"我"是该订单的参与者（视障发起人或接单志愿者）时才写入 active 缓存。
+        // 否则志愿者查看陌生人 MATCHING 订单详情时会被误标为"自己有活跃订单"，导致接单按钮被禁。
+        val myUserId = userPreferences.getCurrentUserId()
+        val isMine = myUserId != null &&
+            (req.blindRunner?.id == myUserId || req.volunteer?.id == myUserId)
+        if (!isMine) return
+
+        if (req.status.isActive()) {
+            userPreferences.saveActiveRequestId(req.id)
+            _activeRequest.value = req
+        } else {
+            // 终态：仅当本地存的就是这条订单时才清理，避免误清其他订单的痕迹
+            val storedId = userPreferences.getActiveRequestId()
+            if (storedId == null || storedId == req.id) {
+                userPreferences.clearActiveRequestId()
+                _activeRequest.value = null
+            }
+        }
+    }
+
+    override suspend fun refreshActiveRequest(role: String): Result<RunRequest?> = execute {
+        // 优先用本地保存的 id 拉取，命中则与状态同步；失败则降级用 /active 接口兜底
+        val storedId = userPreferences.getActiveRequestId()
+        val fromStored = storedId?.let {
+            runCatching { api.getById(it).requireData().toDomain() }.getOrNull()
+        }
+        val fresh = fromStored ?: api.getActive(role).data?.toDomain()
+        if (fresh != null) {
+            trackActive(fresh)
+            if (fresh.status.isActive()) fresh else null
+        } else {
+            // 服务端无活跃订单：清理本地脏数据
+            userPreferences.clearActiveRequestId()
+            _activeRequest.value = null
+            null
+        }
+    }
 
     override suspend fun createRunRequest(params: CreateRunRequestParams, idempotencyKey: String?): Result<RunRequest> =
         execute(idempotencyKey = idempotencyKey) {
@@ -36,11 +113,19 @@ class RunRequestRepositoryImpl @Inject constructor(
                     notes = params.notes,
                 ),
                 idempotencyKey = idempotencyKey,
-            ).requireData().toDomain()
+            ).requireData().toDomain().also { trackActive(it) }
         }
 
     override suspend fun getRunRequest(id: String): Result<RunRequest> =
-        execute { api.getById(id).requireData().toDomain() }
+        execute {
+            api.getById(id).requireData().toDomain().also { req ->
+                // 仅当查询的是当前活跃订单或本地无活跃订单且查询结果是活跃态时同步
+                val storedId = userPreferences.getActiveRequestId()
+                if (storedId == req.id || (storedId == null && req.status.isActive())) {
+                    trackActive(req)
+                }
+            }
+        }
 
     override suspend fun getMyRequests(role: String, page: Int): Result<List<RunRequest>> =
         execute { api.getMyRequests(role, page).requireData().items.map { it.toDomain() } }
@@ -49,31 +134,34 @@ class RunRequestRepositoryImpl @Inject constructor(
         execute { api.getAvailable(lat, lng, radiusMeters).requireData().items.map { it.toDomain() } }
 
     override suspend fun accept(id: String): Result<RunRequest> =
-        execute { api.accept(id).requireData().toDomain() }
+        execute { api.accept(id).requireData().toDomain().also { trackActive(it) } }
 
     override suspend fun releaseVolunteer(id: String): Result<RunRequest> =
-        execute { api.releaseVolunteer(id).requireData().toDomain() }
+        execute { api.releaseVolunteer(id).requireData().toDomain().also { trackActive(it) } }
 
     override suspend fun depart(id: String): Result<RunRequest> =
-        execute { api.depart(id).requireData().toDomain() }
+        execute { api.depart(id).requireData().toDomain().also { trackActive(it) } }
 
     override suspend fun confirmMet(id: String): Result<RunRequest> =
-        execute { api.confirmMet(id).requireData().toDomain() }
+        execute { api.confirmMet(id).requireData().toDomain().also { trackActive(it) } }
 
     override suspend fun startRun(id: String): Result<RunRequest> =
-        execute { api.startRun(id).requireData().toDomain() }
+        execute { api.startRun(id).requireData().toDomain().also { trackActive(it) } }
 
     override suspend fun endRun(id: String, actualDistanceMeters: Int?, actualDurationSeconds: Int?, avgPaceSeconds: Int?): Result<RunRequest> =
-        execute { api.endRun(id, EndRunRequestDto(actualDistanceMeters, actualDurationSeconds, avgPaceSeconds)).requireData().toDomain() }
+        execute {
+            api.endRun(id, EndRunRequestDto(actualDistanceMeters, actualDurationSeconds, avgPaceSeconds))
+                .requireData().toDomain().also { trackActive(it) }
+        }
 
     override suspend fun requestEndRun(id: String): Result<RunRequest> =
-        execute { api.requestEndRun(id).requireData().toDomain() }
+        execute { api.requestEndRun(id).requireData().toDomain().also { trackActive(it) } }
 
     override suspend fun cancel(id: String, reason: String?): Result<RunRequest> =
-        execute { api.cancel(id, CancelRequestDto(reason)).requireData().toDomain() }
+        execute { api.cancel(id, CancelRequestDto(reason)).requireData().toDomain().also { trackActive(it) } }
 
     override suspend fun abandon(id: String): Result<RunRequest> =
-        execute { api.abandon(id).requireData().toDomain() }
+        execute { api.abandon(id).requireData().toDomain().also { trackActive(it) } }
 
     override suspend fun emergency(id: String, reason: String?, lat: Double?, lng: Double?): Result<RunRequest> =
         execute {
@@ -84,7 +172,7 @@ class RunRequestRepositoryImpl @Inject constructor(
                     timestamp = System.currentTimeMillis(),
                 )
             } else null
-            api.emergency(id, dto).requireData().toDomain()
+            api.emergency(id, dto).requireData().toDomain().also { trackActive(it) }
         }
 
     override suspend fun reportPosition(id: String, lat: Double, lng: Double): Result<Unit> =

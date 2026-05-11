@@ -1,8 +1,11 @@
 package com.guiderun.server.controller
 
+import com.guiderun.server.common.RunRequestStatus
 import com.guiderun.server.dto.ApiResponse
 import com.guiderun.server.dto.common.ListResponse
 import com.guiderun.server.dto.run.*
+import com.guiderun.server.exception.AppException
+import com.guiderun.server.exception.ErrorCode
 import com.guiderun.server.service.RunRequestService
 import com.guiderun.server.service.RunTrackService
 import jakarta.validation.Valid
@@ -33,6 +36,10 @@ class RunRequestController(
         @RequestParam(defaultValue = "3000") radius: Double,
     ) = ApiResponse.ok(ListResponse.of(service.getAvailable(currentUserId, lat, lng, minOf(radius, 10000.0))))
 
+    // 当前用户的活跃订单（用于客户端冷启动恢复），无活跃订单时 data=null
+    @GetMapping("/active")
+    fun active(@RequestParam role: String) = ApiResponse.ok(service.getActiveRequest(currentUserId, role))
+
     @GetMapping("/{id}")
     fun getById(@PathVariable id: String) = ApiResponse.ok(service.getById(id))
 
@@ -41,7 +48,20 @@ class RunRequestController(
         @RequestParam role: String,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
-    ) = ApiResponse.ok(ListResponse.of(service.getMyRequests(currentUserId, role, page)))
+        @RequestParam(required = false) status: String?,
+    ) = ApiResponse.ok(
+        ListResponse.of(
+            service.getMyRequests(currentUserId, role, page, parseStatuses(status))
+        )
+    )
+
+    private fun parseStatuses(raw: String?): Collection<RunRequestStatus>? {
+        if (raw.isNullOrBlank()) return null
+        return raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }.map {
+            runCatching { RunRequestStatus.valueOf(it.uppercase()) }
+                .getOrElse { throw AppException(ErrorCode.INVALID_PARAM, "无效的 status: $it") }
+        }
+    }
 
     @PostMapping("/{id}/accept")
     fun accept(@PathVariable id: String) = ApiResponse.ok(service.accept(currentUserId, id))

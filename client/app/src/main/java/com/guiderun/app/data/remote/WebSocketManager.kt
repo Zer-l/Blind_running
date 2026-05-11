@@ -73,6 +73,8 @@ class WebSocketManager @Inject constructor(private val json: Json) {
         .build()
 
     fun connect(token: String) {
+        // 幂等保护：同 token 且已连接/连接中时跳过，避免重复 openSocket 造成连接抖动
+        if (currentToken == token && _connectionState.value != WsConnectionState.DISCONNECTED) return
         isIntentionalDisconnect = false
         currentToken = token
         openSocket(token, isReconnect = false)

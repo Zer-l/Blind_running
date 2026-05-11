@@ -52,33 +52,33 @@ class BlindStatsViewModel @Inject constructor(
     }
 
     private fun calculateStats(requests: List<RunRequest>) {
-        val closed = requests.filter { it.status == RunRequestStatus.CLOSED }
+        // "已完成"包含 FINISHED + CLOSED，与历史页对齐
+        val completed = requests.filter { it.status.isCompleted() }
 
-        val totalDistance: Long = closed.sumOf { (it.actualDistanceMeters ?: 0).toLong() }
-        val totalDurationSeconds: Int = closed.sumOf { it.actualDurationSeconds ?: 0 }
+        val totalDistance: Long = completed.sumOf { (it.actualDistanceMeters ?: 0).toLong() }
+        val totalDurationSeconds: Int = completed.sumOf { it.actualDurationSeconds ?: 0 }
         val totalDurationMinutes: Int = totalDurationSeconds / 60
 
-        val averageDuration = if (closed.isNotEmpty()) {
-            totalDurationMinutes / closed.size
+        val averageDuration = if (completed.isNotEmpty()) {
+            totalDurationMinutes / completed.size
         } else {
             null
         }
 
-        // 计算本月跑步次数
+        // 本月跑步次数：FINISHED 没有 closedAt，用 runEndedAt 兜底（跑步结束时间）
         val calendar = Calendar.getInstance()
         val currentMonth = calendar.get(Calendar.MONTH)
         val currentYear = calendar.get(Calendar.YEAR)
 
-        val currentMonthRuns = closed.count { request ->
-            request.closedAt?.let { closedAt ->
-                calendar.timeInMillis = closedAt.toLong()
-                calendar.get(Calendar.MONTH) == currentMonth &&
-                    calendar.get(Calendar.YEAR) == currentYear
-            } ?: false
+        val currentMonthRuns = completed.count { request ->
+            val timestamp = request.closedAt ?: request.runEndedAt ?: return@count false
+            calendar.timeInMillis = timestamp.toLong()
+            calendar.get(Calendar.MONTH) == currentMonth &&
+                calendar.get(Calendar.YEAR) == currentYear
         }
 
         _uiState.value = _uiState.value.copy(
-            totalRuns = closed.size,
+            totalRuns = completed.size,
             totalDistanceMeters = totalDistance,
             totalDurationMinutes = totalDurationMinutes,
             currentMonthRuns = currentMonthRuns,

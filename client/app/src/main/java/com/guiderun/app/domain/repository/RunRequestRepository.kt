@@ -7,8 +7,15 @@ import com.guiderun.app.domain.model.Review
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunTrack
 import com.guiderun.app.domain.model.TrackPoint
+import kotlinx.coroutines.flow.StateFlow
 
 interface RunRequestRepository {
+
+    /** 当前用户的活跃订单（订单进入活跃态时被写入，进入终态时清空）。 */
+    val activeRequest: StateFlow<RunRequest?>
+
+    /** 从服务端拉取一次活跃订单并刷新 [activeRequest]；失败时不修改本地状态。 */
+    suspend fun refreshActiveRequest(role: String): Result<RunRequest?>
 
     suspend fun createRunRequest(params: CreateRunRequestParams, idempotencyKey: String? = null): Result<RunRequest>
 

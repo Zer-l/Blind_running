@@ -6,6 +6,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.ui.auth.LoginScreen
 import com.guiderun.app.ui.auth.RoleSelectScreen
 import com.guiderun.app.ui.home.HomeScreen
@@ -15,7 +16,7 @@ import com.guiderun.app.ui.volunteer.RequestDetailScreen
 import com.guiderun.app.ui.volunteer.TrackPlaybackScreen
 import com.guiderun.app.ui.volunteer.VolunteerHistoryScreen
 import com.guiderun.app.ui.profile.VolunteerProfileEditScreen
-import com.guiderun.app.ui.volunteer.VolunteerHomeScreen
+import com.guiderun.app.ui.volunteer.VolunteerOrderListScreen
 import com.guiderun.app.ui.volunteer.VolunteerReviewScreen
 import com.guiderun.app.ui.volunteer.VolunteerRunningScreen
 
@@ -26,6 +27,7 @@ fun AppNavGraph(
     onEnterBlindFlow: () -> Unit,
     onEnterBlindSettings: () -> Unit = {},
     onEnterBlindHistory: () -> Unit = {},
+    onResumeActiveOrder: (RunRequest) -> Unit = {},
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
 
@@ -65,7 +67,7 @@ fun AppNavGraph(
                 onEnterBlindSettings = onEnterBlindSettings,
                 onEnterBlindHistory = onEnterBlindHistory,
                 onEnterVolunteerFlow = {
-                    navController.navigate(Screen.VolunteerHome.route)
+                    navController.navigate(Screen.OrderList.route)
                 },
                 onNavigateToProfile = {
                     navController.navigate(Screen.VolunteerProfileEdit.route)
@@ -73,14 +75,16 @@ fun AppNavGraph(
                 onNavigateToHistory = {
                     navController.navigate(Screen.VolunteerHistory.route)
                 },
+                onResumeActiveOrder = onResumeActiveOrder,
             )
         }
 
-        composable(Screen.VolunteerHome.route) {
-            VolunteerHomeScreen(
+        composable(Screen.OrderList.route) {
+            VolunteerOrderListScreen(
                 onNavigateToDetail = { requestId ->
                     navController.navigate(Screen.RequestDetail.createRoute(requestId))
                 },
+                onResumeActiveOrder = onResumeActiveOrder,
                 onBack = { navController.popBackStack() },
             )
         }
@@ -96,6 +100,9 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 onNavigateToTrackPlayback = { requestId ->
                     navController.navigate(Screen.TrackPlayback.createRoute(requestId))
+                },
+                onNavigateToReview = { requestId ->
+                    navController.navigate(Screen.VolunteerReview.createRoute(requestId))
                 },
             )
         }
@@ -125,8 +132,8 @@ fun AppNavGraph(
                     }
                 },
                 onNavigateToHome = {
-                    navController.navigate(Screen.VolunteerHome.route) {
-                        popUpTo(Screen.VolunteerHome.route) { inclusive = true }
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 },
             )
@@ -138,8 +145,8 @@ fun AppNavGraph(
         ) {
             MetScreen(
                 onNavigateToHome = {
-                    navController.navigate(Screen.VolunteerHome.route) {
-                        popUpTo(Screen.VolunteerHome.route) { inclusive = true }
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 },
                 onNavigateToRunning = { requestId ->
@@ -162,8 +169,8 @@ fun AppNavGraph(
                     }
                 },
                 onNavigateToHome = {
-                    navController.navigate(Screen.VolunteerHome.route) {
-                        popUpTo(Screen.VolunteerHome.route) { inclusive = true }
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 },
             )
@@ -176,8 +183,8 @@ fun AppNavGraph(
             VolunteerReviewScreen(
                 requestId = it.arguments?.getString("requestId") ?: "",
                 onNavigateToHome = {
-                    navController.navigate(Screen.VolunteerHome.route) {
-                        popUpTo(Screen.VolunteerHome.route) { inclusive = true }
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 },
             )

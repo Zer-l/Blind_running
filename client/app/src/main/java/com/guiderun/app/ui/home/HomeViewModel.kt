@@ -4,12 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.data.local.UserPreferences
+import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.UserRole
 import com.guiderun.app.domain.repository.AuthRepository
+import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,11 +33,16 @@ class HomeViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val userPreferences: UserPreferences,
-    private val ttsManager: TtsManager,              // ★ 注入
+    private val ttsManager: TtsManager,
+    runRequestRepository: RunRequestRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
+
+    /** 当前用户的进行中订单。null 时不显示横幅。 */
+    val activeRequest: StateFlow<RunRequest?> = runRequestRepository.activeRequest
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     init {
         loadUser()

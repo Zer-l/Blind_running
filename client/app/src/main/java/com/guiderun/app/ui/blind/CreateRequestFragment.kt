@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.bundleOf
 import androidx.core.widget.doAfterTextChanged
@@ -19,6 +20,7 @@ import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.SpeechRecognizerManager
 import com.guiderun.app.databinding.FragmentCreateRequestBinding
+import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.AppPermissions
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PermissionHelper
@@ -70,6 +72,7 @@ class CreateRequestFragment : Fragment() {
         setupDurationToggle()
         setupListeners()
         setupEditResultListener()
+        setupBackPressInterception()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -77,6 +80,28 @@ class CreateRequestFragment : Fragment() {
                 launch { collectNavEvents() }
             }
         }
+    }
+
+    /**
+     * 返回键拦截：CreateRequest 是订单流程入口，未提交时返回会丢失草稿。
+     * 弹「放弃创建/留在此页」对话框，确认放弃才退出 Activity。
+     */
+    private fun setupBackPressInterception() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    showInterruptDialog(
+                        activity = requireActivity(),
+                        title = getString(R.string.interrupt_title_leave_create),
+                        message = getString(R.string.interrupt_message_leave_create),
+                        cancelLabel = getString(R.string.interrupt_btn_discard),
+                        onCancel = { requireActivity().finish() },
+                        stayLabel = getString(R.string.interrupt_btn_stay),
+                    )
+                }
+            },
+        )
     }
 
     private fun setupDurationToggle() {

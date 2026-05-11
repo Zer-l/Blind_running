@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -14,6 +15,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.databinding.FragmentWaitingMatchBinding
+import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
@@ -42,6 +44,7 @@ class WaitingMatchFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         EdgeToEdgeHelper.applyInsets(view)
+        setupBackPressInterception()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -49,6 +52,31 @@ class WaitingMatchFragment : Fragment() {
                 launch { collectNavEvents() }
             }
         }
+    }
+
+    /**
+     * 返回键：弹「取消订单/留在此页/最小化」对话框。
+     * 「取消订单」复用现有长按取消逻辑（5 秒倒数 + TTS），保持一致性。
+     */
+    private fun setupBackPressInterception() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    showInterruptDialog(
+                        activity = requireActivity(),
+                        title = getString(R.string.interrupt_title_leave_waiting),
+                        message = getString(R.string.interrupt_message_leave_waiting)
+                            + "\n" + getString(R.string.interrupt_hint_resume),
+                        cancelLabel = getString(R.string.interrupt_btn_cancel_order),
+                        onCancel = { viewModel.onCancelPressed() },
+                        stayLabel = getString(R.string.interrupt_btn_stay),
+                        homeLabel = getString(R.string.interrupt_btn_back_home),
+                        onHome = { (activity as? BlindActivity)?.navigateToHome() },
+                    )
+                }
+            },
+        )
     }
 
     private fun onGestureEvent(event: MotionEvent) {

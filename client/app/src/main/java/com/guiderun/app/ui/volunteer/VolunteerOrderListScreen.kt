@@ -22,7 +22,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SearchOff
@@ -55,6 +57,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -63,16 +69,20 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.domain.model.AvailableRunRequest
+import com.guiderun.app.domain.model.RunRequest
+import com.guiderun.app.domain.model.RunRequestStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VolunteerHomeScreen(
+fun VolunteerOrderListScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateToHistory: () -> Unit = {},
+    onResumeActiveOrder: (RunRequest) -> Unit = {},
     onBack: () -> Unit = {},
-    viewModel: VolunteerHomeViewModel = hiltViewModel(),
+    viewModel: VolunteerOrderListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val activeRequest by viewModel.activeRequest.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
@@ -131,6 +141,13 @@ fun VolunteerHomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            activeRequest?.let { request ->
+                ActiveOrderBanner(
+                    request = request,
+                    onClick = { onResumeActiveOrder(request) },
+                )
+            }
+
             // 在线状态卡片
             OnlineStatusCard(
                 isOnline = uiState.isOnline,
@@ -164,6 +181,68 @@ fun VolunteerHomeScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ActiveOrderBanner(
+    request: RunRequest,
+    onClick: () -> Unit,
+) {
+    val statusText = when (request.status) {
+        RunRequestStatus.MATCHING  -> "等待匹配中"
+        RunRequestStatus.ACCEPTED  -> "已接单"
+        RunRequestStatus.EN_ROUTE  -> "前往集合点"
+        RunRequestStatus.MET       -> "已汇合"
+        RunRequestStatus.RUNNING   -> "陪跑中"
+        RunRequestStatus.FINISHED  -> "等待评价"
+        else                       -> "进行中"
+    }
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .semantics {
+                role = Role.Button
+                contentDescription = "您有进行中的订单：$statusText，双击恢复"
+            },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.DirectionsRun,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(28.dp),
+            )
+            Spacer(Modifier.size(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "您有进行中的订单",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+                Text(
+                    text = "$statusText · 点击恢复",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f),
+                )
+            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
         }
     }
 }

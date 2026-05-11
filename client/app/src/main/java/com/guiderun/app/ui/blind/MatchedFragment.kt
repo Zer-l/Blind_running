@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -14,6 +15,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.databinding.FragmentMatchedBinding
+import com.guiderun.app.domain.model.RunRequestStatus
+import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
@@ -42,6 +45,7 @@ class MatchedFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         EdgeToEdgeHelper.applyInsets(view)
+        setupBackPressInterception()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -49,6 +53,39 @@ class MatchedFragment : Fragment() {
                 launch { collectNavEvents() }
             }
         }
+    }
+
+    /**
+     * 返回键：按当前状态分支显示对话框。
+     * - ACCEPTED/EN_ROUTE：可取消订单（服务端允许 cancel）
+     * - MET：服务端状态机不允许 cancel/abandon，仅显示「留在此页/最小化」
+     */
+    private fun setupBackPressInterception() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    val status = viewModel.uiState.value.currentStatus
+                    val isMet = status == RunRequestStatus.MET
+                    showInterruptDialog(
+                        activity = requireActivity(),
+                        title = getString(
+                            if (isMet) R.string.interrupt_title_leave_met
+                            else R.string.interrupt_title_leave_matched
+                        ),
+                        message = getString(
+                            if (isMet) R.string.interrupt_message_leave_met
+                            else R.string.interrupt_message_leave_matched
+                        ) + "\n" + getString(R.string.interrupt_hint_resume),
+                        cancelLabel = if (isMet) null else getString(R.string.interrupt_btn_cancel_order),
+                        onCancel = if (isMet) null else ({ viewModel.cancelByUser() }),
+                        stayLabel = getString(R.string.interrupt_btn_stay),
+                        homeLabel = getString(R.string.interrupt_btn_back_home),
+                        onHome = { (activity as? BlindActivity)?.navigateToHome() },
+                    )
+                }
+            },
+        )
     }
 
     private fun onGestureEvent(event: MotionEvent) {

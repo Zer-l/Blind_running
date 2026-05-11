@@ -10,7 +10,12 @@ enum class ProvisioningStatus { PENDING_ROLE, ACTIVE }
 
 enum class RunRequestStatus {
     CREATED, MATCHING, ACCEPTED, EN_ROUTE, MET, RUNNING, FINISHED, CLOSED, ABORTED;
-    fun isTerminal() = this == CLOSED || this == ABORTED
+
+    /**
+     * 终态包含 FINISHED：跑步结束即视为订单完成，评价独立于订单生命周期，
+     * 不再阻塞 getActiveRequest。FINISHED→CLOSED 仍由 24h 定时器 / 双方评价完成触发用于落统计字段。
+     */
+    fun isTerminal() = this == CLOSED || this == ABORTED || this == FINISHED
     fun isActive() = !isTerminal()
 }
 

@@ -1,5 +1,7 @@
 package com.guiderun.app.ui.volunteer
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,8 +22,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,6 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.ui.common.CallPeerButton
+import com.guiderun.app.ui.common.InterruptDialog
 import com.guiderun.app.ui.shared.map.GuideRunMap
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +47,26 @@ fun MetScreen(
     viewModel: MetViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showInterruptDialog by remember { mutableStateOf(false) }
+
+    // MET 状态服务端不允许 cancel/abandon，仅显示「留在此页/返回首页」
+    BackHandler { showInterruptDialog = true }
+
+    if (showInterruptDialog) {
+        InterruptDialog(
+            title = stringResource(R.string.interrupt_title_leave_met),
+            message = stringResource(R.string.interrupt_message_leave_met)
+                + "\n" + stringResource(R.string.interrupt_hint_resume),
+            onDismissRequest = { showInterruptDialog = false },
+            stayLabel = stringResource(R.string.interrupt_btn_stay),
+            onStay = { showInterruptDialog = false },
+            homeLabel = stringResource(R.string.interrupt_btn_back_home),
+            onHome = {
+                showInterruptDialog = false
+                onNavigateToHome()
+            },
+        )
+    }
 
     LaunchedEffect(Unit) {
         viewModel.navEvent.collect { event ->

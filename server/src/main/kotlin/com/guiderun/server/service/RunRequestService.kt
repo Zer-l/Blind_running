@@ -53,6 +53,8 @@ class RunRequestService(
     ): RunRequestResponse {
         val doCreate = {
             val user = loadAndRequireRole(blindUserId, UserRole.BLIND_RUNNER, "只有视障用户可以发起跑步请求")
+            // 已有进行中订单（MATCHING/ACCEPTED/EN_ROUTE/MET/RUNNING）则禁止重复发单
+            requireNoActiveOrderForBlind(blindUserId)
             val entity = RunRequestEntity(
                 blindRunnerId = blindUserId,
                 status = RunRequestStatus.MATCHING,
@@ -80,6 +82,8 @@ class RunRequestService(
         log.info("accept: requestId={}, volunteerId={}", requestId, volunteerId)
         val entity = loadRequest(requestId)
         loadAndRequireRole(volunteerId, UserRole.VOLUNTEER, "只有志愿者可以接单")
+        // 已有进行中订单（含本人接的或别人接的进行中订单）则禁止再接新单
+        requireNoActiveOrderForVolunteer(volunteerId)
         val toStatus = stateMachine.validate(entity.status, RunRequestAction.ACCEPT, TriggeredRole.VOLUNTEER)
         log.info("accept: {} → {}, requestId={}", entity.status, toStatus, requestId)
 
@@ -316,7 +320,9 @@ class RunRequestService(
     fun createReview(reviewerId: String, requestId: String, dto: CreateReviewDto) {
         val entity = loadRequest(requestId)
 
-        if (entity.status != RunRequestStatus.FINISHED)
+        // FINISHED 与 CLOSED 都允许补评：CLOSED 是另一方评后自动关单/24h 兜底关单，
+        // 仍允许该方在历史页发起补评（影响 rating 累加但不再触发状态推进）
+        if (entity.status != RunRequestStatus.FINISHED && entity.status != RunRequestStatus.CLOSED)
             throw AppException(ErrorCode.INVALID_STATE_TRANSITION, "只能在订单完成后评价", HttpStatus.BAD_REQUEST)
 
         val revieweeId = when (reviewerId) {
@@ -344,9 +350,19 @@ class RunRequestService(
         // 通知被评价方
         wsHandler.pushReviewReceived(requestId, revieweeId, dto.rating)
 
-        // 双方都已评价：触发 FINISHED → CLOSED 并更新统计字段
-        if (reviewRepo.countByRequestId(requestId) >= 2L) {
-            closeAndUpdateStats(entity)
+        when (entity.status) {
+            RunRequestStatus.FINISHED -> {
+                // 双方都已评价：触发 FINISHED → CLOSED 并更新冗余统计 + rating
+                if (reviewRepo.countByRequestId(requestId) >= 2L) {
+                    closeAndUpdateStats(entity)
+                }
+            }
+            RunRequestStatus.CLOSED -> {
+                // 补评：订单已被定时器 / 对方提前关单，仅增量累加被评方 rating，
+                // 不再走 closeAndUpdateStats（否则会重复累加 totalRuns/totalHoursMinutes）
+                accumulateRating(revieweeId, dto.rating)
+            }
+            else -> Unit
         }
     }
 
@@ -379,14 +395,50 @@ class RunRequestService(
     fun getById(requestId: String): RunRequestResponse = buildResponse(loadRequest(requestId))
 
     @Transactional(readOnly = true)
-    fun getMyRequests(userId: String, role: String, page: Int): List<RunRequestResponse> {
+    fun getMyRequests(
+        userId: String,
+        role: String,
+        page: Int,
+        statuses: Collection<RunRequestStatus>? = null,
+    ): List<RunRequestResponse> {
         val pageable = PageRequest.of(page, 20)
-        val entities = when (role.uppercase()) {
-            "BLIND"     -> runRequestRepo.findByBlindRunnerIdOrderByCreatedAtDesc(userId, pageable)
-            "VOLUNTEER" -> runRequestRepo.findByVolunteerIdOrderByCreatedAtDesc(userId, pageable)
+        val normalizedRole = role.uppercase()
+        val entities = if (statuses.isNullOrEmpty()) {
+            when (normalizedRole) {
+                "BLIND"     -> runRequestRepo.findByBlindRunnerIdOrderByCreatedAtDesc(userId, pageable)
+                "VOLUNTEER" -> runRequestRepo.findByVolunteerIdOrderByCreatedAtDesc(userId, pageable)
+                else        -> throw AppException(ErrorCode.INVALID_PARAM, "role 参数必须为 blind 或 volunteer")
+            }
+        } else {
+            when (normalizedRole) {
+                "BLIND"     -> runRequestRepo.findByBlindRunnerIdAndStatusInOrderByCreatedAtDesc(userId, statuses, pageable)
+                "VOLUNTEER" -> runRequestRepo.findByVolunteerIdAndStatusInOrderByCreatedAtDesc(userId, statuses, pageable)
+                else        -> throw AppException(ErrorCode.INVALID_PARAM, "role 参数必须为 blind 或 volunteer")
+            }
+        }
+        // 批量查"自己已评价"标记，O(N) → O(1) 一次性查出所有该用户已评的 requestId
+        val ids = entities.map { it.id }
+        val reviewedIds = if (ids.isEmpty()) emptySet()
+        else reviewRepo.findReviewedRequestIds(ids, userId).toSet()
+        return entities.map { entity ->
+            val isCompleted = entity.status == RunRequestStatus.FINISHED ||
+                entity.status == RunRequestStatus.CLOSED
+            buildResponse(
+                entity = entity,
+                myReviewSubmitted = if (isCompleted) entity.id in reviewedIds else null,
+            )
+        }
+    }
+
+    @Transactional(readOnly = true)
+    fun getActiveRequest(userId: String, role: String): RunRequestResponse? {
+        val activeStatuses = RunRequestStatus.values().filter { it.isActive() && it != RunRequestStatus.CREATED }
+        val entity = when (role.uppercase()) {
+            "BLIND"     -> runRequestRepo.findFirstByBlindRunnerIdAndStatusInOrderByCreatedAtDesc(userId, activeStatuses)
+            "VOLUNTEER" -> runRequestRepo.findFirstByVolunteerIdAndStatusInOrderByCreatedAtDesc(userId, activeStatuses)
             else        -> throw AppException(ErrorCode.INVALID_PARAM, "role 参数必须为 blind 或 volunteer")
         }
-        return entities.map { buildResponse(it) }
+        return entity?.let { buildResponse(it) }
     }
 
     @Transactional(readOnly = true)
@@ -479,10 +531,45 @@ class RunRequestService(
         )
     }
 
-    private fun buildResponse(entity: RunRequestEntity): RunRequestResponse {
+    private fun buildResponse(
+        entity: RunRequestEntity,
+        myReviewSubmitted: Boolean? = null,
+    ): RunRequestResponse {
         val blindRunner = runCatching { loadUser(entity.blindRunnerId) }.getOrNull()
         val volunteer = entity.volunteerId?.let { runCatching { loadUser(it) }.getOrNull() }
-        return entity.toResponse(blindRunner, volunteer)
+        return entity.toResponse(blindRunner, volunteer, myReviewSubmitted)
+    }
+
+    /** 视障端发单前置校验：已有进行中订单则拒绝。 */
+    private fun requireNoActiveOrderForBlind(blindUserId: String) {
+        val activeStatuses = RunRequestStatus.values().filter { it.isActive() && it != RunRequestStatus.CREATED }
+        runRequestRepo.findFirstByBlindRunnerIdAndStatusInOrderByCreatedAtDesc(blindUserId, activeStatuses)?.let {
+            throw AppException(
+                ErrorCode.HAS_ACTIVE_ORDER,
+                "您已有进行中的跑步订单，请先处理或取消后再发起新订单",
+                HttpStatus.CONFLICT,
+            )
+        }
+    }
+
+    /** 志愿者接单前置校验：已有进行中订单则拒绝。 */
+    private fun requireNoActiveOrderForVolunteer(volunteerId: String) {
+        val activeStatuses = RunRequestStatus.values().filter { it.isActive() && it != RunRequestStatus.CREATED }
+        runRequestRepo.findFirstByVolunteerIdAndStatusInOrderByCreatedAtDesc(volunteerId, activeStatuses)?.let {
+            throw AppException(
+                ErrorCode.HAS_ACTIVE_ORDER,
+                "您已有进行中的陪跑订单，请先处理后再接新单",
+                HttpStatus.CONFLICT,
+            )
+        }
+    }
+
+    /** 补评（订单已 CLOSED）增量累加 rating，不动 totalRuns/totalHoursMinutes 避免重复累加。 */
+    private fun accumulateRating(revieweeId: String, rating: Int) {
+        val reviewee = loadUser(revieweeId)
+        reviewee.ratingSum += rating
+        reviewee.ratingCount++
+        userRepo.save(reviewee)
     }
 
     private fun closeAndUpdateStats(entity: RunRequestEntity) {

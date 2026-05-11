@@ -28,6 +28,7 @@ fun RunRequestResponseDto.toDomain() = RunRequest(
     runEndedAt = runEndedAt,
     closedAt = closedAt,
     volunteerPosition = volunteerPosition?.let { GeoPosition(it.lat, it.lng, it.updatedAt) },
+    myReviewSubmitted = myReviewSubmitted,
 )
 
 fun UserSummaryDto.toDomain() = UserSummary(

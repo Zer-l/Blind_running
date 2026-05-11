@@ -43,14 +43,15 @@ class VolunteerHistoryViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             runRequestRepository.getMyRequests(role = "VOLUNTEER", page = 0)
                 .onSuccess { list ->
-                    val closed = list.filter { it.status == RunRequestStatus.CLOSED }
-                    val totalDist = closed.sumOf { it.actualDistanceMeters ?: 0 }
-                    val totalDur = closed.sumOf { it.actualDurationSeconds ?: 0 }
+                    // "已完成"包含 FINISHED + CLOSED：跑步已结束的都计入累计
+                    val completed = list.filter { it.status.isCompleted() }
+                    val totalDist = completed.sumOf { it.actualDistanceMeters ?: 0 }
+                    val totalDur = completed.sumOf { it.actualDurationSeconds ?: 0 }
                     _uiState.update {
                         it.copy(
                             requests = list,
                             isLoading = false,
-                            totalRuns = closed.size,
+                            totalRuns = completed.size,
                             totalDistanceKm = totalDist / 1000f,
                             totalDurationHours = totalDur / 3600f,
                         )

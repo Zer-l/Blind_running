@@ -11,6 +11,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -20,6 +24,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.guiderun.app.R
+import com.guiderun.app.domain.model.RunRequest
+import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.model.UserRole
 
 @Composable
@@ -31,8 +37,10 @@ fun HomeScreen(
     onEnterVolunteerFlow: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
+    onResumeActiveOrder: (RunRequest) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
+    val activeRequest by viewModel.activeRequest.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
@@ -98,6 +106,14 @@ fun HomeScreen(
                     }
                 }
 
+                activeRequest?.let { request ->
+                    Spacer(Modifier.height(16.dp))
+                    ActiveOrderBanner(
+                        request = request,
+                        onClick = { onResumeActiveOrder(request) },
+                    )
+                }
+
                 Spacer(Modifier.height(32.dp))
 
                 // 功能按钮区域
@@ -105,14 +121,17 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    // 视障端入口
+                    // 视障端入口：有进行中订单时禁用「开始跑步」，引导用户通过横幅恢复
                     if (uiState.activeRoleEnum == UserRole.BLIND_RUNNER) {
                         HomeMenuItem(
                             icon = Icons.AutoMirrored.Filled.DirectionsRun,
                             title = stringResource(R.string.home_btn_start_running),
-                            subtitle = stringResource(R.string.home_btn_start_running_desc),
+                            subtitle = if (activeRequest != null)
+                                stringResource(R.string.home_btn_disabled_has_active)
+                            else stringResource(R.string.home_btn_start_running_desc),
                             onClick = onEnterBlindFlow,
                             isPrimary = true,
+                            enabled = activeRequest == null,
                         )
                         HomeMenuItem(
                             icon = Icons.Default.Settings,
@@ -128,14 +147,17 @@ fun HomeScreen(
                         )
                     }
 
-                    // 志愿者端入口
+                    // 志愿者端入口：有进行中订单时禁用「开始接单」，引导用户通过横幅恢复
                     if (uiState.activeRoleEnum == UserRole.VOLUNTEER) {
                         HomeMenuItem(
                             icon = Icons.Default.VolunteerActivism,
                             title = stringResource(R.string.home_btn_enter_volunteer),
-                            subtitle = stringResource(R.string.home_btn_enter_volunteer_desc),
+                            subtitle = if (activeRequest != null)
+                                stringResource(R.string.home_btn_disabled_has_active)
+                            else stringResource(R.string.home_btn_enter_volunteer_desc),
                             onClick = onEnterVolunteerFlow,
                             isPrimary = true,
+                            enabled = activeRequest == null,
                         )
                         HomeMenuItem(
                             icon = Icons.Default.Person,
@@ -178,16 +200,79 @@ fun HomeScreen(
 }
 
 @Composable
+private fun ActiveOrderBanner(
+    request: RunRequest,
+    onClick: () -> Unit,
+) {
+    val statusText = when (request.status) {
+        RunRequestStatus.MATCHING  -> "等待匹配中"
+        RunRequestStatus.ACCEPTED  -> "已匹配志愿者"
+        RunRequestStatus.EN_ROUTE  -> "志愿者前往中"
+        RunRequestStatus.MET       -> "已汇合"
+        RunRequestStatus.RUNNING   -> "跑步中"
+        RunRequestStatus.FINISHED  -> "等待评价"
+        else                       -> "进行中"
+    }
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                role = Role.Button
+                contentDescription = "您有进行中的订单：$statusText，双击恢复"
+            },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.DirectionsRun,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(28.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "您有进行中的订单",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+                Text(
+                    text = "$statusText · 点击恢复",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f),
+                )
+            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+        }
+    }
+}
+
+@Composable
 private fun HomeMenuItem(
     icon: ImageVector,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
     isPrimary: Boolean = false,
+    enabled: Boolean = true,
 ) {
     if (isPrimary) {
         Button(
             onClick = onClick,
+            enabled = enabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(72.dp),

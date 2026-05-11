@@ -44,7 +44,6 @@ data class VolunteerRunningUiState(
     /** 已发送结束申请，等待视障端确认中。 */
     val endRequestPending: Boolean = false,
     val errorMessage: String? = null,
-    val infoMessage: String? = null,
 )
 
 sealed interface VolunteerRunningNavEvent {
@@ -135,12 +134,16 @@ class VolunteerRunningViewModel @Inject constructor(
     }
 
     /**
-     * UI 配速做指数移动平均，避免瞬时跳变；暂停时清空 EMA 并显示 null（"--"）。
+     * UI 配速做指数移动平均，避免瞬时跳变。
+     * 暂停时保留上一次有效配速（由 UI 用 isPaused 切换淡色样式），不再返回 null。
      */
     private fun smoothPaceForDisplay(rawPace: Int?, paused: Boolean): Int? {
-        if (paused || rawPace == null) {
+        if (paused) {
+            return _uiState.value.displayPaceSeconds
+        }
+        if (rawPace == null) {
             paceEma.reset()
-            return null
+            return _uiState.value.displayPaceSeconds
         }
         return paceEma.update(rawPace.toDouble()).toInt()
     }
@@ -186,15 +189,13 @@ class VolunteerRunningViewModel @Inject constructor(
     /**
      * 申请结束跑步：服务端不立即改状态，仅推送视障端等待其确认。
      * 视障端确认后 → 服务端 RUNNING→FINISHED → WS 推送 → 双方进评价页。
+     * UI 上仅依靠 endRequestPending 触发横幅+按钮 disabled，不再额外弹 snackbar。
      */
     fun requestEndRun() {
         if (_uiState.value.endRequestPending) return
         viewModelScope.launch {
             _uiState.update { it.copy(endRequestPending = true) }
             runRequestRepository.requestEndRun(requestId)
-                .onSuccess {
-                    _uiState.update { it.copy(infoMessage = "已通知视障用户，等待对方确认结束") }
-                }
                 .onFailure { e ->
                     _uiState.update {
                         it.copy(endRequestPending = false, errorMessage = e.message ?: "申请结束失败")
@@ -205,10 +206,6 @@ class VolunteerRunningViewModel @Inject constructor(
 
     fun onErrorShown() {
         _uiState.update { it.copy(errorMessage = null) }
-    }
-
-    fun onInfoShown() {
-        _uiState.update { it.copy(infoMessage = null) }
     }
 
     override fun onCleared() {

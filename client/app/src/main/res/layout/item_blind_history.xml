@@ -61,5 +61,16 @@
                 android:textColor="@color/blind_primary"
                 android:textSize="14sp" />
         </LinearLayout>
+
+        <!-- 补评按钮：仅已完成且自己未评时显示 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_review"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="@string/blind_history_btn_review"
+            android:textSize="18sp"
+            android:visibility="gone"
+            app:cornerRadius="12dp" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

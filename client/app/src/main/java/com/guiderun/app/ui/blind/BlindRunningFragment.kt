@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -14,7 +15,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.databinding.FragmentBlindRunningBinding
+import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PaceCalculator
 import dagger.hilt.android.AndroidEntryPoint
@@ -46,6 +49,7 @@ class BlindRunningFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         EdgeToEdgeHelper.applyInsets(view)
         view.keepScreenOn = true
+        setupBackPressInterception()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -53,6 +57,34 @@ class BlindRunningFragment : Fragment() {
                 launch { collectNavEvents() }
             }
         }
+    }
+
+    /**
+     * 返回键：跑步中不允许直接退出（避免误操作丢失里程数据）。
+     * 服务端状态机限制：RUNNING 状态不接受 cancel，只能通过 endRun 或 emergency 结束。
+     * 仅显示「最小化/留在此页」+ TTS 提示长按结束。
+     */
+    private fun setupBackPressInterception() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    (activity as? BaseBlindActivity)?.ttsManager?.speak(
+                        getString(R.string.interrupt_message_leave_running),
+                        TtsManager.Priority.HIGH,
+                    )
+                    showInterruptDialog(
+                        activity = requireActivity(),
+                        title = getString(R.string.interrupt_title_leave_running),
+                        message = getString(R.string.interrupt_message_leave_running)
+                            + "\n" + getString(R.string.interrupt_hint_resume),
+                        stayLabel = getString(R.string.interrupt_btn_stay),
+                        homeLabel = getString(R.string.interrupt_btn_back_home),
+                        onHome = { (activity as? BlindActivity)?.navigateToHome() },
+                    )
+                }
+            },
+        )
     }
 
     override fun onResume() {

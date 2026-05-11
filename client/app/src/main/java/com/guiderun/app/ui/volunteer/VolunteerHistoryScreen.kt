@@ -59,6 +59,7 @@ import com.guiderun.app.domain.model.RunRequestStatus
 fun VolunteerHistoryScreen(
     onBack: () -> Unit,
     onNavigateToTrackPlayback: (String) -> Unit,
+    onNavigateToReview: (String) -> Unit = {},
     viewModel: VolunteerHistoryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -98,6 +99,7 @@ fun VolunteerHistoryScreen(
                 totalDurationHours = uiState.totalDurationHours,
                 badges = uiState.badges.map { it.name },
                 onItemClick = onNavigateToTrackPlayback,
+                onReviewClick = onNavigateToReview,
                 padding = padding,
             )
         }
@@ -112,6 +114,7 @@ private fun HistoryList(
     totalDurationHours: Float,
     badges: List<String>,
     onItemClick: (String) -> Unit,
+    onReviewClick: (String) -> Unit,
     padding: PaddingValues,
 ) {
     LazyColumn(
@@ -132,7 +135,11 @@ private fun HistoryList(
             }
         }
         items(requests, key = { it.id }) { request ->
-            HistoryCard(request = request, onClick = { onItemClick(request.id) })
+            HistoryCard(
+                request = request,
+                onClick = { onItemClick(request.id) },
+                onReviewClick = { onReviewClick(request.id) },
+            )
         }
     }
 }
@@ -253,69 +260,83 @@ private fun EmptyHistoryContent(padding: PaddingValues) {
 }
 
 @Composable
-private fun HistoryCard(request: RunRequest, onClick: () -> Unit) {
+private fun HistoryCard(
+    request: RunRequest,
+    onClick: () -> Unit,
+    onReviewClick: () -> Unit,
+) {
+    val canReview = request.status.isCompleted() && request.myReviewSubmitted == false
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Column {
-                    Text(
-                        text = request.blindRunner?.nickname ?: "未知跑友",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary,
                     )
+                    Column {
+                        Text(
+                            text = request.blindRunner?.nickname ?: "未知跑友",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            text = request.meetingLocation.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                // 状态标签：FINISHED 与 CLOSED 同视为"已完成"，配色一致
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = when {
+                        request.status.isCompleted() -> MaterialTheme.colorScheme.primaryContainer
+                        request.status == RunRequestStatus.ABORTED -> MaterialTheme.colorScheme.errorContainer
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    },
+                ) {
                     Text(
-                        text = request.meetingLocation.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = statusLabel(request.status),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = when {
+                            request.status.isCompleted() -> MaterialTheme.colorScheme.onPrimaryContainer
+                            request.status == RunRequestStatus.ABORTED -> MaterialTheme.colorScheme.onErrorContainer
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     )
                 }
             }
-            // 状态标签
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = when (request.status) {
-                    RunRequestStatus.CLOSED -> MaterialTheme.colorScheme.primaryContainer
-                    RunRequestStatus.ABORTED -> MaterialTheme.colorScheme.errorContainer
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                },
-            ) {
-                Text(
-                    text = statusLabel(request.status),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = when (request.status) {
-                        RunRequestStatus.CLOSED -> MaterialTheme.colorScheme.onPrimaryContainer
-                        RunRequestStatus.ABORTED -> MaterialTheme.colorScheme.onErrorContainer
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                )
+            // 补评按钮：已完成 + 自己未评 才显示
+            if (canReview) {
+                Spacer(modifier = Modifier.height(12.dp))
+                androidx.compose.material3.OutlinedButton(
+                    onClick = onReviewClick,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.volunteer_history_btn_review))
+                }
             }
         }
     }
 }
 
-private fun statusLabel(status: RunRequestStatus): String = when (status) {
-    RunRequestStatus.CLOSED -> "已完成"
-    RunRequestStatus.ABORTED -> "已取消"
-    RunRequestStatus.FINISHED -> "待关闭"
+private fun statusLabel(status: RunRequestStatus): String = when {
+    status.isCompleted() -> "已完成"
+    status == RunRequestStatus.ABORTED -> "已取消"
     else -> status.name
 }

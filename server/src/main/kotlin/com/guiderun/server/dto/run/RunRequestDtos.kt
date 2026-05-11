@@ -96,6 +96,12 @@ data class RunRequestResponse(
     val runEndedAt: Long?,
     val closedAt: Long?,
     val volunteerPosition: GeoPositionDto? = null,
+    /**
+     * 当前请求者是否已对该订单提交过评价。
+     * 仅在带身份上下文的接口（getMyRequests / getById）填充，其他场景为 null。
+     * 客户端依此决定历史列表是否显示"补评"按钮。
+     */
+    val myReviewSubmitted: Boolean? = null,
 )
 
 data class AvailableRequestItemDto(

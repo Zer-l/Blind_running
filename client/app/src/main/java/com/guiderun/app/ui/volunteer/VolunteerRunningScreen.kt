@@ -1,5 +1,7 @@
 package com.guiderun.app.ui.volunteer
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -44,6 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.ui.common.CallPeerButton
+import com.guiderun.app.ui.common.InterruptDialog
 import com.guiderun.app.util.PaceCalculator
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,6 +61,26 @@ fun VolunteerRunningScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showEndConfirm by remember { mutableStateOf(false) }
+    var showInterruptDialog by remember { mutableStateOf(false) }
+
+    // 跑步中服务端不接受 cancel/abandon，返回首页让订单继续在前台服务中后台运行
+    BackHandler { showInterruptDialog = true }
+
+    if (showInterruptDialog) {
+        InterruptDialog(
+            title = stringResource(R.string.interrupt_title_leave_running),
+            message = stringResource(R.string.interrupt_message_leave_running)
+                + "\n" + stringResource(R.string.interrupt_hint_resume),
+            onDismissRequest = { showInterruptDialog = false },
+            stayLabel = stringResource(R.string.interrupt_btn_stay),
+            onStay = { showInterruptDialog = false },
+            homeLabel = stringResource(R.string.interrupt_btn_back_home),
+            onHome = {
+                showInterruptDialog = false
+                onNavigateToHome()
+            },
+        )
+    }
 
     LaunchedEffect(Unit) {
         viewModel.navEvent.collect { event ->
@@ -71,13 +95,6 @@ fun VolunteerRunningScreen(
         uiState.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.onErrorShown()
-        }
-    }
-
-    LaunchedEffect(uiState.infoMessage) {
-        uiState.infoMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.onInfoShown()
         }
     }
 
@@ -107,6 +124,7 @@ fun VolunteerRunningScreen(
                 durationSeconds = uiState.totalDurationSeconds,
                 currentPace = uiState.displayPaceSeconds,
                 avgPace = uiState.avgPaceSeconds,
+                isPaused = uiState.isPaused,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             )
 
@@ -207,7 +225,11 @@ private fun DistanceDisplay(
             text = "%.2f".format(distanceMeters / 1000.0),
             fontSize = 64.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
+            color = if (isPaused) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.primary
+            },
         )
         Text(
             text = stringResource(R.string.volunteer_running_distance),
@@ -222,6 +244,7 @@ private fun StatsCard(
     durationSeconds: Int,
     currentPace: Int?,
     avgPace: Int?,
+    isPaused: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -238,16 +261,19 @@ private fun StatsCard(
                 icon = Icons.Default.Timer,
                 label = stringResource(R.string.volunteer_running_duration),
                 value = formatDuration(durationSeconds),
+                dimmed = isPaused,
             )
             RunningStatItem(
                 icon = Icons.Default.Speed,
                 label = stringResource(R.string.volunteer_running_pace),
                 value = currentPace?.let { PaceCalculator.formatPace(it) } ?: "--'--\"",
+                dimmed = isPaused,
             )
             RunningStatItem(
                 icon = Icons.AutoMirrored.Filled.DirectionsRun,
                 label = stringResource(R.string.volunteer_running_avg_pace),
                 value = avgPace?.let { PaceCalculator.formatPace(it) } ?: "--'--\"",
+                dimmed = isPaused,
             )
         }
     }
@@ -258,7 +284,18 @@ private fun RunningStatItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     value: String,
+    dimmed: Boolean = false,
 ) {
+    val accent = if (dimmed) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val valueColor = if (dimmed) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -267,13 +304,14 @@ private fun RunningStatItem(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.primary,
+            tint = accent,
         )
         Text(
             text = value,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
+            color = valueColor,
         )
         Text(
             text = label,

@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -15,6 +16,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.card.MaterialCardView
 import com.guiderun.app.R
 import com.guiderun.app.databinding.FragmentBlindReviewBinding
+import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
@@ -45,6 +47,7 @@ class BlindReviewFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         EdgeToEdgeHelper.applyInsets(view)
+        setupBackPressInterception()
 
         ratingCards = listOf(
             binding.cardRating1,
@@ -157,6 +160,28 @@ class BlindReviewFragment : Fragment() {
             activeCallPeerPhone = null
             touchEventForwarder = null
         }
+    }
+
+    /**
+     * 返回键：弹「确定离开（不评价）/继续评价」对话框。
+     * 用户选择离开 → 调 viewModel.skip()，复用现有跳过评价逻辑。
+     */
+    private fun setupBackPressInterception() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    showInterruptDialog(
+                        activity = requireActivity(),
+                        title = getString(R.string.interrupt_title_leave_review),
+                        message = getString(R.string.interrupt_message_leave_review),
+                        cancelLabel = getString(R.string.interrupt_btn_leave),
+                        onCancel = { viewModel.skip() },
+                        stayLabel = getString(R.string.interrupt_btn_continue_review),
+                    )
+                }
+            },
+        )
     }
 
     override fun onDestroyView() {

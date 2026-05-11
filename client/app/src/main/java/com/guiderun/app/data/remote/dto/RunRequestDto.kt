@@ -175,6 +175,7 @@ data class RunRequestResponseDto(
     val runEndedAt: Long? = null,
     val closedAt: Long? = null,
     val volunteerPosition: GeoPositionDto? = null,
+    val myReviewSubmitted: Boolean? = null,
 )
 
 @Serializable

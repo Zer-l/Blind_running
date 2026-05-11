@@ -3,7 +3,13 @@ package com.guiderun.app
 import android.app.Application
 import com.amap.api.maps.MapsInitializer
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.data.local.UserPreferences
+import com.guiderun.app.data.remote.WebSocketManager
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -11,6 +17,10 @@ import javax.inject.Inject
 class App : Application() {
 
     @Inject lateinit var ttsManager: TtsManager
+    @Inject lateinit var userPreferences: UserPreferences
+    @Inject lateinit var webSocketManager: WebSocketManager
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -21,5 +31,13 @@ class App : Application() {
         MapsInitializer.updatePrivacyAgree(this, true)
 
         ttsManager.init()
+
+        // 全局 WebSocket：已登录用户冷启动即连接，确保订单状态变化能实时推送到客户端。
+        // 否则视障端首页/列表都收不到 status_changed，活跃订单 CLOSED 后无法清理横幅。
+        appScope.launch {
+            userPreferences.getAccessToken()?.let { token ->
+                webSocketManager.connect(token)
+            }
+        }
     }
 }

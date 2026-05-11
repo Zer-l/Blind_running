@@ -128,6 +128,10 @@
         <action
             android:id="@+id/action_history_to_trackPlayback"
             app:destination="@id/blindTrackPlaybackFragment" />
+        <!-- 历史页补评：跳到评价页，不替换栈底，按返回回到历史 -->
+        <action
+            android:id="@+id/action_history_to_review"
+            app:destination="@id/blindReviewFragment" />
     </fragment>
 
     <!-- 轨迹回放 -->

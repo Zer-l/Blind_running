@@ -31,10 +31,16 @@ class BlindHistoryFragment : Fragment() {
     private var _binding: FragmentBlindHistoryBinding? = null
     private val binding get() = _binding!!
 
-    private val adapter = HistoryAdapter { requestId ->
-        val bundle = Bundle().apply { putString("requestId", requestId) }
-        findNavController().navigate(R.id.action_history_to_trackPlayback, bundle)
-    }
+    private val adapter = HistoryAdapter(
+        onItemClick = { requestId ->
+            val bundle = Bundle().apply { putString("requestId", requestId) }
+            findNavController().navigate(R.id.action_history_to_trackPlayback, bundle)
+        },
+        onReviewClick = { requestId ->
+            val bundle = Bundle().apply { putString("requestId", requestId) }
+            findNavController().navigate(R.id.action_history_to_review, bundle)
+        },
+    )
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -116,13 +122,14 @@ class BlindHistoryFragment : Fragment() {
 
 private class HistoryAdapter(
     private val onItemClick: (String) -> Unit,
+    private val onReviewClick: (String) -> Unit,
 ) : ListAdapter<RunRequest, HistoryViewHolder>(DIFF) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): HistoryViewHolder {
         val binding = ItemBlindHistoryBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
         )
-        return HistoryViewHolder(binding, onItemClick)
+        return HistoryViewHolder(binding, onItemClick, onReviewClick)
     }
 
     override fun onBindViewHolder(holder: HistoryViewHolder, position: Int) {
@@ -140,6 +147,7 @@ private class HistoryAdapter(
 private class HistoryViewHolder(
     private val binding: ItemBlindHistoryBinding,
     private val onItemClick: (String) -> Unit,
+    private val onReviewClick: (String) -> Unit,
 ) : RecyclerView.ViewHolder(binding.root) {
 
     fun bind(request: RunRequest) {
@@ -149,10 +157,9 @@ private class HistoryViewHolder(
             R.string.blind_history_volunteer,
             request.volunteer?.nickname ?: "未知"
         )
-        binding.tvStatus.text = when (request.status) {
-            RunRequestStatus.CLOSED -> "已完成"
-            RunRequestStatus.ABORTED -> "已取消"
-            RunRequestStatus.FINISHED -> "待关闭"
+        binding.tvStatus.text = when {
+            request.status.isCompleted() -> "已完成"
+            request.status == RunRequestStatus.ABORTED -> "已取消"
             else -> request.status.name
         }
         val distKm = (request.actualDistanceMeters ?: 0) / 1000f
@@ -168,5 +175,10 @@ private class HistoryViewHolder(
             "${request.expectedDurationMinutes}分钟（预计）"
         }
         binding.root.setOnClickListener { onItemClick(request.id) }
+
+        // 补评按钮：已完成 + 自己未评 才显示。myReviewSubmitted == null 时按"未评"显示（兼容旧数据）
+        val canReview = request.status.isCompleted() && request.myReviewSubmitted == false
+        binding.btnReview.isVisible = canReview
+        binding.btnReview.setOnClickListener { onReviewClick(request.id) }
     }
 }

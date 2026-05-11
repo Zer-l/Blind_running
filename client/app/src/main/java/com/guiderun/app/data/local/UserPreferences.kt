@@ -55,6 +55,20 @@ class UserPreferences @Inject constructor(
         store.edit { it[Keys.TTS_SPEECH_RATE] = rate }
     }
 
+    fun observeActiveRequestId(): Flow<String?> =
+        store.data.map { it[Keys.ACTIVE_REQUEST_ID] }
+
+    suspend fun getActiveRequestId(): String? =
+        store.data.map { it[Keys.ACTIVE_REQUEST_ID] }.first()
+
+    suspend fun saveActiveRequestId(requestId: String) {
+        store.edit { it[Keys.ACTIVE_REQUEST_ID] = requestId }
+    }
+
+    suspend fun clearActiveRequestId() {
+        store.edit { it.remove(Keys.ACTIVE_REQUEST_ID) }
+    }
+
     suspend fun clearAll() {
         store.edit { it.clear() }
     }
@@ -65,6 +79,7 @@ class UserPreferences @Inject constructor(
         val USER_ID = stringPreferencesKey("user_id")
         val ACTIVE_ROLE = stringPreferencesKey("active_role")
         val TTS_SPEECH_RATE = floatPreferencesKey("tts_speech_rate")
+        val ACTIVE_REQUEST_ID = stringPreferencesKey("active_request_id")
     }
 
     companion object {

@@ -33,6 +33,8 @@ data class MatchedUiState(
     val statusText: String = "",
     val releaseCountdown: Int? = null,
     val isReleasing: Boolean = false,
+    /** 当前订单状态（用于决定返回键拦截时哪些动作可用，MET 不允许 cancel）。 */
+    val currentStatus: RunRequestStatus? = null,
     /** 志愿者手机号；接单后下发，供视障端音量+键拨号。 */
     val peerPhone: String? = null,
 )
@@ -103,6 +105,7 @@ class MatchedViewModel @Inject constructor(
     }
 
     private suspend fun handleUpdate(request: RunRequest) {
+        _uiState.update { it.copy(currentStatus = request.status) }
         val volunteer = request.volunteer
         if (volunteer != null) {
             _uiState.update {
@@ -259,6 +262,24 @@ class MatchedViewModel @Inject constructor(
         ttsManager.speak("跑步开始", TtsManager.Priority.HIGH)
         hapticFeedback.confirm()
         _navEvent.emit(MatchedNavEvent.ToRunning(requestId))
+    }
+
+    /** 返回键触发的取消订单：服务端状态机限制 ACCEPTED/EN_ROUTE 允许，MET 不允许（调用方需先判断）。 */
+    fun cancelByUser() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isReleasing = true) }
+            runRequestRepository.cancel(requestId, reason = "用户主动取消")
+                .onSuccess {
+                    ttsManager.speak("订单已取消", TtsManager.Priority.HIGH)
+                    hapticFeedback.confirm()
+                    _navEvent.emit(MatchedNavEvent.ToHome)
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isReleasing = false) }
+                    ttsManager.speak("取消失败：${e.message ?: "请重试"}", TtsManager.Priority.HIGH)
+                    hapticFeedback.error()
+                }
+        }
     }
 
     private suspend fun executeRelease() {

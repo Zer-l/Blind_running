@@ -92,9 +92,11 @@ class BlindHistoryViewModel @Inject constructor(
 
     private fun applyList(fetched: List<RunRequest>, append: Boolean) {
         allRequests = if (append) allRequests + fetched else fetched
-        val closed = allRequests.filter { it.status == RunRequestStatus.CLOSED }
-        val totalDist = closed.sumOf { it.actualDistanceMeters ?: 0 }
-        val totalDur = closed.sumOf { it.actualDurationSeconds ?: 0 }
+        // "已完成"包含 FINISHED + CLOSED：跑步已结束的都计入累计统计，
+        // 不再因为对方没评价就把这单排除在统计外
+        val completed = allRequests.filter { it.status.isCompleted() }
+        val totalDist = completed.sumOf { it.actualDistanceMeters ?: 0 }
+        val totalDur = completed.sumOf { it.actualDurationSeconds ?: 0 }
         val aborted = allRequests.count { it.status == RunRequestStatus.ABORTED }
         val filter = _uiState.value.statusFilter
         _uiState.update {
@@ -103,7 +105,7 @@ class BlindHistoryViewModel @Inject constructor(
                 isLoading = false,
                 isLoadingMore = false,
                 hasMore = fetched.size >= PAGE_SIZE,
-                totalRuns = closed.size,
+                totalRuns = completed.size,
                 totalDistanceKm = totalDist / 1000f,
                 totalDurationHours = totalDur / 3600f,
                 totalAborted = aborted,
@@ -114,7 +116,7 @@ class BlindHistoryViewModel @Inject constructor(
     fun setFilter(filter: HistoryFilter) {
         val count = when (filter) {
             HistoryFilter.ALL -> allRequests.size
-            HistoryFilter.CLOSED -> allRequests.count { it.status == RunRequestStatus.CLOSED }
+            HistoryFilter.CLOSED -> allRequests.count { it.status.isCompleted() }
             HistoryFilter.ABORTED -> allRequests.count { it.status == RunRequestStatus.ABORTED }
         }
         ttsManager.speak(
@@ -135,7 +137,7 @@ class BlindHistoryViewModel @Inject constructor(
     private fun applyFilter(list: List<RunRequest>, filter: HistoryFilter): List<RunRequest> =
         when (filter) {
             HistoryFilter.ALL -> list
-            HistoryFilter.CLOSED -> list.filter { it.status == RunRequestStatus.CLOSED }
+            HistoryFilter.CLOSED -> list.filter { it.status.isCompleted() }
             HistoryFilter.ABORTED -> list.filter { it.status == RunRequestStatus.ABORTED }
         }
 

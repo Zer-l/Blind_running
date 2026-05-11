@@ -23,4 +23,6 @@ object ErrorCode {
     const val ALREADY_REVIEWED         = "ALREADY_REVIEWED"
     const val INVALID_PARAM            = "INVALID_PARAM"
     const val PROVISIONING_INCOMPLETE  = "PROVISIONING_INCOMPLETE"
+    /** 已有进行中订单时禁止重复发单 / 接单 */
+    const val HAS_ACTIVE_ORDER         = "HAS_ACTIVE_ORDER"
 }
