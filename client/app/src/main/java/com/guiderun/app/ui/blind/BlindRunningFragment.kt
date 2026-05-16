@@ -16,6 +16,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentBlindRunningBinding
 import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
@@ -34,6 +36,7 @@ class BlindRunningFragment : Fragment() {
 
     private var pressStartTime = 0L
     private var pressThresholdJob: Job? = null
+    private var gestureConsumedByCountdownDismiss = false
     private var savedBrightness: Float = -1f
 
     override fun onCreateView(
@@ -50,12 +53,21 @@ class BlindRunningFragment : Fragment() {
         EdgeToEdgeHelper.applyInsets(view)
         view.keepScreenOn = true
         setupBackPressInterception()
+        setupVoiceCommands()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { collectUiState() }
                 launch { collectNavEvents() }
             }
+        }
+    }
+
+    /** 跑步中：END_RUN 直接申请结束（等价 3 秒长按 + 松开） */
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.END_RUN -> { viewModel.executeEndRun(); true }
+            else -> false
         }
     }
 
@@ -134,20 +146,34 @@ class BlindRunningFragment : Fragment() {
             MotionEvent.ACTION_DOWN -> {
                 pressStartTime = SystemClock.elapsedRealtime()
                 pressThresholdJob?.cancel()
+                // 5 秒倒计时进行中：任何按下=撤销
+                if (viewModel.uiState.value.endCountdown != null) {
+                    gestureConsumedByCountdownDismiss = true
+                    viewModel.onEndRunPressed()
+                    return
+                }
+                gestureConsumedByCountdownDismiss = false
                 pressThresholdJob = viewLifecycleOwner.lifecycleScope.launch {
-                    delay(3_000)
+                    delay(2_000)
                     viewModel.onLongPressThresholdEndRun()
                 }
             }
             MotionEvent.ACTION_UP -> {
+                if (gestureConsumedByCountdownDismiss) {
+                    gestureConsumedByCountdownDismiss = false
+                    return
+                }
                 pressThresholdJob?.cancel()
                 pressThresholdJob = null
                 val elapsed = SystemClock.elapsedRealtime() - pressStartTime
-                if (elapsed >= 3_000) {
-                    viewModel.executeEndRun()
+                if (elapsed >= 2_000) {
+                    viewModel.onEndRunPressed()
+                } else {
+                    viewModel.onShortPressHint()
                 }
             }
             MotionEvent.ACTION_CANCEL -> {
+                gestureConsumedByCountdownDismiss = false
                 pressThresholdJob?.cancel()
                 pressThresholdJob = null
             }

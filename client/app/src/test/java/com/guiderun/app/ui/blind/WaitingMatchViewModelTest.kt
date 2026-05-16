@@ -1,5 +1,6 @@
 package com.guiderun.app.ui.blind
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.guiderun.app.accessibility.HapticFeedback
@@ -36,6 +37,7 @@ class WaitingMatchViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
+    private val context: Context = mockk(relaxed = true)
     private val ttsManager: TtsManager = mockk(relaxed = true)
     private val hapticFeedback: HapticFeedback = mockk(relaxed = true)
     private val pollRunRequest: PollRunRequestUseCase = mockk()
@@ -58,6 +60,7 @@ class WaitingMatchViewModelTest {
         )
         coEvery { ttsManager.speakAndWait(any(), any()) } coAnswers { delay(1_000) }
         viewModel = WaitingMatchViewModel(
+            context = context,
             savedStateHandle = SavedStateHandle(mapOf("requestId" to "req-1")),
             ttsManager = ttsManager,
             hapticFeedback = hapticFeedback,
@@ -75,6 +78,7 @@ class WaitingMatchViewModelTest {
                 emit(fakeRequest(RunRequestStatus.ACCEPTED))
             }
             val vm = WaitingMatchViewModel(
+                context = context,
                 savedStateHandle = SavedStateHandle(mapOf("requestId" to "req-2")),
                 ttsManager = ttsManager, hapticFeedback = hapticFeedback,
                 pollRunRequest = pollRunRequest, cancelRunRequest = cancelRunRequest,
@@ -98,6 +102,7 @@ class WaitingMatchViewModelTest {
                 )
             } returns flowOf(fakeRequest(RunRequestStatus.ABORTED))
             val vm = WaitingMatchViewModel(
+                context = context,
                 savedStateHandle = SavedStateHandle(mapOf("requestId" to "req-3")),
                 ttsManager = ttsManager, hapticFeedback = hapticFeedback,
                 pollRunRequest = pollRunRequest, cancelRunRequest = cancelRunRequest,

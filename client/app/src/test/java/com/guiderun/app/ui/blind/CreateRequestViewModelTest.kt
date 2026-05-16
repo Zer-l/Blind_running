@@ -1,5 +1,6 @@
 package com.guiderun.app.ui.blind
 
+import android.content.Context
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.data.location.ReverseGeocoder
@@ -32,6 +33,7 @@ class CreateRequestViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
+    private val context: Context = mockk(relaxed = true)
     private val ttsManager: TtsManager = mockk(relaxed = true)
     private val hapticFeedback: HapticFeedback = mockk(relaxed = true)
     private val createRunRequest: CreateRunRequestUseCase = mockk()
@@ -46,7 +48,7 @@ class CreateRequestViewModelTest {
         coEvery { createRunRequest(any(), any(), any()) } returns Result.success(fakeRunRequest())
         coEvery { ttsManager.speakAndWait(any(), any()) } coAnswers { delay(1_000) }
         viewModel = CreateRequestViewModel(
-            ttsManager, hapticFeedback, createRunRequest, locationProvider, reverseGeocoder,
+            context, ttsManager, hapticFeedback, createRunRequest, locationProvider, reverseGeocoder,
         )
         viewModel.startLocationUpdates()
     }
@@ -66,7 +68,7 @@ class CreateRequestViewModelTest {
         }
 
         val vm = CreateRequestViewModel(
-            ttsManager, hapticFeedback, createRunRequest, locationProvider, reverseGeocoder,
+            context, ttsManager, hapticFeedback, createRunRequest, locationProvider, reverseGeocoder,
         )
         vm.startLocationUpdates()
         advanceTimeBy(5_001) // exhaust withTimeoutOrNull(5_000)
@@ -86,7 +88,7 @@ class CreateRequestViewModelTest {
         coEvery { locationProvider.getLastLocation() } returns null
         coEvery { locationProvider.locationUpdates(any()) } returns kotlinx.coroutines.flow.emptyFlow()
         val vm = CreateRequestViewModel(
-            ttsManager, hapticFeedback, createRunRequest, locationProvider, reverseGeocoder,
+            context, ttsManager, hapticFeedback, createRunRequest, locationProvider, reverseGeocoder,
         )
         // NOT calling startLocationUpdates() → stays in Loading
 
@@ -97,7 +99,7 @@ class CreateRequestViewModelTest {
     }
 
     @Test
-    fun `confirm pressed with location starts 3-second countdown`() = runTest {
+    fun `confirm pressed with location starts 5-second countdown`() = runTest {
         advanceUntilIdle() // let startLocationUpdates() from @Before complete
 
         viewModel.onConfirmPressed()
@@ -126,7 +128,7 @@ class CreateRequestViewModelTest {
 
         viewModel.onConfirmPressed()
         val eventDeferred = async { viewModel.navEvent.first() }
-        advanceTimeBy(8_000) // 1s prompt + 3×(1s speak + 1s delay) = 7s total, +1s buffer
+        advanceTimeBy(10_000) // 1s prompt + 5×(1s speak) = 6s, +缓冲
 
         val event = eventDeferred.await()
         assertTrue(event is CreateRequestNavEvent.ToWaitingMatch)
@@ -139,7 +141,7 @@ class CreateRequestViewModelTest {
             Result.failure(RuntimeException("서버 오류"))
 
         viewModel.onConfirmPressed()
-        advanceTimeBy(8_000) // 1s prompt + 3×(1s speak + 1s delay) = 7s total, +1s buffer
+        advanceTimeBy(10_000) // 1s prompt + 5×(1s speak) = 6s, +缓冲
 
         val state = viewModel.uiState.first { it.errorMessage != null }
         assertNotNull(state.errorMessage)

@@ -5,6 +5,8 @@ import com.amap.api.maps.MapsInitializer
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.data.remote.WebSocketManager
+import com.iflytek.cloud.SpeechConstant
+import com.iflytek.cloud.SpeechUtility
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +31,17 @@ class App : Application() {
         // 高德地图隐私合规 - 必须在任何地图SDK调用之前
         MapsInitializer.updatePrivacyShow(this, true, true)
         MapsInitializer.updatePrivacyAgree(this, true)
+
+        // 讯飞 MSC SDK 初始化：必须在创建 SpeechRecognizer 之前调用一次
+        // AppId 留空时跳过，等同于讯飞引擎不可用，UI 层会朗读"语音引擎未就绪"
+        if (BuildConfig.IFLYTEK_APPID.isNotBlank()) {
+            SpeechUtility.createUtility(
+                this,
+                "${SpeechConstant.APPID}=${BuildConfig.IFLYTEK_APPID}",
+            )
+        } else {
+            Timber.w("IFLYTEK_APPID not configured; voice recognition will be disabled")
+        }
 
         ttsManager.init()
 

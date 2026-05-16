@@ -27,17 +27,6 @@
         android:textColor="@color/blind_on_surface"
         android:textSize="14sp" />
 
-    <TextView
-        android:id="@+id/tv_hint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="8dp"
-        android:gravity="center"
-        android:text="@string/blind_review_gesture_hint"
-        android:textColor="@color/blind_on_background"
-        android:textSize="13sp" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"

@@ -1,9 +1,12 @@
 package com.guiderun.app.data.repository
 
+import com.guiderun.app.data.local.UserPreferences
+import com.guiderun.app.data.remote.WebSocketManager
 import com.guiderun.app.data.remote.api.RunRequestApi
 import com.guiderun.app.domain.exception.InvalidStateTransitionException
 import com.guiderun.app.domain.exception.RequestConflictException
 import com.guiderun.app.domain.model.RunRequestStatus
+import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -36,7 +39,12 @@ class RunRequestRepositoryImplTest {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
 
-        repo = RunRequestRepositoryImpl(retrofit.create(RunRequestApi::class.java), json)
+        repo = RunRequestRepositoryImpl(
+            api = retrofit.create(RunRequestApi::class.java),
+            json = json,
+            userPreferences = mockk(relaxed = true),
+            webSocketManager = mockk(relaxed = true),
+        )
     }
 
     @After

@@ -27,8 +27,6 @@ interface RunRequestRepository {
 
     suspend fun accept(id: String): Result<RunRequest>
 
-    suspend fun releaseVolunteer(id: String): Result<RunRequest>
-
     suspend fun depart(id: String): Result<RunRequest>
 
     suspend fun confirmMet(id: String): Result<RunRequest>

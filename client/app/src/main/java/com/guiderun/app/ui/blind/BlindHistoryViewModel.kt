@@ -2,16 +2,19 @@ package com.guiderun.app.ui.blind
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.repository.RunRequestRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import android.content.Context
 import javax.inject.Inject
 
 private const val PAGE_SIZE = 20
@@ -33,6 +36,7 @@ data class BlindHistoryUiState(
 
 @HiltViewModel
 class BlindHistoryViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val runRequestRepository: RunRequestRepository,
     private val ttsManager: TtsManager,
 ) : ViewModel() {
@@ -56,19 +60,17 @@ class BlindHistoryViewModel @Inject constructor(
                 .onSuccess { list ->
                     applyList(list, append = false)
                     if (list.isEmpty()) {
-                        ttsManager.speak("暂无跑步记录")
+                        ttsManager.speak(context.getString(R.string.blind_history_empty), TtsManager.Priority.HIGH)
                     } else {
                         val state = _uiState.value
-                        val distText = "%.1f".format(state.totalDistanceKm)
-                        val durText = "%.1f".format(state.totalDurationHours)
-                        ttsManager.speak("共${list.size}条记录，已完成${state.totalRuns}次，总距离${distText}公里，总时长${durText}小时")
+                        ttsManager.speak(context.getString(R.string.tts_history_loaded, state.totalRuns, "%.1f".format(state.totalDistanceKm), "%.1f".format(state.totalDurationHours)), TtsManager.Priority.HIGH)
                     }
                 }
                 .onFailure {
                     _uiState.update {
                         it.copy(isLoading = false, errorMessage = "加载失败，请重试")
                     }
-                    ttsManager.speak("加载失败，请点击重试按钮重新加载")
+                    ttsManager.speak(context.getString(R.string.error_network), TtsManager.Priority.HIGH)
                 }
         }
     }
@@ -121,9 +123,9 @@ class BlindHistoryViewModel @Inject constructor(
         }
         ttsManager.speak(
             when (filter) {
-                HistoryFilter.ALL -> "显示全部，共${allRequests.size}条"
-                HistoryFilter.CLOSED -> "筛选已完成，共${count}条"
-                HistoryFilter.ABORTED -> "筛选已取消，共${count}条"
+                HistoryFilter.ALL -> context.getString(R.string.tts_history_filter_all, allRequests.size)
+                HistoryFilter.CLOSED -> context.getString(R.string.tts_history_filter_closed, count)
+                HistoryFilter.ABORTED -> context.getString(R.string.tts_history_filter_aborted, count)
             }
         )
         _uiState.update {
@@ -149,7 +151,10 @@ class BlindHistoryViewModel @Inject constructor(
         ttsManager.acquire()
         if (!hasAnnouncedPage) {
             hasAnnouncedPage = true
-            ttsManager.speak("跑步历史记录页面")
+            viewModelScope.launch {
+                ttsManager.speakAndWait(context.getString(R.string.tts_page_blind_history), TtsManager.Priority.HIGH)
+                ttsManager.speak(context.getString(R.string.tts_hint_blind_history), TtsManager.Priority.HIGH)
+            }
         }
     }
 

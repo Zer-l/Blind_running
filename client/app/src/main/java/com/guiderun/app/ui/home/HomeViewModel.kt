@@ -2,6 +2,7 @@ package com.guiderun.app.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.domain.model.RunRequest
@@ -10,6 +11,7 @@ import com.guiderun.app.domain.repository.AuthRepository
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import android.content.Context
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 
@@ -30,6 +33,7 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val userPreferences: UserPreferences,
@@ -80,12 +84,11 @@ class HomeViewModel @Inject constructor(
 
     private fun speakWelcome(nickname: String, role: String) {
         viewModelScope.launch {
-            ttsManager.acquire()
             ttsManager.state.first { it is TtsManager.TtsState.Ready }
-            val greeting = buildString {
-                append("你好，$nickname。")
-                if (role.isNotEmpty()) append("当前角色：$role。")
-                append("欢迎使用助盲跑")
+            val greeting = if (role.isNotEmpty()) {
+                context.getString(R.string.tts_welcome, nickname, role)
+            } else {
+                context.getString(R.string.tts_welcome_no_role, nickname)
             }
             ttsManager.speak(greeting, TtsManager.Priority.HIGH)
         }

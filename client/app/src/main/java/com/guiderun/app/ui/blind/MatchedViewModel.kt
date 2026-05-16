@@ -3,13 +3,14 @@ package com.guiderun.app.ui.blind
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.repository.RunRequestRepository
-import com.guiderun.app.domain.usecase.ReleaseVolunteerUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import android.content.Context
 import javax.inject.Inject
 
 data class MatchedUiState(
@@ -31,8 +33,9 @@ data class MatchedUiState(
     val volunteerRating: Float? = null,
     val volunteerTotalRuns: Int = 0,
     val statusText: String = "",
-    val releaseCountdown: Int? = null,
-    val isReleasing: Boolean = false,
+    val isCancelling: Boolean = false,
+    /** 长按 ≥2s 松手后启动的 5 秒确认倒计时；非 null 表示倒计时进行中。 */
+    val confirmCountdown: Int? = null,
     /** 当前订单状态（用于决定返回键拦截时哪些动作可用，MET 不允许 cancel）。 */
     val currentStatus: RunRequestStatus? = null,
     /** 志愿者手机号；接单后下发，供视障端音量+键拨号。 */
@@ -40,18 +43,17 @@ data class MatchedUiState(
 )
 
 sealed interface MatchedNavEvent {
-    data class ToWaiting(val requestId: String) : MatchedNavEvent
     data object ToHome : MatchedNavEvent
     data class ToRunning(val requestId: String) : MatchedNavEvent
 }
 
 @HiltViewModel
 class MatchedViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
     private val ttsManager: TtsManager,
     private val hapticFeedback: HapticFeedback,
     private val runRequestRepository: RunRequestRepository,
-    private val releaseVolunteer: ReleaseVolunteerUseCase,
 ) : ViewModel() {
 
     val requestId: String = checkNotNull(savedStateHandle["requestId"])
@@ -66,8 +68,8 @@ class MatchedViewModel @Inject constructor(
     private var hasAnnouncedVolunteer = false
     private var hasNavigatedToRunning = false
 
-    // ★ FIX: 用手动 Job 替代 ConfirmableAction
-    private var releaseCountdownJob: Job? = null
+    /** 长按确认 → 5 秒倒计时 → startRun 的 Job，撤销时取消。 */
+    private var confirmCountdownJob: Job? = null
 
     // ★ 状态变更播报抑制窗口
     private var suppressStatusAnnounceUntil = 0L
@@ -76,7 +78,6 @@ class MatchedViewModel @Inject constructor(
         const val SUPPRESS_DURATION_MS = 8_000L
         val TERMINAL_STATUSES = setOf(
             RunRequestStatus.ABORTED,
-            RunRequestStatus.MATCHING,
             RunRequestStatus.MET,
             RunRequestStatus.RUNNING,
             RunRequestStatus.CLOSED,
@@ -123,23 +124,13 @@ class MatchedViewModel @Inject constructor(
             RunRequestStatus.EN_ROUTE -> "志愿者正在赶往汇合点"
             RunRequestStatus.MET -> "志愿者已到达集合点，请长按屏幕确认汇合"
             RunRequestStatus.RUNNING -> {
-                releaseCountdownJob?.cancel()
                 navigateToRunning()
                 return
             }
             RunRequestStatus.ABORTED -> {
-                releaseCountdownJob?.cancel()
                 suppressStatusAnnounce()
-                ttsManager.speak("请求已终止", TtsManager.Priority.HIGH)
+                ttsManager.speak(context.getString(R.string.tts_request_aborted), TtsManager.Priority.HIGH)
                 _navEvent.emit(MatchedNavEvent.ToHome)
-                return
-            }
-
-            RunRequestStatus.MATCHING -> {
-                releaseCountdownJob?.cancel()
-                suppressStatusAnnounce()
-                ttsManager.speak("正在重新匹配志愿者", TtsManager.Priority.HIGH)
-                _navEvent.emit(MatchedNavEvent.ToWaiting(requestId))
                 return
             }
 
@@ -173,93 +164,119 @@ class MatchedViewModel @Inject constructor(
 
     fun onScreenResumed() {
         ttsManager.acquire()
+        viewModelScope.launch {
+            ttsManager.speakAndWait(context.getString(R.string.tts_page_matched), TtsManager.Priority.HIGH)
+            ttsManager.speak(context.getString(R.string.tts_hint_matched), TtsManager.Priority.HIGH)
+        }
     }
 
     fun onScreenPaused() {
         ttsManager.release()
-        releaseCountdownJob?.cancel()
-        releaseCountdownJob = null
-        _uiState.update { it.copy(releaseCountdown = null) }
+        confirmCountdownJob?.cancel()
+        confirmCountdownJob = null
+        _uiState.update { it.copy(confirmCountdown = null) }
     }
 
-    /** 短按：TTS 提示手势操作方法。 */
+    /** 短按：朗读当前状态（已知志愿者信息 / 等待汇合 / 已到达汇合点等）。 */
     fun onShortPress() {
         suppressStatusAnnounce()
-        ttsManager.speak("按住1秒确认汇合，按住3秒更换志愿者")
+        val text = _uiState.value.statusText.ifEmpty { context.getString(R.string.tts_hint_matched) }
+        ttsManager.speak(text, TtsManager.Priority.HIGH)
     }
 
-    /** 按住 1–3 秒松开：确认汇合，开始跑步。 */
-    fun onConfirmAccept() {
-        suppressStatusAnnounce()
-        hapticFeedback.confirm()
-        viewModelScope.launch {
-            ttsManager.speak("正在开始跑步", TtsManager.Priority.HIGH)
-            runRequestRepository.startRun(requestId)
-                .onSuccess {
-                    navigateToRunning()
-                }
-                .onFailure { e ->
-                    Timber.e(e, "onConfirmAccept: startRun failed, error=%s", e.javaClass.simpleName)
-                    // 幂等处理：如果已经是 RUNNING 状态，视为成功
-                    val current = runRequestRepository.getRunRequest(requestId).getOrNull()
-                    if (current?.status == RunRequestStatus.RUNNING) {
-                        navigateToRunning()
-                    } else {
-                        ttsManager.speak("操作失败：${e.message ?: "请重试"}", TtsManager.Priority.HIGH)
-                        hapticFeedback.error()
-                    }
-                }
-        }
-    }
-
-    /** 按住 ≥3 秒松开：触发更换志愿者倒计时。 */
-    fun onReleasePressed() {
-        if (releaseCountdownJob?.isActive == true) {
-            releaseCountdownJob?.cancel()
-            releaseCountdownJob = null
-            _uiState.update { it.copy(releaseCountdown = null) }
+    /**
+     * 按住 ≥2 秒松开：仅当志愿者已 confirmMet（状态=MET）时启动 5 秒确认倒计时；
+     * 倒计时进行中再按一次即撤销；倒计时结束后真正发起 startRun。
+     */
+    fun onConfirmMetPressed() {
+        // 倒计时进行中 → 撤销
+        if (confirmCountdownJob?.isActive == true) {
+            confirmCountdownJob?.cancel()
+            confirmCountdownJob = null
+            _uiState.update { it.copy(confirmCountdown = null) }
             suppressStatusAnnounce()
-            ttsManager.speak("已取消", TtsManager.Priority.HIGH)
+            hapticFeedback.confirm()
+            ttsManager.speak(context.getString(R.string.tts_cancelled), TtsManager.Priority.HIGH)
             return
         }
 
-        hapticFeedback.warning()
         suppressStatusAnnounce()
-        releaseCountdownJob = viewModelScope.launch {
-            ttsManager.speakAndWait("5秒后更换志愿者，再按一次可撤销", TtsManager.Priority.HIGH)
-
-            for (i in 5 downTo 1) {
-                ensureActive()
-                _uiState.update { it.copy(releaseCountdown = i) }
-                ttsManager.speakAndWait("$i", TtsManager.Priority.HIGH)
-                suppressStatusAnnounce()
+        when (_uiState.value.currentStatus) {
+            RunRequestStatus.MET -> startConfirmCountdown()
+            RunRequestStatus.ACCEPTED -> {
+                hapticFeedback.warning()
+                ttsManager.speak(context.getString(R.string.tts_waiting_volunteer_depart), TtsManager.Priority.HIGH)
             }
-
-            ensureActive()
-            _uiState.update { it.copy(releaseCountdown = null) }
-            executeRelease()
+            RunRequestStatus.EN_ROUTE -> {
+                hapticFeedback.warning()
+                ttsManager.speak(context.getString(R.string.tts_waiting_volunteer_arrive), TtsManager.Priority.HIGH)
+            }
+            else -> {
+                hapticFeedback.warning()
+                ttsManager.speak(context.getString(R.string.tts_hint_matched), TtsManager.Priority.HIGH)
+            }
         }
     }
 
-    /** 按住达到 1 秒阈值时的触觉反馈 + 语音提示。 */
-    fun onLongPressThreshold1s() {
+    private fun startConfirmCountdown() {
         hapticFeedback.warning()
-        suppressStatusAnnounce()
-        ttsManager.speak("松开确认汇合")
+        confirmCountdownJob = viewModelScope.launch {
+            ttsManager.speakAndWait(context.getString(R.string.tts_start_running_countdown, 5), TtsManager.Priority.HIGH)
+            for (i in 5 downTo 1) {
+                ensureActive()
+                _uiState.update { it.copy(confirmCountdown = i) }
+                ttsManager.speakAndWait("$i", TtsManager.Priority.HIGH)
+                suppressStatusAnnounce()
+            }
+            ensureActive()
+            _uiState.update { it.copy(confirmCountdown = null) }
+            executeStartRun()
+        }
     }
 
-    /** 按住达到 3 秒阈值时的触觉反馈。 */
-    fun onLongPressThreshold3s() {
-        hapticFeedback.error()
+    private suspend fun executeStartRun() {
         suppressStatusAnnounce()
-        ttsManager.speak("松开更换志愿者")
+        ttsManager.speak(context.getString(R.string.tts_start_running), TtsManager.Priority.HIGH)
+        runRequestRepository.startRun(requestId)
+            .onSuccess { navigateToRunning() }
+            .onFailure { e ->
+                Timber.e(e, "executeStartRun failed, error=%s", e.javaClass.simpleName)
+                // 幂等处理：如果已经是 RUNNING 状态，视为成功（轮询滞后场景）
+                val current = runRequestRepository.getRunRequest(requestId).getOrNull()
+                if (current?.status == RunRequestStatus.RUNNING) {
+                    navigateToRunning()
+                } else {
+                    ttsManager.speak(
+                        context.getString(R.string.tts_submit_failed, e.message ?: "请重试"),
+                        TtsManager.Priority.HIGH,
+                    )
+                    hapticFeedback.error()
+                }
+            }
+    }
+
+    /**
+     * 按住达到 2 秒阈值时的触觉反馈 + 语音提示。文案随当前状态切换：
+     * - MET：松开即启动 5 秒确认倒计时，提示"松开确认汇合"
+     * - ACCEPTED/EN_ROUTE：松开也无效，提示用户继续等待，避免误导
+     */
+    fun onLongPressThreshold2s() {
+        hapticFeedback.warning()
+        suppressStatusAnnounce()
+        val prompt = when (_uiState.value.currentStatus) {
+            RunRequestStatus.MET -> R.string.tts_confirm_met
+            RunRequestStatus.ACCEPTED -> R.string.tts_waiting_volunteer_depart
+            RunRequestStatus.EN_ROUTE -> R.string.tts_waiting_volunteer_arrive
+            else -> R.string.tts_confirm_met
+        }
+        ttsManager.speak(context.getString(prompt), TtsManager.Priority.HIGH)
     }
 
     private suspend fun navigateToRunning() {
         if (hasNavigatedToRunning) return
         hasNavigatedToRunning = true
         suppressStatusAnnounce()
-        ttsManager.speak("跑步开始", TtsManager.Priority.HIGH)
+        ttsManager.speak(context.getString(R.string.tts_running_started), TtsManager.Priority.HIGH)
         hapticFeedback.confirm()
         _navEvent.emit(MatchedNavEvent.ToRunning(requestId))
     }
@@ -267,34 +284,18 @@ class MatchedViewModel @Inject constructor(
     /** 返回键触发的取消订单：服务端状态机限制 ACCEPTED/EN_ROUTE 允许，MET 不允许（调用方需先判断）。 */
     fun cancelByUser() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isReleasing = true) }
+            _uiState.update { it.copy(isCancelling = true) }
             runRequestRepository.cancel(requestId, reason = "用户主动取消")
                 .onSuccess {
-                    ttsManager.speak("订单已取消", TtsManager.Priority.HIGH)
+                    ttsManager.speak(context.getString(R.string.tts_order_cancelled), TtsManager.Priority.HIGH)
                     hapticFeedback.confirm()
                     _navEvent.emit(MatchedNavEvent.ToHome)
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isReleasing = false) }
-                    ttsManager.speak("取消失败：${e.message ?: "请重试"}", TtsManager.Priority.HIGH)
+                    _uiState.update { it.copy(isCancelling = false) }
+                    ttsManager.speak(context.getString(R.string.tts_order_cancel_failed, e.message ?: "请重试"), TtsManager.Priority.HIGH)
                     hapticFeedback.error()
                 }
         }
-    }
-
-    private suspend fun executeRelease() {
-        _uiState.update { it.copy(isReleasing = true, releaseCountdown = null) }
-        suppressStatusAnnounce()
-        releaseVolunteer(requestId)
-            .onSuccess {
-                ttsManager.speak("已更换，重新等待匹配", TtsManager.Priority.HIGH)
-                hapticFeedback.confirm()
-                _navEvent.emit(MatchedNavEvent.ToWaiting(requestId))
-            }
-            .onFailure { e ->
-                _uiState.update { it.copy(isReleasing = false) }
-                ttsManager.speak("更换失败：${e.message ?: "请重试"}")
-                hapticFeedback.error()
-            }
     }
 }

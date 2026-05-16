@@ -6,6 +6,7 @@ val localProps = Properties().apply {
 }
 val baseUrl: String = localProps.getProperty("BASE_URL", "http://10.0.2.2:8080/")
 val amapKey: String = localProps.getProperty("AMAP_KEY", "")
+val iflytekAppId: String = localProps.getProperty("IFLYTEK_APPID", "")
 
 plugins {
     alias(libs.plugins.android.application)
@@ -29,7 +30,19 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
         buildConfigField("String", "AMAP_KEY", "\"$amapKey\"")
+        buildConfigField("String", "IFLYTEK_APPID", "\"$iflytekAppId\"")
         manifestPlaceholders["AMAP_KEY"] = amapKey
+
+        ndk {
+            // 讯飞 MSC SDK 仅提供 arm64-v8a / armeabi-v7a 两个 ABI，限制打包避免 x86 模拟器加载失败
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/main/jniLibs")
+        }
     }
 
     buildTypes {
@@ -113,6 +126,9 @@ dependencies {
 
     // Amap 3D Map SDK
     implementation(libs.amap.map3d)
+
+    // 讯飞 MSC SDK (语音听写 IAT + 命令词识别 ASR)
+    implementation(files("libs/Msc.jar"))
 
     // Logging
     implementation(libs.timber)

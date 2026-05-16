@@ -15,6 +15,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.card.MaterialCardView
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentBlindReviewBinding
 import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
@@ -32,8 +34,9 @@ class BlindReviewFragment : Fragment() {
 
     private var ratingCards: List<MaterialCardView> = emptyList()
 
-    private var longPressJob: Job? = null
-    private var lastTapMs: Long = 0L
+    private var pressStartTime = 0L
+    private var pressThresholdJob: Job? = null
+    private var gestureConsumedByCountdownDismiss = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -61,11 +64,27 @@ class BlindReviewFragment : Fragment() {
             card.setOnClickListener { viewModel.selectRating(index + 1) }
         }
 
+        setupVoiceCommands()
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { collectUiState() }
                 launch { collectNavEvents() }
             }
+        }
+    }
+
+    /** 评价页：RATE_x 选择 + CONFIRM 提交 + SKIP 跳过 */
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.RATE_1 -> { viewModel.selectRating(1); true }
+            VoiceCommand.RATE_2 -> { viewModel.selectRating(2); true }
+            VoiceCommand.RATE_3 -> { viewModel.selectRating(3); true }
+            VoiceCommand.RATE_4 -> { viewModel.selectRating(4); true }
+            VoiceCommand.RATE_5 -> { viewModel.selectRating(5); true }
+            VoiceCommand.CONFIRM, VoiceCommand.SAVE -> { viewModel.onSubmitPressed(); true }
+            VoiceCommand.SKIP, VoiceCommand.CANCEL -> { viewModel.skip(); true }
+            else -> false
         }
     }
 
@@ -111,32 +130,43 @@ class BlindReviewFragment : Fragment() {
     }
 
     /**
-     * 全局触摸：
-     * - 双击屏幕（两次 ACTION_DOWN < DOUBLE_TAP_INTERVAL）→ 提交当前选中评分
-     * - 单次 ACTION_DOWN 持续 LONG_PRESS_MS 未抬起 → 跳过评价
-     * 卡片自身的 onClick 仅负责选中，不在此处理。
+     * 全局触摸（仅响应空白区域；卡片自身 onClick 已消费 DOWN，不会落到这里）：
+     * - 短按 < 2s → 朗读当前选中评分
+     * - 长按 ≥ 2s 松手 → 启动 5s 倒计时提交评分
+     * - 倒计时进行中按下 → 撤销
+     * 跳过评价改走返回键弹窗 / 语音 SKIP 指令。
      */
     private fun onGestureEvent(event: MotionEvent) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                val now = SystemClock.elapsedRealtime()
-                if (now - lastTapMs in 1 until DOUBLE_TAP_INTERVAL_MS) {
-                    lastTapMs = 0L
-                    longPressJob?.cancel()
-                    longPressJob = null
-                    viewModel.submitSelected()
+                if (viewModel.uiState.value.submitCountdown != null) {
+                    gestureConsumedByCountdownDismiss = true
+                    viewModel.onSubmitPressed() // toggle 撤销
                     return
                 }
-                lastTapMs = now
-                longPressJob?.cancel()
-                longPressJob = viewLifecycleOwner.lifecycleScope.launch {
-                    delay(LONG_PRESS_MS)
-                    viewModel.skip()
+                gestureConsumedByCountdownDismiss = false
+                pressStartTime = SystemClock.elapsedRealtime()
+                pressThresholdJob?.cancel()
+                pressThresholdJob = viewLifecycleOwner.lifecycleScope.launch {
+                    delay(2_000)
+                    viewModel.onLongPressThresholdSubmit()
                 }
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                longPressJob?.cancel()
-                longPressJob = null
+            MotionEvent.ACTION_UP -> {
+                if (gestureConsumedByCountdownDismiss) {
+                    gestureConsumedByCountdownDismiss = false
+                    return
+                }
+                pressThresholdJob?.cancel()
+                pressThresholdJob = null
+                val elapsed = SystemClock.elapsedRealtime() - pressStartTime
+                if (elapsed >= 2_000) viewModel.onSubmitPressed()
+                else viewModel.onShortPressHint()
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                gestureConsumedByCountdownDismiss = false
+                pressThresholdJob?.cancel()
+                pressThresholdJob = null
             }
         }
     }
@@ -154,8 +184,8 @@ class BlindReviewFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         viewModel.onScreenPaused()
-        longPressJob?.cancel()
-        longPressJob = null
+        pressThresholdJob?.cancel()
+        pressThresholdJob = null
         (activity as? BaseBlindActivity)?.apply {
             activeCallPeerPhone = null
             touchEventForwarder = null
@@ -191,8 +221,6 @@ class BlindReviewFragment : Fragment() {
     }
 
     private companion object {
-        const val DOUBLE_TAP_INTERVAL_MS = 400L
-        const val LONG_PRESS_MS = 3_000L
         const val STROKE_SELECTED_DP = 6
         const val STROKE_UNSELECTED_DP = 1
     }

@@ -140,15 +140,4 @@
         android:textColor="@color/blind_on_background"
         android:textSize="18sp" />
 
-    <!-- 手势提示 -->
-    <TextView
-        android:id="@+id/tv_gesture_hint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:padding="16dp"
-        android:text="@string/blind_running_gesture_hint"
-        android:textColor="@color/blind_primary"
-        android:textSize="14sp" />
-
 </LinearLayout>

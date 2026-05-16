@@ -39,8 +39,6 @@ class RunRequestStateMachine {
         Key(RUNNING,  CANCEL, VOLUNTEER) to ABORTED,
         // ABANDON：只有志愿者，只在 ACCEPTED 阶段，目标由 abandonCount 决定
         Key(ACCEPTED, ABANDON, VOLUNTEER) to MATCHING,
-        // RELEASE：视障用户主动更换志愿者，只在 ACCEPTED 阶段，回到 MATCHING
-        Key(ACCEPTED, RELEASE, BLIND) to MATCHING,
         // EMERGENCY
         Key(RUNNING, EMERGENCY, BLIND)     to ABORTED,
         Key(RUNNING, EMERGENCY, VOLUNTEER) to ABORTED,

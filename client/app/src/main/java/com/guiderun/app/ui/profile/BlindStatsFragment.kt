@@ -43,7 +43,8 @@ class BlindStatsFragment : Fragment() {
         ttsManager.acquire()
 
         observeUiState()
-        ttsManager.speak("跑步统计页面", TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_page_blind_stats), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_hint_blind_stats), TtsManager.Priority.HIGH)
     }
 
     override fun onDestroyView() {

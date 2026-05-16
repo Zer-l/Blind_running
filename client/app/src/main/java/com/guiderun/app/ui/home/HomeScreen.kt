@@ -125,7 +125,7 @@ fun HomeScreen(
                     if (uiState.activeRoleEnum == UserRole.BLIND_RUNNER) {
                         HomeMenuItem(
                             icon = Icons.AutoMirrored.Filled.DirectionsRun,
-                            title = stringResource(R.string.home_btn_start_running),
+                            title = stringResource(R.string.home_btn_enter_blind),
                             subtitle = if (activeRequest != null)
                                 stringResource(R.string.home_btn_disabled_has_active)
                             else stringResource(R.string.home_btn_start_running_desc),

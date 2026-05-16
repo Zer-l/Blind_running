@@ -387,7 +387,7 @@ Authorization: Bearer {{blindToken}}
 %}
 
 ### ========================================
-### 验收场景 6：provisioning 拦截 + release-volunteer
+### 验收场景 6：provisioning 拦截
 ### ========================================
 
 ### 6.1 新手机号登录（自动创建 PENDING_ROLE 账号）
@@ -471,17 +471,5 @@ Authorization: Bearer {{volunteerBToken}}
 > {%
     client.test("志愿者接单成功，状态为 ACCEPTED", function() {
         client.assert(response.body.data.status === "ACCEPTED", "应为 ACCEPTED");
-    });
-%}
-
-### 6.6 视障用户调用 release-volunteer（5 秒内取消只在客户端，后端直接转移）
-POST {{baseUrl}}/run-requests/{{requestId6}}/release-volunteer
-Authorization: Bearer {{pendingToken}}
-
-> {%
-    client.test("release-volunteer 成功，状态回到 MATCHING，volunteer 为 null", function() {
-        client.assert(response.status === 200, "应返回 200，实际：" + response.status);
-        client.assert(response.body.data.status === "MATCHING", "状态应为 MATCHING");
-        client.assert(response.body.data.volunteer === null, "volunteer 应为 null");
     });
 %}

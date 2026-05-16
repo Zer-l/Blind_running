@@ -16,6 +16,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentBlindHistoryBinding
 import com.guiderun.app.databinding.ItemBlindHistoryBinding
 import com.guiderun.app.domain.model.RunRequest
@@ -81,6 +83,8 @@ class BlindHistoryFragment : Fragment() {
             }
         })
 
+        setupVoiceCommands()
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
@@ -101,6 +105,32 @@ class BlindHistoryFragment : Fragment() {
                     adapter.submitList(state.requests)
                 }
             }
+        }
+    }
+
+    /** 历史页：RETRY / REFRESH 重新加载；FILTER_xxx 切换筛选 chip */
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.RETRY, VoiceCommand.REFRESH -> {
+                viewModel.loadHistory()
+                true
+            }
+            VoiceCommand.FILTER_FINISHED -> {
+                binding.chipGroupFilter.check(R.id.chip_closed)
+                viewModel.setFilter(HistoryFilter.CLOSED)
+                true
+            }
+            VoiceCommand.FILTER_CANCELLED -> {
+                binding.chipGroupFilter.check(R.id.chip_aborted)
+                viewModel.setFilter(HistoryFilter.ABORTED)
+                true
+            }
+            VoiceCommand.FILTER_ALL -> {
+                binding.chipGroupFilter.check(R.id.chip_all)
+                viewModel.setFilter(HistoryFilter.ALL)
+                true
+            }
+            else -> false
         }
     }
 

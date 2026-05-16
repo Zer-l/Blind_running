@@ -136,9 +136,6 @@ class RunRequestRepositoryImpl @Inject constructor(
     override suspend fun accept(id: String): Result<RunRequest> =
         execute { api.accept(id).requireData().toDomain().also { trackActive(it) } }
 
-    override suspend fun releaseVolunteer(id: String): Result<RunRequest> =
-        execute { api.releaseVolunteer(id).requireData().toDomain().also { trackActive(it) } }
-
     override suspend fun depart(id: String): Result<RunRequest> =
         execute { api.depart(id).requireData().toDomain().also { trackActive(it) } }
 

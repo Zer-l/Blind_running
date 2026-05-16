@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.guiderun.app.domain.model.RunTrack
 import com.guiderun.app.domain.model.TrackPoint
 import com.guiderun.app.domain.repository.RunRequestRepository
+import com.guiderun.app.ui.shared.map.CameraTarget
 import com.guiderun.app.ui.shared.map.GuideRunMapState
 import com.guiderun.app.ui.shared.map.PolylineConfig
 import com.guiderun.app.util.PaceCalculator
@@ -100,10 +101,20 @@ class TrackPlaybackViewModel @Inject constructor(
         val allPoints = state.tracks.flatMap { it.points }.sortedBy { it.t }
         if (allPoints.isEmpty()) return
 
-        _uiState.update { it.copy(isPlaying = true) }
+        // 若上一轮已播放到末尾，再次点播放视为「从头开始」，但不动相机 —— 保留用户手势缩放后的视野。
+        val startIdx = if (state.currentIndex >= allPoints.size - 1) 0 else state.currentIndex
+        _uiState.update {
+            it.copy(
+                isPlaying = true,
+                currentIndex = startIdx,
+                mapState = it.mapState.copy(
+                    animatedMarker = allPoints[startIdx].let { p -> Pair(p.lat, p.lng) },
+                ),
+            )
+        }
         playbackJob?.cancel()
         playbackJob = viewModelScope.launch {
-            var idx = state.currentIndex
+            var idx = startIdx
             while (isActive && idx < allPoints.size - 1) {
                 val current = allPoints[idx]
                 val next = allPoints[idx + 1]
@@ -134,6 +145,8 @@ class TrackPlaybackViewModel @Inject constructor(
         playbackJob?.cancel()
         val state = _uiState.value
         val allPoints = state.tracks.flatMap { it.points }.sortedBy { it.t }
+        // 显式构造新的 mapState（含新 CameraTarget 实例），让地图把相机重新定位到起点；
+        // 否则用户中途放大后调 seekToStart，相机不会复位。
         val mapState = buildMapState(state.tracks, allPoints, currentIndex = 0)
         _uiState.update {
             it.copy(isPlaying = false, currentIndex = 0, mapState = mapState)
@@ -155,10 +168,13 @@ class TrackPlaybackViewModel @Inject constructor(
         val currentPoint = allPoints.getOrNull(currentIndex)
         val center = currentPoint ?: allPoints.firstOrNull()
 
+        // 注意：每次调用 buildMapState 都会产出一个新的 CameraTarget 实例，触发地图重新定位。
+        // 因此只在「初次加载」「seekToStart」等需要主动重定位的场景调用本方法；
+        // 播放过程中的逐点刷新走 startPlayback 内的局部 copy，不要走这里。
+        val cameraTarget = center?.let { CameraTarget(lat = it.lat, lng = it.lng, zoom = 16f) }
+
         return GuideRunMapState(
-            centerLat = center?.lat ?: 39.9042,
-            centerLng = center?.lng ?: 116.4074,
-            zoom = 16f,
+            cameraTarget = cameraTarget,
             polylines = polylines,
             animatedMarker = currentPoint?.let { Pair(it.lat, it.lng) },
         )

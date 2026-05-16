@@ -10,8 +10,11 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentAccessibilitySettingsBinding
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -44,8 +47,10 @@ class AccessibilitySettingsFragment : Fragment() {
         ttsManager.acquire()
 
         setupTtsSpeedSlider()
+        setupVoiceCommands()
         observeUiState()
-        ttsManager.speak("无障碍设置页面", TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_page_accessibility_settings), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_hint_accessibility_settings), TtsManager.Priority.HIGH)
     }
 
     override fun onDestroyView() {
@@ -68,9 +73,37 @@ class AccessibilitySettingsFragment : Fragment() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                ttsManager.speak("语速已调整", TtsManager.Priority.NORMAL)
+                ttsManager.speak(getString(R.string.tts_speed_adjusted), TtsManager.Priority.NORMAL)
             }
         })
+    }
+
+    /** 语速调节：SPEED_FASTER/SLOWER 在 SeekBar 上前后挪 5 格（=0.5x） */
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.SPEED_FASTER -> {
+                adjustTtsSpeed(+5)
+                true
+            }
+            VoiceCommand.SPEED_SLOWER -> {
+                adjustTtsSpeed(-5)
+                true
+            }
+            VoiceCommand.CANCEL -> {
+                findNavController().popBackStack(); true
+            }
+            else -> false
+        }
+    }
+
+    private fun adjustTtsSpeed(delta: Int) {
+        val current = binding.seekBarTtsSpeed.progress
+        val next = (current + delta).coerceIn(0, binding.seekBarTtsSpeed.max)
+        binding.seekBarTtsSpeed.progress = next
+        val speed = 0.5f + next * 0.1f
+        viewModel.updateTtsSpeed(speed)
+        binding.tvTtsSpeedValue.text = String.format("%.1fx", speed)
+        ttsManager.speak(getString(R.string.tts_speed_adjusted), TtsManager.Priority.HIGH)
     }
 
     private fun observeUiState() {

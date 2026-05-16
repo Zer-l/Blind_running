@@ -35,9 +35,6 @@ interface RunRequestApi {
     @POST("api/v1/run-requests/{id}/accept")
     suspend fun accept(@Path("id") id: String, @Body body: Unit = Unit): ApiResponse<RunRequestResponseDto>
 
-    @POST("api/v1/run-requests/{id}/release-volunteer")
-    suspend fun releaseVolunteer(@Path("id") id: String, @Body body: Unit = Unit): ApiResponse<RunRequestResponseDto>
-
     @POST("api/v1/run-requests/{id}/depart")
     suspend fun depart(@Path("id") id: String, @Body body: Unit = Unit): ApiResponse<RunRequestResponseDto>
 

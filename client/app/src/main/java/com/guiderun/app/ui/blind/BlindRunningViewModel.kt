@@ -1,10 +1,12 @@
 package com.guiderun.app.ui.blind
 
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.data.local.UserPreferences
@@ -18,6 +20,7 @@ import com.guiderun.app.service.RunTrackingService
 import com.guiderun.app.util.Ema
 import com.guiderun.app.util.PaceCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -60,6 +63,7 @@ sealed interface BlindRunningNavEvent {
 @HiltViewModel
 class BlindRunningViewModel @Inject constructor(
     application: Application,
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
     private val ttsManager: TtsManager,
     private val hapticFeedback: HapticFeedback,
@@ -100,7 +104,7 @@ class BlindRunningViewModel @Inject constructor(
             observeSessionStats()
             observePeerMetrics()
             observeWs()
-            suppressAndSpeak("跑步开始，正在录制轨迹", TtsManager.Priority.HIGH)
+            suppressAndSpeak(context.getString(R.string.tts_running_started), TtsManager.Priority.HIGH)
         }
     }
 
@@ -163,10 +167,10 @@ class BlindRunningViewModel @Inject constructor(
         if (prev == null || prev == nowPaused) return
         if (nowPaused) {
             hapticFeedback.warning()
-            suppressAndSpeak("已暂停")
+            suppressAndSpeak(context.getString(R.string.tts_running_paused))
         } else {
             hapticFeedback.confirm()
-            suppressAndSpeak("继续跑步")
+            suppressAndSpeak(context.getString(R.string.tts_running_resumed))
         }
     }
 
@@ -187,7 +191,7 @@ class BlindRunningViewModel @Inject constructor(
         if (minute == lastAnnouncedMinuteBucket) return
         lastAnnouncedMinuteBucket = minute
         val km = distanceMeters / 1000.0
-        suppressAndSpeak("已跑步${minute}分钟，距离${"%.1f".format(km)}公里")
+        suppressAndSpeak(context.getString(R.string.tts_running_progress, minute, km))
     }
 
     private fun observePeerMetrics() {
@@ -223,7 +227,7 @@ class BlindRunningViewModel @Inject constructor(
             val durationMin = state.totalDurationSeconds / 60
             val durationSec = state.totalDurationSeconds % 60
             val paceText = state.currentPaceSeconds?.let { "配速${PaceCalculator.formatPace(it)}每公里" } ?: ""
-            suppressAndSpeak("已跑${km}公里，用时${durationMin}分${durationSec}秒，$paceText")
+            suppressAndSpeak(context.getString(R.string.tts_running_km, km, durationMin, durationSec, paceText))
         }
     }
 
@@ -234,13 +238,13 @@ class BlindRunningViewModel @Inject constructor(
                 when (msg.toStatus) {
                     RunRequestStatus.FINISHED.name -> {
                         stopTrackingService()
-                        suppressAndSpeak("跑步已结束", TtsManager.Priority.HIGH)
+                        suppressAndSpeak(context.getString(R.string.tts_running_ended), TtsManager.Priority.HIGH)
                         hapticFeedback.confirm()
                         _navEvent.send(BlindRunningNavEvent.ToReview(requestId))
                     }
                     RunRequestStatus.ABORTED.name -> {
                         stopTrackingService()
-                        suppressAndSpeak("请求已终止", TtsManager.Priority.HIGH)
+                        suppressAndSpeak(context.getString(R.string.tts_request_aborted), TtsManager.Priority.HIGH)
                         hapticFeedback.error()
                         _navEvent.send(BlindRunningNavEvent.ToHome)
                     }
@@ -259,7 +263,7 @@ class BlindRunningViewModel @Inject constructor(
                     hapticFeedback.warning()
                 }
                 suppressAndSpeak(
-                    "志愿者申请结束跑步，长按屏幕3秒确认结束，或继续跑步忽略",
+                    context.getString(R.string.tts_peer_end_request),
                     TtsManager.Priority.HIGH,
                 )
             }
@@ -271,19 +275,20 @@ class BlindRunningViewModel @Inject constructor(
         }
     }
 
-    /** 长按3秒触发结束跑步倒计时 */
+    /** 长按 2 秒触发"结束跑步"5 秒倒计时；倒计时进行中再按一次即撤销。 */
     fun onEndRunPressed() {
         if (endCountdownJob?.isActive == true) {
             endCountdownJob?.cancel()
             endCountdownJob = null
             _uiState.update { it.copy(endCountdown = null) }
-            suppressAndSpeak("已取消", TtsManager.Priority.HIGH)
+            hapticFeedback.confirm()
+            suppressAndSpeak(context.getString(R.string.tts_cancelled), TtsManager.Priority.HIGH)
             return
         }
 
         hapticFeedback.warning()
         endCountdownJob = viewModelScope.launch {
-            suppressAndSpeak("5秒后结束跑步，再按一次可撤销", TtsManager.Priority.HIGH)
+            suppressAndSpeak(context.getString(R.string.tts_running_end_countdown), TtsManager.Priority.HIGH)
 
             for (i in 5 downTo 1) {
                 ensureActive()
@@ -298,15 +303,29 @@ class BlindRunningViewModel @Inject constructor(
         }
     }
 
-    /** 长按达到 3 秒阈值瞬时反馈：震动 + 提示松开。 */
+    /** 长按达到 2 秒阈值瞬时反馈：震动 + 提示松开。 */
     fun onLongPressThresholdEndRun() {
         hapticFeedback.warning()
-        suppressAndSpeak("松开结束跑步", TtsManager.Priority.HIGH)
+        suppressAndSpeak(context.getString(R.string.tts_running_end_release), TtsManager.Priority.HIGH)
+    }
+
+    /** 短按：朗读当前跑步状态（距离/时长/配速）。 */
+    fun onShortPressHint() {
+        val state = _uiState.value
+        val distanceKm = state.totalDistanceMeters / 1000.0
+        val minutes = state.totalDurationSeconds / 60
+        val seconds = state.totalDurationSeconds % 60
+        val paceText = state.displayPaceSeconds?.let { p ->
+            val pm = p / 60; val ps = p % 60
+            "${pm}分${ps}秒每公里"
+        } ?: "暂无配速"
+        val msg = "已跑${"%.2f".format(distanceKm)}公里，用时${minutes}分${seconds}秒，配速${paceText}"
+        suppressAndSpeak(msg, TtsManager.Priority.HIGH)
     }
 
     fun executeEndRun() {
         hapticFeedback.confirm()
-        suppressAndSpeak("正在结束跑步", TtsManager.Priority.HIGH)
+        suppressAndSpeak(context.getString(R.string.tts_running_ending), TtsManager.Priority.HIGH)
         viewModelScope.launch { doEndRun() }
     }
 
@@ -319,12 +338,12 @@ class BlindRunningViewModel @Inject constructor(
             avgPaceSeconds = state.avgPaceSeconds,
         ).onSuccess {
             stopTrackingService()
-            suppressAndSpeak("跑步已结束", TtsManager.Priority.HIGH)
+            suppressAndSpeak(context.getString(R.string.tts_running_ended), TtsManager.Priority.HIGH)
             hapticFeedback.confirm()
             _navEvent.send(BlindRunningNavEvent.ToReview(requestId))
         }.onFailure { e ->
             Timber.e(e, "endRun failed")
-            suppressAndSpeak("结束失败：${e.message ?: "请重试"}", TtsManager.Priority.HIGH)
+            suppressAndSpeak(context.getString(R.string.tts_running_end_failed, e.message ?: "请重试"), TtsManager.Priority.HIGH)
             hapticFeedback.error()
         }
     }

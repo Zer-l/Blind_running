@@ -12,6 +12,7 @@ import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.repository.LocationProvider
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.service.LocationUpdateService
+import com.guiderun.app.ui.shared.map.CameraTarget
 import com.guiderun.app.ui.shared.map.GuideRunMapState
 import com.guiderun.app.ui.shared.map.PolylineConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -72,9 +73,13 @@ class NavigatingViewModel @Inject constructor(
                         it.copy(
                             request = req,
                             isLoading = false,
+                            // 仅在首次加载时下发新的 CameraTarget，让地图定位到集合点；
+                            // 后续 WS 位置推送只更新 volunteerLatLng，保持引用不变，避免相机被反复拉回。
                             mapState = it.mapState.copy(
-                                centerLat = req.meetingLocation.lat,
-                                centerLng = req.meetingLocation.lng,
+                                cameraTarget = CameraTarget(
+                                    lat = req.meetingLocation.lat,
+                                    lng = req.meetingLocation.lng,
+                                ),
                                 blindLatLng = req.meetingLocation.lat to req.meetingLocation.lng,
                             ),
                         )

@@ -24,6 +24,10 @@
     <!-- ===== 电话（语音通话，运行时申请） ===== -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
+    <!-- ===== 讯飞 MSC SDK 写存储（仅 Android 9 以下，用于缓存识别资源） ===== -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
     <!-- ===== 前台服务（跑步轨迹录制） ===== -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />

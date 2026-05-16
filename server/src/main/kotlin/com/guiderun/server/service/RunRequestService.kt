@@ -268,29 +268,6 @@ class RunRequestService(
         return buildResponse(entity)
     }
 
-    // ── 释放志愿者（视障用户，ACCEPTED → MATCHING，无次数限制） ────────────
-
-    fun releaseVolunteer(blindUserId: String, requestId: String): RunRequestResponse {
-        log.info("releaseVolunteer: requestId={}, blindUserId={}", requestId, blindUserId)
-        val entity = loadRequest(requestId)
-        if (entity.blindRunnerId != blindUserId)
-            throw AppException(ErrorCode.FORBIDDEN_ACTION, "只有订单发起人可以更换志愿者", HttpStatus.FORBIDDEN)
-
-        val toStatus = stateMachine.validate(entity.status, RunRequestAction.RELEASE, TriggeredRole.BLIND)
-        log.info("releaseVolunteer: {} → {}, requestId={}", entity.status, toStatus, requestId)
-
-        val prevStatus = entity.status
-        val prevVolunteerId = entity.volunteerId
-        entity.status = toStatus
-        entity.volunteerId = null
-        entity.matchedAt = null
-        saveOrConflict(entity, "订单状态已被更新")
-
-        writeEvent(requestId, prevStatus, toStatus, TriggeredRole.BLIND, blindUserId, "视障用户更换志愿者")
-        pushStatusChange(entity, TriggeredRole.BLIND, notifyVolunteerId = prevVolunteerId)
-        return buildResponse(entity)
-    }
-
     // ── 紧急求助（任一方，RUNNING → ABORTED） ────────────────────────────
 
     // 阶段5：emergency 不再转移状态，仅记录事件并通知对方，用户可继续选择结束或中止

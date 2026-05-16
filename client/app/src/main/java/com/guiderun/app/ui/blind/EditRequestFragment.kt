@@ -20,6 +20,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.SpeechRecognizerManager
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentEditRequestBinding
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -54,12 +56,25 @@ class EditRequestFragment : Fragment() {
         EdgeToEdgeHelper.applyInsets(view)
         setupDurationToggle()
         setupListeners()
+        setupVoiceCommands()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { collectUiState() }
                 launch { collectNavEvents() }
             }
+        }
+    }
+
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.SAVE, VoiceCommand.CONFIRM -> { viewModel.onSavePressed(); true }
+            VoiceCommand.CANCEL -> { findNavController().popBackStack(); true }
+            VoiceCommand.DURATION_30 -> { viewModel.onDurationSelected(30); true }
+            VoiceCommand.DURATION_60 -> { viewModel.onDurationSelected(60); true }
+            VoiceCommand.DURATION_90 -> { viewModel.onDurationSelected(90); true }
+            VoiceCommand.DURATION_120 -> { viewModel.onDurationSelected(120); true }
+            else -> false
         }
     }
 

@@ -13,6 +13,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentProfileEditBinding
 import com.guiderun.app.domain.model.Gender
 import com.guiderun.app.util.EdgeToEdgeHelper
@@ -47,10 +49,12 @@ class ProfileEditFragment : Fragment() {
 
         setupInputs()
         setupSaveButton()
+        setupVoiceCommands()
         observeUiState()
         observeEvents()
 
-        ttsManager.speak("编辑个人资料", TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_page_profile_edit), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_hint_profile_edit), TtsManager.Priority.HIGH)
     }
 
     override fun onDestroyView() {
@@ -96,6 +100,14 @@ class ProfileEditFragment : Fragment() {
     private fun setupSaveButton() {
         binding.btnSave.setOnClickListener {
             viewModel.save()
+        }
+    }
+
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.SAVE, VoiceCommand.CONFIRM -> { viewModel.save(); true }
+            VoiceCommand.CANCEL -> { findNavController().popBackStack(); true }
+            else -> false
         }
     }
 
@@ -149,7 +161,7 @@ class ProfileEditFragment : Fragment() {
                 viewModel.events.collect { event ->
                     when (event) {
                         is ProfileEditEvent.Saved -> {
-                            ttsManager.speak("保存成功", TtsManager.Priority.HIGH)
+                            ttsManager.speak(getString(R.string.tts_profile_save_success), TtsManager.Priority.HIGH)
                             findNavController().popBackStack()
                         }
                         is ProfileEditEvent.Error -> {

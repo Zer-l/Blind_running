@@ -2,6 +2,7 @@ package com.guiderun.app.ui.blind
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.data.location.ReverseGeocoder
@@ -9,6 +10,7 @@ import com.guiderun.app.domain.model.GeoPoint
 import com.guiderun.app.domain.repository.LocationProvider
 import com.guiderun.app.domain.usecase.CreateRunRequestUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import android.content.Context
 import javax.inject.Inject
 
 data class CreateRequestUiState(
@@ -47,6 +50,7 @@ sealed interface CreateRequestNavEvent {
 
 @HiltViewModel
 class CreateRequestViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val ttsManager: TtsManager,
     private val hapticFeedback: HapticFeedback,
     private val createRunRequest: CreateRunRequestUseCase,
@@ -73,9 +77,17 @@ class CreateRequestViewModel @Inject constructor(
         loadLocation()
     }
 
+    private var isPageAnnounced = false
+
     private fun loadLocation() {
         viewModelScope.launch {
             _uiState.update { it.copy(locationStatus = LocationStatus.Loading) }
+
+            // 等待页面播报完成后再播报定位状态
+            if (!isPageAnnounced) {
+                // 页面播报还在进行中，等播完再播定位相关
+                ttsManager.speakAndWait(context.getString(R.string.tts_location_loading), TtsManager.Priority.NORMAL)
+            }
 
             // Step 1: 尝试缓存位置（通常瞬间返回）
             val cached = try {
@@ -96,7 +108,7 @@ class CreateRequestViewModel @Inject constructor(
                 onLocationObtained(fresh)
             } else {
                 _uiState.update { it.copy(locationStatus = LocationStatus.Failed) }
-                ttsManager.speak("定位超时，请检查定位权限设置，或点击修改按钮手动输入集合地点")
+                ttsManager.speak(context.getString(R.string.tts_location_timeout), TtsManager.Priority.HIGH)
             }
         }
     }
@@ -117,18 +129,23 @@ class CreateRequestViewModel @Inject constructor(
 
         // ★ 定位成功播报
         if (address.isNotBlank()) {
-            ttsManager.speak("定位成功，$address")
+            ttsManager.speak(context.getString(R.string.tts_location_success, address), TtsManager.Priority.HIGH)
         } else {
-            ttsManager.speak("定位成功")
+            ttsManager.speak(context.getString(R.string.tts_location_success_no_address), TtsManager.Priority.HIGH)
         }
     }
 
     fun onScreenResumed() {
         ttsManager.acquire()
-        // 首次进入播报页面说明
         if (!hasAnnouncedPage) {
             hasAnnouncedPage = true
-            ttsManager.speak("发起跑步请求页面。正在获取定位，请稍候")
+            viewModelScope.launch {
+                // 先停掉可能残留的播报，确保页面名称优先
+                ttsManager.stop()
+                ttsManager.speakAndWait(context.getString(R.string.tts_page_create_request), TtsManager.Priority.HIGH)
+                isPageAnnounced = true
+                ttsManager.speak(context.getString(R.string.tts_hint_create_request), TtsManager.Priority.HIGH)
+            }
         }
     }
 
@@ -151,17 +168,17 @@ class CreateRequestViewModel @Inject constructor(
 
     fun onLocationPermissionDenied() {
         _uiState.update { it.copy(locationStatus = LocationStatus.Failed) }
-        ttsManager.speak("无法获取位置权限，您可以点击修改按钮手动输入集合地点", TtsManager.Priority.HIGH)
+        ttsManager.speak(context.getString(R.string.tts_location_permission_denied), TtsManager.Priority.HIGH)
     }
 
     fun onConfirmPressed() {
         if (uiState.value.locationStatus is LocationStatus.Loading) {
-            ttsManager.speak("位置尚未获取，请稍候")
+            ttsManager.speak(context.getString(R.string.tts_location_loading))
             return
         }
         val state = uiState.value
         if (state.locationStatus is LocationStatus.Failed && state.locationDescription == "当前位置") {
-            ttsManager.speak("位置获取失败，请点击修改按钮手动输入集合地点")
+            ttsManager.speak(context.getString(R.string.tts_location_failed_hint))
             return
         }
 
@@ -169,20 +186,19 @@ class CreateRequestViewModel @Inject constructor(
             countdownJob?.cancel()
             countdownJob = null
             _uiState.update { it.copy(confirmCountdown = null) }
-            ttsManager.speak("已取消", TtsManager.Priority.HIGH)
+            hapticFeedback.confirm()
+            ttsManager.speak(context.getString(R.string.tts_cancelled), TtsManager.Priority.HIGH)
             return
         }
 
         hapticFeedback.warning()
         countdownJob = viewModelScope.launch {
-            // ★ 改 speak → speakAndWait，播完再开始倒数
-            ttsManager.speakAndWait("3秒后提交请求，再次点击可取消", TtsManager.Priority.HIGH)
+            ttsManager.speakAndWait(context.getString(R.string.tts_submit_countdown, 5), TtsManager.Priority.HIGH)
 
-            for (i in 3 downTo 1) {
+            for (i in 5 downTo 1) {
                 ensureActive()
                 _uiState.update { it.copy(confirmCountdown = i) }
                 ttsManager.speakAndWait("$i", TtsManager.Priority.HIGH)
-                delay(1000)
             }
 
             ensureActive()
@@ -191,12 +207,32 @@ class CreateRequestViewModel @Inject constructor(
         }
     }
 
+    /** 长按达到 2 秒阈值：震动 + "松开发起请求"提示。 */
+    fun onLongPressThresholdConfirm() {
+        hapticFeedback.warning()
+        ttsManager.speak(context.getString(R.string.tts_submit_release), TtsManager.Priority.HIGH)
+    }
+
+    /** 短按确认按钮：朗读当前选定（时长 + 地点 + 备注摘要）。 */
+    fun onShortPressConfirm() {
+        val state = uiState.value
+        val location = when (state.locationStatus) {
+            is LocationStatus.Located -> state.locationDescription.ifBlank { "当前位置" }
+            is LocationStatus.Loading -> "正在定位"
+            is LocationStatus.Failed -> "定位失败"
+        }
+        val notes = state.notes.trim().ifEmpty { "无" }
+        val msg = "时长${state.selectedDurationMinutes}分钟，地点${location}，备注${notes}。按住2秒发起请求，5秒倒计时内可撤销"
+        ttsManager.speak(msg, TtsManager.Priority.HIGH)
+    }
+
     fun onCancelPressed() {
         if (countdownJob?.isActive == true) {
             countdownJob?.cancel()
             countdownJob = null
             _uiState.update { it.copy(confirmCountdown = null) }
-            ttsManager.speak("已取消", TtsManager.Priority.HIGH)
+            hapticFeedback.confirm()
+            ttsManager.speak(context.getString(R.string.tts_cancelled), TtsManager.Priority.HIGH)
         } else {
             viewModelScope.launch { _navEvent.emit(CreateRequestNavEvent.Back) }
         }
@@ -239,7 +275,7 @@ class CreateRequestViewModel @Inject constructor(
             is LocationStatus.Loading -> return
         }
         _uiState.update { it.copy(isSubmitting = true, confirmCountdown = null, errorMessage = null) }
-        ttsManager.speak("正在提交请求…", TtsManager.Priority.HIGH)
+        ttsManager.speak(context.getString(R.string.tts_submitting), TtsManager.Priority.HIGH)
 
         createRunRequest(
             durationMinutes = current.selectedDurationMinutes,
@@ -247,12 +283,12 @@ class CreateRequestViewModel @Inject constructor(
             notes = current.notes.ifBlank { null },
         ).onSuccess { request ->
             _uiState.update { it.copy(isSubmitting = false) }
-            ttsManager.speak("请求已发出，正在等待志愿者", TtsManager.Priority.HIGH)
+            ttsManager.speak(context.getString(R.string.tts_submit_success), TtsManager.Priority.HIGH)
             hapticFeedback.confirm()
             _navEvent.emit(CreateRequestNavEvent.ToWaitingMatch(request.id))
         }.onFailure { e ->
             _uiState.update { it.copy(isSubmitting = false, errorMessage = e.message ?: "提交失败，请重试") }
-            ttsManager.speak("提交失败：${e.message ?: "请重试"}")
+            ttsManager.speak(context.getString(R.string.tts_submit_failed, e.message ?: "请重试"))
             hapticFeedback.error()
         }
     }

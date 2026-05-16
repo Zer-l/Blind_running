@@ -14,6 +14,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentMatchedBinding
 import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.ui.common.showInterruptDialog
@@ -32,6 +34,7 @@ class MatchedFragment : Fragment() {
 
     private var pressStartTime = 0L
     private var pressThresholdJob: Job? = null
+    private var gestureConsumedByCountdownDismiss = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -46,12 +49,30 @@ class MatchedFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         EdgeToEdgeHelper.applyInsets(view)
         setupBackPressInterception()
+        setupVoiceCommands()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { collectUiState() }
                 launch { collectNavEvents() }
             }
+        }
+    }
+
+    /**
+     * 已匹配页：CONFIRM 等价于 1 秒长按"我已见到志愿者"；CANCEL 取消订单。
+     * 3 秒长按"松开开始跑步"目前只能用手势触发，不支持语音（语义易混淆）。
+     */
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.CONFIRM -> { viewModel.onConfirmMetPressed(); true }
+            VoiceCommand.CANCEL -> {
+                if (viewModel.uiState.value.currentStatus != RunRequestStatus.MET) {
+                    viewModel.cancelByUser()
+                }
+                true
+            }
+            else -> false
         }
     }
 
@@ -91,26 +112,33 @@ class MatchedFragment : Fragment() {
     private fun onGestureEvent(event: MotionEvent) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                // 5 秒倒计时进行中：任何按下=撤销，不启动阈值 Job
+                if (viewModel.uiState.value.confirmCountdown != null) {
+                    gestureConsumedByCountdownDismiss = true
+                    viewModel.onConfirmMetPressed()
+                    return
+                }
+                gestureConsumedByCountdownDismiss = false
                 pressStartTime = SystemClock.elapsedRealtime()
                 pressThresholdJob?.cancel()
                 pressThresholdJob = viewLifecycleOwner.lifecycleScope.launch {
-                    delay(1_000)
-                    viewModel.onLongPressThreshold1s()
                     delay(2_000)
-                    viewModel.onLongPressThreshold3s()
+                    viewModel.onLongPressThreshold2s()
                 }
             }
             MotionEvent.ACTION_UP -> {
+                if (gestureConsumedByCountdownDismiss) {
+                    gestureConsumedByCountdownDismiss = false
+                    return
+                }
                 pressThresholdJob?.cancel()
                 pressThresholdJob = null
                 val elapsed = SystemClock.elapsedRealtime() - pressStartTime
-                when {
-                    elapsed >= 3_000 -> viewModel.onReleasePressed()
-                    elapsed >= 1_000 -> viewModel.onConfirmAccept()
-                    else -> viewModel.onShortPress()
-                }
+                if (elapsed >= 2_000) viewModel.onConfirmMetPressed()
+                else viewModel.onShortPress()
             }
             MotionEvent.ACTION_CANCEL -> {
+                gestureConsumedByCountdownDismiss = false
                 pressThresholdJob?.cancel()
                 pressThresholdJob = null
             }
@@ -136,10 +164,6 @@ class MatchedFragment : Fragment() {
     private suspend fun collectNavEvents() {
         viewModel.navEvent.collect { event ->
             when (event) {
-                is MatchedNavEvent.ToWaiting -> {
-                    val args = Bundle().apply { putString("requestId", event.requestId) }
-                    findNavController().navigate(R.id.action_matched_to_waiting, args)
-                }
                 MatchedNavEvent.ToHome ->
                     (activity as? BlindActivity)?.navigateToHome()
                 is MatchedNavEvent.ToRunning -> {

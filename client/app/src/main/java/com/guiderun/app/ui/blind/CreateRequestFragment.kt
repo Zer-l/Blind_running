@@ -2,7 +2,9 @@ package com.guiderun.app.ui.blind
 
 import android.Manifest
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -19,12 +21,16 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.SpeechRecognizerManager
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentCreateRequestBinding
 import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.AppPermissions
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -36,6 +42,11 @@ class CreateRequestFragment : Fragment() {
 
     private lateinit var permissionHelper: PermissionHelper
     private var permissionChecked = false
+
+    // 确认按钮的"按住2秒"手势状态
+    private var confirmPressStartTime = 0L
+    private var confirmThresholdJob: Job? = null
+    private var confirmGestureConsumedByCountdownDismiss = false
 
     private var voiceInputManager: SpeechRecognizerManager? = null
     private val micPermissionLauncher = registerForActivityResult(
@@ -73,12 +84,26 @@ class CreateRequestFragment : Fragment() {
         setupListeners()
         setupEditResultListener()
         setupBackPressInterception()
+        setupVoiceCommands()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { collectUiState() }
                 launch { collectNavEvents() }
             }
+        }
+    }
+
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.CONFIRM -> { viewModel.onConfirmPressed(); true }
+            VoiceCommand.CANCEL -> { viewModel.onCancelPressed(); true }
+            VoiceCommand.MODIFY_REQUEST -> { navigateToEditRequest(); true }
+            VoiceCommand.DURATION_30 -> { viewModel.onDurationSelected(30); true }
+            VoiceCommand.DURATION_60 -> { viewModel.onDurationSelected(60); true }
+            VoiceCommand.DURATION_90 -> { viewModel.onDurationSelected(90); true }
+            VoiceCommand.DURATION_120 -> { viewModel.onDurationSelected(120); true }
+            else -> false
         }
     }
 
@@ -139,7 +164,45 @@ class CreateRequestFragment : Fragment() {
         binding.etNotes.doAfterTextChanged { text ->
             viewModel.onNotesChanged(text?.toString() ?: "")
         }
-        binding.btnConfirm.setOnClickListener { viewModel.onConfirmPressed() }
+        // 按住2秒触发"5秒倒计时"提交；短按朗读当前选择；倒计时进行中按下=撤销
+        binding.btnConfirm.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (viewModel.uiState.value.confirmCountdown != null) {
+                        confirmGestureConsumedByCountdownDismiss = true
+                        viewModel.onConfirmPressed() // toggle → 撤销
+                        return@setOnTouchListener true
+                    }
+                    confirmGestureConsumedByCountdownDismiss = false
+                    confirmPressStartTime = SystemClock.elapsedRealtime()
+                    confirmThresholdJob?.cancel()
+                    confirmThresholdJob = viewLifecycleOwner.lifecycleScope.launch {
+                        delay(2_000)
+                        viewModel.onLongPressThresholdConfirm()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (confirmGestureConsumedByCountdownDismiss) {
+                        confirmGestureConsumedByCountdownDismiss = false
+                        return@setOnTouchListener true
+                    }
+                    confirmThresholdJob?.cancel()
+                    confirmThresholdJob = null
+                    val elapsed = SystemClock.elapsedRealtime() - confirmPressStartTime
+                    if (elapsed >= 2_000) viewModel.onConfirmPressed()
+                    else viewModel.onShortPressConfirm()
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    confirmGestureConsumedByCountdownDismiss = false
+                    confirmThresholdJob?.cancel()
+                    confirmThresholdJob = null
+                    true
+                }
+                else -> false
+            }
+        }
         binding.btnCancel.setOnClickListener { viewModel.onCancelPressed() }
         binding.tvLocationStatus.setOnClickListener { viewModel.onRetryLocation() }
         binding.btnModify.setOnClickListener { navigateToEditRequest() }

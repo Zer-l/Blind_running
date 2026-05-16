@@ -96,9 +96,6 @@ class RunRequestController(
         @RequestBody(required = false) dto: AbandonDto?,
     ) = ApiResponse.ok(service.abandon(currentUserId, id, dto?.reason))
 
-    @PostMapping("/{id}/release-volunteer")
-    fun releaseVolunteer(@PathVariable id: String) = ApiResponse.ok(service.releaseVolunteer(currentUserId, id))
-
     @PostMapping("/{id}/emergency")
     fun emergency(
         @PathVariable id: String,

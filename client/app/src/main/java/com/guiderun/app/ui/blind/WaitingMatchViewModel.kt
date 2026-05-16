@@ -3,6 +3,7 @@ package com.guiderun.app.ui.blind
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.WaitingMessageGenerator
@@ -10,6 +11,7 @@ import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.usecase.CancelRunRequestUseCase
 import com.guiderun.app.domain.usecase.PollRunRequestUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import android.content.Context
 import javax.inject.Inject
 
 data class WaitingMatchUiState(
@@ -37,6 +40,7 @@ sealed interface WaitingMatchNavEvent {
 
 @HiltViewModel
 class WaitingMatchViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
     private val ttsManager: TtsManager,
     private val hapticFeedback: HapticFeedback,
@@ -88,7 +92,7 @@ class WaitingMatchViewModel @Inject constructor(
                     }
                     val msg = WaitingMessageGenerator.getMessage(elapsed)
                     _uiState.update { it.copy(waitingMessage = msg) }
-                    ttsManager.speak(msg)
+                    ttsManager.speak(msg, TtsManager.Priority.NORMAL)
                 }
             }
         }
@@ -106,14 +110,14 @@ class WaitingMatchViewModel @Inject constructor(
                     RunRequestStatus.MET -> {
                         cancelCountdownJob?.cancel()
                         suppressAutoAnnounce()
-                        ttsManager.speak("已找到志愿者！正在前往与您汇合", TtsManager.Priority.HIGH)
+                        ttsManager.speak(context.getString(R.string.tts_match_found), TtsManager.Priority.HIGH)
                         hapticFeedback.confirm()
                         _navEvent.emit(WaitingMatchNavEvent.ToMatched(requestId))
                     }
                     RunRequestStatus.ABORTED -> {
                         cancelCountdownJob?.cancel()
                         suppressAutoAnnounce()
-                        ttsManager.speak("请求已终止")
+                        ttsManager.speak(context.getString(R.string.tts_request_aborted), TtsManager.Priority.HIGH)
                         _navEvent.emit(WaitingMatchNavEvent.ToHome)
                     }
                     else -> Unit
@@ -126,7 +130,10 @@ class WaitingMatchViewModel @Inject constructor(
         ttsManager.acquire()
         if (!hasAnnouncedPage) {
             hasAnnouncedPage = true
-            ttsManager.speak("正在等待志愿者接单，短按屏幕查询等待时长，长按2秒取消请求")
+            viewModelScope.launch {
+                ttsManager.speakAndWait(context.getString(R.string.tts_page_waiting_match), TtsManager.Priority.HIGH)
+                ttsManager.speak(context.getString(R.string.tts_hint_waiting_match), TtsManager.Priority.HIGH)
+            }
         }
     }
 
@@ -137,14 +144,25 @@ class WaitingMatchViewModel @Inject constructor(
         _uiState.update { it.copy(cancelCountdown = null) }
     }
 
-    // ★ 长按取消：先播提示语 → 再倒数
+    /**
+     * 长按取消：先播提示语 → 再倒数。
+     * 若倒计时已在进行（重入），走撤销分支，确保任何路径（手势/语音/返回键）行为一致。
+     */
     fun onLongPressCancel() {
-        if (cancelCountdownJob?.isActive == true) return
+        if (cancelCountdownJob?.isActive == true) {
+            cancelCountdownJob?.cancel()
+            cancelCountdownJob = null
+            _uiState.update { it.copy(cancelCountdown = null) }
+            suppressAutoAnnounce()
+            hapticFeedback.confirm()
+            ttsManager.speak(context.getString(R.string.tts_cancelled), TtsManager.Priority.HIGH)
+            return
+        }
 
         hapticFeedback.warning()
         suppressAutoAnnounce()
         cancelCountdownJob = viewModelScope.launch {
-            ttsManager.speakAndWait("5秒后取消请求，再按一次可撤销", TtsManager.Priority.HIGH)
+            ttsManager.speakAndWait(context.getString(R.string.tts_cancel_countdown, 5), TtsManager.Priority.HIGH)
 
             for (i in 5 downTo 1) {
                 ensureActive()
@@ -163,7 +181,7 @@ class WaitingMatchViewModel @Inject constructor(
     fun onLongPressThreshold2s() {
         hapticFeedback.warning()
         suppressAutoAnnounce()
-        ttsManager.speak("松开取消请求")
+        ttsManager.speak(context.getString(R.string.tts_cancel_release), TtsManager.Priority.HIGH)
     }
 
     // ★ 短按：播报等待时长（唯一入口）
@@ -178,7 +196,8 @@ class WaitingMatchViewModel @Inject constructor(
             cancelCountdownJob = null
             _uiState.update { it.copy(cancelCountdown = null) }
             suppressAutoAnnounce()
-            ttsManager.speak("已取消", TtsManager.Priority.HIGH)
+            hapticFeedback.confirm()
+            ttsManager.speak(context.getString(R.string.tts_cancelled), TtsManager.Priority.HIGH)
         } else {
             onLongPressCancel()
         }
@@ -200,13 +219,13 @@ class WaitingMatchViewModel @Inject constructor(
         suppressAutoAnnounce()
         cancelRunRequest(requestId, reason = "用户主动取消")
             .onSuccess {
-                ttsManager.speak("请求已取消", TtsManager.Priority.HIGH)
+                ttsManager.speak(context.getString(R.string.tts_cancel_success), TtsManager.Priority.HIGH)
                 hapticFeedback.confirm()
                 _navEvent.emit(WaitingMatchNavEvent.ToHome)
             }
             .onFailure { e ->
                 _uiState.update { it.copy(isCancelling = false) }
-                ttsManager.speak("取消失败：${e.message ?: "请重试"}")
+                ttsManager.speak(context.getString(R.string.tts_cancel_failed, e.message ?: "请重试"))
                 hapticFeedback.error()
             }
     }

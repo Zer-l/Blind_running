@@ -1,20 +1,25 @@
 package com.guiderun.app.accessibility
 
 import android.content.Context
-import android.content.Intent
-import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.asr.AsrEngine
+import com.guiderun.app.accessibility.asr.AsrResult
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
 import timber.log.Timber
 
 /**
- * Wraps Android SpeechRecognizer for on-demand voice input.
- * Must be created and used on the main thread (Android requirement).
- * Lifecycle: create per Fragment, call destroy() in onDestroyView().
+ * 兼容包装：保留旧的 `SpeechRecognizerManager` 类签名，内部已切换到讯飞 [AsrEngine]，
+ * 调用方 (CreateRequestFragment / EditRequestFragment 的备注框麦克风按钮) 无需改动。
  *
- * 国产 ROM 多数未预装可识别服务，此时 [isAvailable] 返回 false，调用方需提前判断给出 fallback。
+ * 与原系统 `android.speech.SpeechRecognizer` 版本相比：
+ * - [isAvailable] 由讯飞 SDK 状态决定，不再因国产 ROM 缺识别服务而失败
+ * - 错误信息已在 [AsrEngine] 实现内 humanize 为中文提示
+ * - 流式 partial 结果忽略，仅在最终结果 [AsrResult.Final] 回调 [onResult]
+ *
+ * 用法不变：构造 → 检查 [isAvailable] → [start] → 完成后 [destroy]。
  */
 class SpeechRecognizerManager(
     private val context: Context,
@@ -22,65 +27,55 @@ class SpeechRecognizerManager(
     private val onError: (errorMessage: String) -> Unit = {},
     private val onStartListening: () -> Unit = {},
 ) {
-    private var recognizer: SpeechRecognizer? = null
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface AsrEngineEntryPoint {
+        fun asrEngine(): AsrEngine
+    }
+
+    private val asrEngine: AsrEngine by lazy {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            AsrEngineEntryPoint::class.java,
+        ).asrEngine()
+    }
+
+    private var listening: Boolean = false
 
     val isAvailable: Boolean
-        get() = SpeechRecognizer.isRecognitionAvailable(context)
+        get() = asrEngine.isAvailable
 
     fun start() {
         if (!isAvailable) {
             onError(context.getString(R.string.voice_input_unavailable))
             return
         }
-        recognizer?.destroy()
-        recognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
-            setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) { onStartListening() }
-                override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {}
-                override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() {}
-                override fun onError(error: Int) {
-                    Timber.w("SpeechRecognizer error: $error")
-                    onError(humanize(error))
+        if (listening) return
+        listening = true
+        asrEngine.start { result ->
+            when (result) {
+                AsrResult.Ready -> onStartListening()
+                is AsrResult.Final -> {
+                    if (result.text.isNotBlank()) onResult(result.text)
                 }
-                override fun onResults(results: Bundle?) {
-                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    matches?.firstOrNull()?.takeIf { it.isNotBlank() }?.let(onResult)
+                is AsrResult.Error -> {
+                    Timber.w("SpeechRecognizerManager error: ${result.code}")
+                    onError(result.message)
                 }
-                override fun onPartialResults(partialResults: Bundle?) {}
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
-            startListening(
-                Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN")
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+                AsrResult.Idle -> {
+                    listening = false
                 }
-            )
+                else -> Unit  // partial / endOfSpeech 当前不暴露
+            }
         }
     }
 
     fun stop() {
-        recognizer?.stopListening()
+        asrEngine.stop()
     }
 
     fun destroy() {
-        recognizer?.destroy()
-        recognizer = null
-    }
-
-    private fun humanize(errorCode: Int): String = when (errorCode) {
-        SpeechRecognizer.ERROR_NETWORK,
-        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> context.getString(R.string.voice_input_error_network)
-        SpeechRecognizer.ERROR_NO_MATCH,
-        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> context.getString(R.string.voice_input_error_no_match)
-        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
-            context.getString(R.string.voice_input_permission_denied)
-        SpeechRecognizer.ERROR_RECOGNIZER_BUSY,
-        SpeechRecognizer.ERROR_SERVER -> context.getString(R.string.voice_input_error_busy)
-        SpeechRecognizer.ERROR_CLIENT -> context.getString(R.string.voice_input_unavailable)
-        else -> context.getString(R.string.voice_input_error_generic)
+        asrEngine.cancel()
+        listening = false
     }
 }

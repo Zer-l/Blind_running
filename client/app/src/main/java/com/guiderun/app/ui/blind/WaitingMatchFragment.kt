@@ -14,6 +14,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentWaitingMatchBinding
 import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
@@ -32,6 +34,9 @@ class WaitingMatchFragment : Fragment() {
     private var pressStartTime = 0L
     private var pressThresholdJob: Job? = null
 
+    /** 当前手势是否已在 ACTION_DOWN 时被消费（倒计时进行中按下=立即撤销）。 */
+    private var gestureConsumedByCountdownDismiss = false
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -45,12 +50,21 @@ class WaitingMatchFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         EdgeToEdgeHelper.applyInsets(view)
         setupBackPressInterception()
+        setupVoiceCommands()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { collectUiState() }
                 launch { collectNavEvents() }
             }
+        }
+    }
+
+    /** 等待匹配页只暴露"取消订单"语义；CONFIRM 在此页无意义不接管。 */
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.CANCEL -> { viewModel.onCancelPressed(); true }
+            else -> false
         }
     }
 
@@ -82,6 +96,13 @@ class WaitingMatchFragment : Fragment() {
     private fun onGestureEvent(event: MotionEvent) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                // 倒计时进行中：任何按下都解读为"撤销"，不再启动阈值 Job、不播报等待时长
+                if (viewModel.uiState.value.cancelCountdown != null) {
+                    gestureConsumedByCountdownDismiss = true
+                    viewModel.onCancelPressed() // toggle → 撤销倒计时
+                    return
+                }
+                gestureConsumedByCountdownDismiss = false
                 pressStartTime = SystemClock.elapsedRealtime()
                 pressThresholdJob?.cancel()
                 pressThresholdJob = viewLifecycleOwner.lifecycleScope.launch {
@@ -90,6 +111,10 @@ class WaitingMatchFragment : Fragment() {
                 }
             }
             MotionEvent.ACTION_UP -> {
+                if (gestureConsumedByCountdownDismiss) {
+                    gestureConsumedByCountdownDismiss = false
+                    return
+                }
                 pressThresholdJob?.cancel()
                 pressThresholdJob = null
                 val elapsed = SystemClock.elapsedRealtime() - pressStartTime
@@ -99,6 +124,7 @@ class WaitingMatchFragment : Fragment() {
                 }
             }
             MotionEvent.ACTION_CANCEL -> {
+                gestureConsumedByCountdownDismiss = false
                 pressThresholdJob?.cancel()
                 pressThresholdJob = null
             }
@@ -117,7 +143,7 @@ class WaitingMatchFragment : Fragment() {
                 state.isCancelling -> getString(R.string.loading)
                 state.cancelCountdown != null ->
                     getString(R.string.waiting_match_btn_cancel_countdown, state.cancelCountdown)
-                else -> getString(R.string.waiting_match_gesture_hint)
+                else -> ""
             }
 
             // ★ contentDescription 设为等待时长，防止 TalkBack 播报"长按取消请求"

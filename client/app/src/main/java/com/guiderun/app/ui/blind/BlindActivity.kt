@@ -4,16 +4,22 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.addCallback
+import androidx.annotation.IdRes
 import androidx.core.os.bundleOf
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.voice.CommandExecutor
+import com.guiderun.app.accessibility.voice.VoiceDestination
 import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.ui.navigation.ActiveOrderRouter
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class BlindActivity : BaseBlindActivity() {
+
+    @Inject lateinit var commandExecutor: CommandExecutor
 
     companion object {
         private const val EXTRA_DESTINATION = "destination"
@@ -53,6 +59,43 @@ class BlindActivity : BaseBlindActivity() {
     fun navigateToHome() {
         navController?.popBackStack(R.id.blind_nav_graph, true)
         finish()
+    }
+
+    // ===== VoiceCommandHost：导航相关由 BlindActivity 提供（持有 NavController） =====
+
+    override fun voiceNavigate(destination: VoiceDestination): Boolean {
+        val destId = when (destination) {
+            VoiceDestination.CREATE_REQUEST -> R.id.blindCreateRequestFragment
+            VoiceDestination.VIEW_HISTORY -> R.id.blindHistoryFragment
+            VoiceDestination.PROFILE -> R.id.settingsFragment
+        }
+        val controller = navController ?: return false
+        if (controller.currentDestination?.id == destId) return false
+        return runCatching {
+            controller.navigate(destId)
+            true
+        }.getOrDefault(false)
+    }
+
+    override fun voiceNavigateToHome() = navigateToHome()
+
+    override fun voiceDescribeStatus(): String {
+        val destId = navController?.currentDestination?.id
+        val pageRes = when (destId) {
+            R.id.blindCreateRequestFragment -> R.string.tts_page_create_request
+            R.id.blindWaitingMatchFragment -> R.string.tts_page_waiting_match
+            R.id.blindMatchedFragment -> R.string.tts_page_matched
+            R.id.blindRunningFragment -> R.string.tts_page_blind_running
+            R.id.blindReviewFragment -> R.string.tts_page_blind_review
+            R.id.blindHistoryFragment -> R.string.tts_page_blind_history
+            R.id.blindEditRequestFragment -> R.string.tts_page_edit_request
+            R.id.blindTrackPlaybackFragment -> R.string.tts_page_track_playback
+            R.id.settingsFragment -> R.string.tts_page_settings
+            else -> null
+        }
+        val pageText = pageRes?.let { getString(it) } ?: getString(R.string.app_name)
+        val orderText = activeRequestId?.let { "，正在进行订单" } ?: "，当前没有进行中的订单"
+        return "当前在$pageText$orderText"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -119,6 +162,17 @@ class BlindActivity : BaseBlindActivity() {
                 finish()
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        commandExecutor.bind(this)
+    }
+
+    override fun onPause() {
+        commandExecutor.unbind(this)
+        voiceCommandManager.cancel()
+        super.onPause()
     }
 
     /**

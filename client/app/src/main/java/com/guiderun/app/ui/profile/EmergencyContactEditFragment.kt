@@ -11,7 +11,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentEmergencyContactEditBinding
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -50,13 +53,16 @@ class EmergencyContactEditFragment : Fragment() {
 
         setupInputs()
         setupSaveButton()
+        setupVoiceCommands()
         observeUiState()
         observeEvents()
 
-        ttsManager.speak(
-            if (index >= 0) "编辑紧急联系人" else "添加紧急联系人",
-            TtsManager.Priority.HIGH,
-        )
+        if (index >= 0) {
+            ttsManager.speak(getString(R.string.tts_page_emergency_contact_edit_edit), TtsManager.Priority.HIGH)
+        } else {
+            ttsManager.speak(getString(R.string.tts_page_emergency_contact_edit_add), TtsManager.Priority.HIGH)
+        }
+        ttsManager.speak(getString(R.string.tts_hint_emergency_contact_edit), TtsManager.Priority.HIGH)
     }
 
     override fun onDestroyView() {
@@ -74,6 +80,14 @@ class EmergencyContactEditFragment : Fragment() {
     private fun setupSaveButton() {
         binding.btnSave.setOnClickListener {
             viewModel.save()
+        }
+    }
+
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.SAVE, VoiceCommand.CONFIRM -> { viewModel.save(); true }
+            VoiceCommand.CANCEL -> { findNavController().popBackStack(); true }
+            else -> false
         }
     }
 
@@ -111,7 +125,7 @@ class EmergencyContactEditFragment : Fragment() {
                 viewModel.events.collect { event ->
                     when (event) {
                         is EmergencyContactEditEvent.Saved -> {
-                            ttsManager.speak("保存成功", TtsManager.Priority.HIGH)
+                            ttsManager.speak(getString(R.string.tts_contact_save_success), TtsManager.Priority.HIGH)
                             findNavController().popBackStack()
                         }
                         is EmergencyContactEditEvent.Error -> {

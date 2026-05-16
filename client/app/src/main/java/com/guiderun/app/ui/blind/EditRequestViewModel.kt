@@ -3,9 +3,11 @@ package com.guiderun.app.ui.blind
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.data.location.ForwardGeocoder
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import android.content.Context
 import javax.inject.Inject
 
 data class EditRequestUiState(
@@ -39,6 +42,7 @@ sealed interface EditRequestNavEvent {
 
 @HiltViewModel
 class EditRequestViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
     private val ttsManager: TtsManager,
     private val forwardGeocoder: ForwardGeocoder,
@@ -62,11 +66,10 @@ class EditRequestViewModel @Inject constructor(
     fun onScreenResumed() {
         ttsManager.acquire()
         val state = _uiState.value
-        val durationText = "${state.selectedDurationMinutes}分钟"
-        ttsManager.speak(
-            "修改请求参数。当前时长${durationText}，集合地点${state.locationDescription}。",
-            TtsManager.Priority.HIGH,
-        )
+        viewModelScope.launch {
+            ttsManager.speakAndWait(context.getString(R.string.tts_page_edit_request))
+            ttsManager.speak(context.getString(R.string.tts_hint_edit_request), TtsManager.Priority.HIGH)
+        }
     }
 
     fun onScreenPaused() {
@@ -110,17 +113,14 @@ class EditRequestViewModel @Inject constructor(
         // 地址改了：尝试正向地理编码，失败时兜底回退到旧坐标
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
-            ttsManager.speak("正在解析地址", TtsManager.Priority.HIGH)
+            ttsManager.speak(context.getString(R.string.tts_edit_saving), TtsManager.Priority.HIGH)
 
             val point = forwardGeocoder.geocode(state.locationDescription)
 
             if (point != null) {
-                ttsManager.speak("地址解析成功", TtsManager.Priority.HIGH)
+                ttsManager.speak(context.getString(R.string.tts_edit_save_success), TtsManager.Priority.HIGH)
             } else {
-                ttsManager.speak(
-                    "地址解析失败，将使用当前定位作为集合点参考",
-                    TtsManager.Priority.HIGH,
-                )
+                ttsManager.speak(context.getString(R.string.tts_edit_save_fallback), TtsManager.Priority.HIGH)
             }
 
             _uiState.update { it.copy(isSaving = false) }

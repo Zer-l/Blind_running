@@ -16,6 +16,8 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentEmergencyContactListBinding
 import com.guiderun.app.databinding.ItemEmergencyContactBinding
 import com.guiderun.app.domain.model.EmergencyContact
@@ -58,9 +60,11 @@ class EmergencyContactListFragment : Fragment() {
 
         setupRecyclerView()
         setupFab()
+        setupVoiceCommands()
         observeUiState()
 
-        ttsManager.speak("紧急联系人页面", TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_page_emergency_contact_list), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_hint_emergency_contact_list), TtsManager.Priority.HIGH)
     }
 
     override fun onResume() {
@@ -82,6 +86,14 @@ class EmergencyContactListFragment : Fragment() {
     private fun setupFab() {
         binding.fabAdd.setOnClickListener {
             navigateToEdit(-1)
+        }
+    }
+
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.ADD_CONTACT -> { navigateToEdit(-1); true }
+            VoiceCommand.CANCEL -> { findNavController().popBackStack(); true }
+            else -> false
         }
     }
 
@@ -116,12 +128,12 @@ class EmergencyContactListFragment : Fragment() {
                                 if (count == 0) {
                                     binding.emptyState.visibility = View.VISIBLE
                                     binding.recyclerView.visibility = View.GONE
-                                    ttsManager.speak("还没有紧急联系人，请添加", TtsManager.Priority.NORMAL)
+                                    ttsManager.speak(getString(R.string.tts_contact_empty), TtsManager.Priority.NORMAL)
                                 } else {
                                     binding.emptyState.visibility = View.GONE
                                     binding.recyclerView.visibility = View.VISIBLE
-                                    val limitHint = if (count >= maxContacts) "，已达上限" else ""
-                                    ttsManager.speak("已加载${count}位紧急联系人$limitHint", TtsManager.Priority.NORMAL)
+                                    val limitHint = if (count >= maxContacts) getString(R.string.tts_contact_limit_reached) else ""
+                                    ttsManager.speak(getString(R.string.tts_contact_loaded, count, limitHint), TtsManager.Priority.NORMAL)
                                 }
                             }
                         }

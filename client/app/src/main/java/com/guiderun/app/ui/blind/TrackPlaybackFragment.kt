@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.ui.volunteer.TrackPlaybackScreen
 import dagger.hilt.android.AndroidEntryPoint
@@ -36,7 +37,8 @@ class TrackPlaybackFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         ttsManager.acquire()
-        ttsManager.speak("轨迹回放页面。点击播放按钮开始回放，可调节回放速度")
+        ttsManager.speak(getString(R.string.tts_page_track_playback), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_hint_track_playback), TtsManager.Priority.HIGH)
     }
 
     override fun onPause() {
