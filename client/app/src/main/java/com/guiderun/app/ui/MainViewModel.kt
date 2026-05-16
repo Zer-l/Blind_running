@@ -25,6 +25,9 @@ class MainViewModel @Inject constructor(
     authEventBus: AuthEventBus,
 ) : ViewModel() {
 
+    val themeId: StateFlow<String> = userPreferences.observeThemeId()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "orange")
+
     val startDestination: StateFlow<String?> = flow {
         val token = userPreferences.getAccessToken()
         emit(if (token != null) Screen.Home.route else Screen.Login.route)

@@ -1,6 +1,11 @@
 package com.guiderun.app.ui.volunteer
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -21,6 +26,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -40,12 +47,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.ui.common.CallPeerButton
 import com.guiderun.app.ui.common.InterruptDialog
+import com.guiderun.app.ui.theme.AppRadius
+import com.guiderun.app.ui.theme.AppSpacing
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -93,7 +103,12 @@ fun VolunteerReviewScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.volunteer_review_title)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.volunteer_review_title),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
                 actions = {
                     CallPeerButton(phone = uiState.peerPhone)
                     TextButton(onClick = viewModel::skip) {
@@ -105,81 +120,51 @@ fun VolunteerReviewScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.MD),
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.volunteer_review_rating_label),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    StarRatingRow(
-                        rating = uiState.rating,
-                        onRatingChange = viewModel::setRating,
-                    )
-                    Text(
-                        text = ratingText(uiState.rating),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    )
-                }
-            }
+            // 评分卡片
+            RatingCard(
+                rating = uiState.rating,
+                onRatingChange = viewModel::setRating,
+            )
 
-            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = stringResource(R.string.volunteer_review_tags_label),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val tags = listOf(
-                            R.string.volunteer_review_tag_punctual,
-                            R.string.volunteer_review_tag_cooperative,
-                            R.string.volunteer_review_tag_clear_communication,
-                            R.string.volunteer_review_tag_friendly,
-                        )
-                        tags.forEach { resId ->
-                            val tag = stringResource(resId)
-                            FilterChip(
-                                selected = tag in uiState.selectedTags,
-                                onClick = { viewModel.toggleTag(tag) },
-                                label = { Text(tag) },
-                            )
-                        }
-                    }
-                }
-            }
+            // 标签卡片
+            TagsCard(
+                selectedTags = uiState.selectedTags,
+                onToggleTag = viewModel::toggleTag,
+            )
 
+            // 评论输入
             OutlinedTextField(
                 value = uiState.comment,
                 onValueChange = viewModel::setComment,
                 label = { Text(stringResource(R.string.volunteer_review_comment_hint)) },
-                modifier = Modifier.fillMaxWidth().height(120.dp).padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .padding(horizontal = AppSpacing.MD),
                 maxLines = 4,
+                shape = AppRadius.MediumShape,
             )
 
             Spacer(Modifier.weight(1f))
 
+            // 提交按钮
             Button(
                 onClick = viewModel::submit,
-                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = AppSpacing.MD),
+                shape = AppRadius.LargeShape,
                 enabled = !uiState.isSubmitting && uiState.rating > 0,
             ) {
                 if (uiState.isSubmitting) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
@@ -187,10 +172,51 @@ fun VolunteerReviewScreen(
                     Text(
                         text = stringResource(R.string.volunteer_review_submit),
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(AppSpacing.MD))
+        }
+    }
+}
+
+@Composable
+private fun RatingCard(
+    rating: Int,
+    onRatingChange: (Int) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = AppSpacing.MD),
+        shape = AppRadius.LargeShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppSpacing.XL),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.MD),
+        ) {
+            Text(
+                text = stringResource(R.string.volunteer_review_rating_label),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            StarRatingRow(
+                rating = rating,
+                onRatingChange = onRatingChange,
+            )
+            Text(
+                text = ratingText(rating),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+            )
         }
     }
 }
@@ -200,22 +226,73 @@ private fun StarRatingRow(
     rating: Int,
     onRatingChange: (Int) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.XS)) {
         (1..5).forEach { star ->
+            val isSelected = star <= rating
             IconButton(
                 onClick = { onRatingChange(star) },
                 modifier = Modifier.size(48.dp),
             ) {
                 Icon(
-                    imageVector = if (star <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                    imageVector = if (isSelected) Icons.Default.Star else Icons.Default.StarBorder,
                     contentDescription = "$star 星",
                     modifier = Modifier.size(36.dp),
-                    tint = if (star <= rating) {
+                    tint = if (isSelected) {
                         MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagsCard(
+    selectedTags: Set<String>,
+    onToggleTag: (String) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = AppSpacing.MD),
+        shape = AppRadius.LargeShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(AppSpacing.MD)) {
+            Text(
+                text = stringResource(R.string.volunteer_review_tags_label),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(AppSpacing.MD))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+            ) {
+                val tags = listOf(
+                    R.string.volunteer_review_tag_punctual,
+                    R.string.volunteer_review_tag_cooperative,
+                    R.string.volunteer_review_tag_clear_communication,
+                    R.string.volunteer_review_tag_friendly,
+                )
+                tags.forEach { resId ->
+                    val tag = stringResource(resId)
+                    FilterChip(
+                        selected = tag in selectedTags,
+                        onClick = { onToggleTag(tag) },
+                        label = { Text(tag) },
+                        shape = AppRadius.SmallShape,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ),
+                    )
+                }
             }
         }
     }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,9 +15,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -26,11 +35,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Pause
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +54,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.ui.shared.map.GuideRunMap
+import com.guiderun.app.ui.theme.AppRadius
+import com.guiderun.app.ui.theme.AppSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +77,12 @@ fun TrackPlaybackScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.track_playback_title)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.track_playback_title),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -80,27 +95,32 @@ fun TrackPlaybackScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                uiState.tracks.isEmpty() -> Text(
-                    text = stringResource(R.string.track_playback_empty),
-                    modifier = Modifier.align(Alignment.Center),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                uiState.tracks.isEmpty() -> EmptyTrackContent()
                 else -> {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Stats cards
+                        // 统计卡片
                         TrackStatsRow(
                             avgPaceSeconds = uiState.avgPaceSeconds,
                             maxSpeed = uiState.maxSpeed,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(
+                                horizontal = AppSpacing.MD,
+                                vertical = AppSpacing.XS,
+                            ),
                         )
-                        // Legend
-                        TrackLegendRow(modifier = Modifier.padding(horizontal = 16.dp))
-                        // Map
+                        // 图例
+                        TrackLegendRow(
+                            modifier = Modifier.padding(horizontal = AppSpacing.MD),
+                        )
+                        // 地图 - 带圆角和内边距
                         GuideRunMap(
                             state = uiState.mapState,
-                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(horizontal = AppSpacing.MD, vertical = AppSpacing.XS)
+                                .clip(RoundedCornerShape(AppRadius.Large)),
                         )
-                        // Playback controls
+                        // 播放控制
                         PlaybackControlsRow(
                             isPlaying = uiState.isPlaying,
                             speedMultiplier = uiState.speedMultiplier,
@@ -109,7 +129,7 @@ fun TrackPlaybackScreen(
                             onToggle = { viewModel.togglePlayback() },
                             onSpeedChange = { viewModel.setSpeed(it) },
                             onSeekToStart = { viewModel.seekToStart() },
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(horizontal = AppSpacing.MD, vertical = AppSpacing.SM),
                         )
                     }
                 }
@@ -119,29 +139,91 @@ fun TrackPlaybackScreen(
 }
 
 @Composable
-private fun TrackStatsRow(
-    avgPaceSeconds: Int?,
-    maxSpeed: Float?,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+private fun EmptyTrackContent() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(AppSpacing.XXL),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        StatItem(
-            value = avgPaceSeconds?.let { "%d'%02d\"".format(it / 60, it % 60) } ?: "--",
-            label = "均速(/km)",
-        )
-        StatItem(
-            value = maxSpeed?.let { "%.1f m/s".format(it) } ?: "--",
-            label = "最高速度",
+        Surface(
+            shape = AppRadius.ExtraLargeShape,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(96.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Timer,
+                contentDescription = null,
+                modifier = Modifier.padding(AppSpacing.LG),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(modifier = Modifier.height(AppSpacing.LG))
+        Text(
+            text = stringResource(R.string.track_playback_empty),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }
 
 @Composable
-private fun StatItem(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun TrackStatsRow(
+    avgPaceSeconds: Int?,
+    maxSpeed: Float?,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = AppRadius.LargeShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppSpacing.MD),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            StatItem(
+                value = avgPaceSeconds?.let { "%d'%02d\"".format(it / 60, it % 60) } ?: "--",
+                label = "均速(/km)",
+                icon = Icons.Default.Speed,
+            )
+            StatItem(
+                value = maxSpeed?.let { "%.1f m/s".format(it) } ?: "--",
+                label = "最高速度",
+                icon = Icons.Default.Timer,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatItem(
+    value: String,
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+    ) {
+        Surface(
+            shape = AppRadius.MediumShape,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+            modifier = Modifier.size(44.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.padding(AppSpacing.SM),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
         Text(
             text = value,
             style = MaterialTheme.typography.titleLarge,
@@ -155,12 +237,13 @@ private fun StatItem(value: String, label: String) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TrackLegendRow(modifier: Modifier = Modifier) {
-    Row(
+    FlowRow(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.XS),
     ) {
         LegendItem(color = Color(0xFFE53935), label = "<4'")
         LegendItem(color = Color(0xFFFB8C00), label = "4-5'")
@@ -184,7 +267,7 @@ private fun LegendItem(color: Color, label: String) {
                 .clip(CircleShape)
                 .background(color),
         )
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(AppSpacing.XS))
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
@@ -204,69 +287,93 @@ private fun PlaybackControlsRow(
     onSeekToStart: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        // Progress text
-        Text(
-            text = "%d / %d".format(currentIndex, totalPoints),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = AppRadius.LargeShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppSpacing.SM),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Restart
-            FilledIconButton(
-                onClick = onSeekToStart,
-                modifier = Modifier.size(48.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
+            // 进度文本
+            Text(
+                text = "%d / %d".format(currentIndex, totalPoints),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(AppSpacing.SM))
+
+            // 控制按钮行
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Default.Refresh, contentDescription = "重新播放")
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            // Play/Pause
-            FilledIconButton(
-                onClick = onToggle,
-                modifier = Modifier.size(64.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "暂停" else "播放",
-                    modifier = Modifier.size(36.dp),
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            // Speed selector
-            val speeds = listOf(5, 10, 20)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                speeds.forEach { speed ->
-                    TextButton(
-                        onClick = { onSpeedChange(speed) },
-                    ) {
-                        Text(
-                            text = "${speed}x",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (speed == speedMultiplier) FontWeight.Bold else FontWeight.Normal,
+                // 速度选择
+                val speeds = listOf(5, 10, 20)
+                Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.XS)) {
+                    speeds.forEach { speed ->
+                        Surface(
+                            shape = AppRadius.SmallShape,
                             color = if (speed == speedMultiplier) {
-                                MaterialTheme.colorScheme.primary
+                                MaterialTheme.colorScheme.primaryContainer
                             } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                                MaterialTheme.colorScheme.surfaceVariant
                             },
-                        )
+                            onClick = { onSpeedChange(speed) },
+                        ) {
+                            Text(
+                                text = "${speed}x",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (speed == speedMultiplier) FontWeight.Bold else FontWeight.Normal,
+                                color = if (speed == speedMultiplier) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.padding(horizontal = AppSpacing.SM, vertical = AppSpacing.XS),
+                            )
+                        }
                     }
+                }
+
+                // 重新播放
+                FilledIconButton(
+                    onClick = onSeekToStart,
+                    modifier = Modifier.size(44.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                ) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "重新播放",
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+
+                // 播放/暂停
+                FilledIconButton(
+                    onClick = onToggle,
+                    modifier = Modifier.size(56.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "暂停" else "播放",
+                        modifier = Modifier.size(28.dp),
+                    )
                 }
             }
         }
     }
 }
-

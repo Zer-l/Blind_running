@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -19,7 +20,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -46,16 +47,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.domain.model.Gender
+import com.guiderun.app.ui.theme.AppRadius
+import com.guiderun.app.ui.theme.AppSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerProfileEditScreen(
     onSaved: () -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     viewModel: VolunteerProfileEditViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -91,7 +96,12 @@ fun VolunteerProfileEditScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("编辑志愿者资料") },
+                title = {
+                    Text(
+                        text = "编辑志愿者资料",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onSaved) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -106,13 +116,15 @@ fun VolunteerProfileEditScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(AppSpacing.MD),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.MD),
         ) {
             // 基本信息卡片
             ProfileSectionCard(
                 title = "基本信息",
                 icon = Icons.Default.Person,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                iconTint = MaterialTheme.colorScheme.primary,
             ) {
                 OutlinedTextField(
                     value = nickname,
@@ -123,38 +135,31 @@ fun VolunteerProfileEditScreen(
                     label = { Text("昵称") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    shape = AppRadius.MediumShape,
                 )
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.SM)) {
                     Text(
                         text = "性别",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
+                    Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM)) {
+                        GenderChip(
+                            label = "男",
                             selected = gender == Gender.MALE,
                             onClick = {
                                 gender = if (gender == Gender.MALE) null else Gender.MALE
                                 viewModel.updateGender(gender)
                             },
-                            label = { Text("男") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
                         )
-                        FilterChip(
+                        GenderChip(
+                            label = "女",
                             selected = gender == Gender.FEMALE,
                             onClick = {
                                 gender = if (gender == Gender.FEMALE) null else Gender.FEMALE
                                 viewModel.updateGender(gender)
                             },
-                            label = { Text("女") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
                         )
                     }
                 }
@@ -164,6 +169,8 @@ fun VolunteerProfileEditScreen(
             ProfileSectionCard(
                 title = "跑步能力",
                 icon = Icons.Default.Speed,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                iconTint = MaterialTheme.colorScheme.secondary,
             ) {
                 OutlinedTextField(
                     value = averagePace,
@@ -175,50 +182,39 @@ fun VolunteerProfileEditScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    shape = AppRadius.MediumShape,
                 )
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.SM)) {
                     Text(
                         text = "跑步等级",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
+                    Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM)) {
+                        LevelChip(
+                            label = "入门",
                             selected = runningLevel == "BEGINNER",
                             onClick = {
                                 runningLevel = if (runningLevel == "BEGINNER") "" else "BEGINNER"
                                 viewModel.updateRunningLevel(runningLevel)
                             },
-                            label = { Text("入门") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
                         )
-                        FilterChip(
+                        LevelChip(
+                            label = "进阶",
                             selected = runningLevel == "INTERMEDIATE",
                             onClick = {
                                 runningLevel = if (runningLevel == "INTERMEDIATE") "" else "INTERMEDIATE"
                                 viewModel.updateRunningLevel(runningLevel)
                             },
-                            label = { Text("进阶") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
                         )
-                        FilterChip(
+                        LevelChip(
+                            label = "高级",
                             selected = runningLevel == "ADVANCED",
                             onClick = {
                                 runningLevel = if (runningLevel == "ADVANCED") "" else "ADVANCED"
                                 viewModel.updateRunningLevel(runningLevel)
                             },
-                            label = { Text("高级") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
                         )
                     }
                 }
@@ -228,6 +224,8 @@ fun VolunteerProfileEditScreen(
             ProfileSectionCard(
                 title = "陪跑经验",
                 icon = Icons.Default.Star,
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                iconTint = MaterialTheme.colorScheme.tertiary,
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -267,7 +265,7 @@ fun VolunteerProfileEditScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = MaterialTheme.shapes.medium,
+                shape = AppRadius.LargeShape,
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
@@ -276,7 +274,11 @@ fun VolunteerProfileEditScreen(
                         strokeWidth = 2.dp,
                     )
                 } else {
-                    Text("保存", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "保存",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }
@@ -284,36 +286,81 @@ fun VolunteerProfileEditScreen(
 }
 
 @Composable
+private fun GenderChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        shape = AppRadius.SmallShape,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    )
+}
+
+@Composable
+private fun LevelChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        shape = AppRadius.SmallShape,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.secondary,
+            selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
+        ),
+    )
+}
+
+@Composable
 private fun ProfileSectionCard(
     title: String,
     icon: ImageVector,
+    containerColor: androidx.compose.ui.graphics.Color,
+    iconTint: androidx.compose.ui.graphics.Color,
     content: @Composable () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = AppRadius.LargeShape,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
-        shape = MaterialTheme.shapes.medium,
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(AppSpacing.MD),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.MD),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
+                Surface(
+                    shape = AppRadius.MediumShape,
+                    color = iconTint.copy(alpha = 0.1f),
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.padding(AppSpacing.XS),
+                        tint = iconTint,
+                    )
+                }
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
             content()

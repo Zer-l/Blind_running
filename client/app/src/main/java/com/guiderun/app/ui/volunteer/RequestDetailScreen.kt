@@ -1,5 +1,11 @@
 package com.guiderun.app.ui.volunteer
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,13 +16,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -42,6 +52,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.domain.model.RunRequest
+import com.guiderun.app.ui.theme.AppRadius
+import com.guiderun.app.ui.theme.AppSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +84,12 @@ fun RequestDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.request_detail_title)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.request_detail_title),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
@@ -82,15 +99,20 @@ fun RequestDetailScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
             when {
-                uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                uiState.isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                }
                 uiState.request != null -> RequestDetailContent(
                     request = uiState.request!!,
                     isAccepting = uiState.isAccepting,
-                    // "已有别的活跃订单"判定：排除当前这单
-                    // —— 否则刚 accept 成功 trackActive 写入 activeRequest 到 navEvent 跳转之间
-                    // 会有 1-2 帧把"自己刚接的单"误显示成"被别的订单挡住"
                     hasActiveOrder = activeRequest != null && activeRequest?.id != uiState.request!!.id,
                     onAccept = viewModel::onAccept,
                 )
@@ -111,42 +133,53 @@ private fun RequestDetailContent(
     ) {
         // 信息卡片
         Card(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppSpacing.MD),
+            shape = AppRadius.LargeShape,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             ),
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(AppSpacing.LG),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.LG),
             ) {
                 // 跑友信息
                 DetailInfoRow(
                     icon = Icons.Default.Person,
-                    label = stringResource(R.string.request_detail_runner, ""),
+                    label = "跑友",
                     value = request.blindRunner?.nickname ?: "",
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    iconTint = MaterialTheme.colorScheme.primary,
                 )
 
                 // 地点
                 DetailInfoRow(
                     icon = Icons.Default.LocationOn,
-                    label = "",
+                    label = "集合地点",
                     value = request.meetingLocation.description,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    iconTint = MaterialTheme.colorScheme.secondary,
                 )
 
                 // 预计时长
                 DetailInfoRow(
                     icon = Icons.Default.AccessTime,
-                    label = "",
+                    label = "预计时长",
                     value = stringResource(R.string.request_detail_duration, request.expectedDurationMinutes),
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    iconTint = MaterialTheme.colorScheme.tertiary,
                 )
 
                 // 备注
                 request.notes?.let { notes ->
                     DetailInfoRow(
                         icon = Icons.AutoMirrored.Filled.Notes,
-                        label = "",
+                        label = "备注",
                         value = notes,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -155,32 +188,55 @@ private fun RequestDetailContent(
         Spacer(modifier = Modifier.weight(1f))
 
         // 有进行中订单时的提示横幅
-        if (hasActiveOrder) {
+        AnimatedVisibility(
+            visible = hasActiveOrder,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AppSpacing.MD),
+                shape = AppRadius.MediumShape,
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                 ),
             ) {
-                Text(
-                    text = stringResource(R.string.request_detail_blocked_by_active),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(16.dp),
-                )
+                Row(
+                    modifier = Modifier.padding(AppSpacing.MD),
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.request_detail_blocked_by_active),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
             }
-            Spacer(Modifier.height(12.dp))
         }
 
-        // 接单按钮（有进行中订单或正在接单中时禁用）
+        Spacer(Modifier.height(AppSpacing.MD))
+
+        // 接单按钮
         Button(
             onClick = onAccept,
             enabled = !isAccepting && !hasActiveOrder,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = AppSpacing.MD),
+            shape = AppRadius.LargeShape,
         ) {
             if (isAccepting) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(24.dp),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
@@ -188,10 +244,11 @@ private fun RequestDetailContent(
                 Text(
                     text = stringResource(R.string.request_detail_btn_accept),
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(AppSpacing.MD))
     }
 }
 
@@ -200,29 +257,40 @@ private fun DetailInfoRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     value: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    iconTint: androidx.compose.ui.graphics.Color,
 ) {
     Row(
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.MD),
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp).padding(top = 2.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Column {
-            if (label.isNotEmpty()) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        Surface(
+            shape = AppRadius.MediumShape,
+            color = containerColor,
+            modifier = Modifier.size(44.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.padding(AppSpacing.SM),
+                tint = iconTint,
+            )
+        }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.XS),
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
+                maxLines = 3,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             )
         }
     }

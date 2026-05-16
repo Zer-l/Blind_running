@@ -1,0 +1,192 @@
+### 视障用户取消订单测试
+### 流程：登录 → 清理已有活跃订单 → 创建订单 → 取消订单
+### 注意：如果用户有 MET/RUNNING 等状态的活跃订单，需先推进到 FINISHED 才能创建新订单
+
+### 0. 环境变量
+@baseUrl = http://localhost:8080/api/v1
+@blindPhone = 13800000001
+@volunteerPhone = 13900000010
+@smsCode = 123456
+
+### ========================================
+### 1. 登录认证
+### ========================================
+
+### 1.1 视障用户登录
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"phone": "{{blindPhone}}", "smsCode": "{{smsCode}}"}
+
+> {%
+    client.test("登录成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.accessToken !== undefined, "应返回 accessToken");
+    });
+    client.global.set("blindToken", response.body.data.accessToken);
+    client.log("视障用户登录成功");
+%}
+
+### 1.2 志愿者登录（用于清理活跃订单）
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"phone": "{{volunteerPhone}}", "smsCode": "{{smsCode}}"}
+
+> {%
+    client.global.set("volunteerToken", response.body.data.accessToken);
+    client.log("志愿者登录成功");
+%}
+
+### ========================================
+### 2. 清理已有活跃订单
+### 如果存在 MET/RUNNING 状态的订单，需先推进到 FINISHED
+### ========================================
+
+### 2.1 查询历史订单，检查是否有活跃订单
+GET {{baseUrl}}/run-requests?role=blind&page=0&size=5
+Authorization: Bearer {{blindToken}}
+
+> {%
+    var items = response.body.data.items;
+    var active = items.filter(function(o) {
+        return ["MATCHING","ACCEPTED","EN_ROUTE","MET","RUNNING"].indexOf(o.status) >= 0;
+    });
+    if (active.length > 0) {
+        client.global.set("activeOrderId", active[0].id);
+        client.global.set("activeOrderStatus", active[0].status);
+        client.log("发现活跃订单: " + active[0].id + " 状态: " + active[0].status);
+    } else {
+        client.log("无活跃订单，可直接创建新订单");
+    }
+%}
+
+### 2.2 如果有 MATCHING 状态的活跃订单，先取消
+### 手动执行：如果有 MATCHING 订单，运行此步骤
+POST {{baseUrl}}/run-requests/{{activeOrderId}}/cancel
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{"reason": "清理测试数据"}
+
+> {%
+    if (response.status === 200) {
+        client.log("MATCHING 订单已取消: " + response.body.data.status);
+    } else {
+        client.log("取消失败（可能不是 MATCHING 状态）: " + response.body.message);
+    }
+%}
+
+### 2.3 如果有 MET/RUNNING 状态的活跃订单，需要推进到 FINISHED
+### 手动执行：如果有 MET/RUNNING 订单，运行以下步骤
+
+### 2.3.1 志愿者开始跑步（MET -> RUNNING）
+POST {{baseUrl}}/run-requests/{{activeOrderId}}/start-run
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    if (response.status === 200) {
+        client.log("start-run: " + response.body.data.status);
+    } else {
+        client.log("start-run 跳过: " + response.body.message);
+    }
+%}
+
+### 2.3.2 志愿者申请结束跑步
+POST {{baseUrl}}/run-requests/{{activeOrderId}}/request-end-run
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    if (response.status === 200) {
+        client.log("request-end-run 成功");
+    } else {
+        client.log("request-end-run 跳过: " + response.body.message);
+    }
+%}
+
+### 2.3.3 视障端确认结束跑步
+POST {{baseUrl}}/run-requests/{{activeOrderId}}/end-run
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{}
+
+> {%
+    if (response.status === 200) {
+        client.log("end-run: " + response.body.data.status);
+    } else {
+        client.log("end-run 跳过: " + response.body.message);
+    }
+%}
+
+### ========================================
+### 3. 创建新订单并取消
+### ========================================
+
+### 3.1 发起跑步请求
+POST {{baseUrl}}/run-requests
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+Idempotency-Key: blind-cancel-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 30,
+  "expectedDistanceMeters": 3000,
+  "meetingLocation": {
+    "lat": 22.91012,
+    "lng": 113.869346,
+    "description": "东莞理工学院"
+  },
+  "notes": "测试取消场景"
+}
+
+> {%
+    client.test("创建成功", function() {
+        client.assert(response.status === 200 || response.status === 201, "HTTP 200/201");
+        client.assert(response.body.data.status === "MATCHING", "状态应为 MATCHING");
+    });
+    client.global.set("requestId", response.body.data.id);
+    client.log("订单创建成功 ID: " + response.body.data.id);
+%}
+
+### 3.2 取消订单
+POST {{baseUrl}}/run-requests/{{requestId}}/cancel
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{
+  "reason": "临时有事，取消本次跑步"
+}
+
+> {%
+    client.test("取消成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "ABORTED", "状态应为 ABORTED");
+    });
+    client.log("订单已取消，状态: " + response.body.data.status);
+%}
+
+### 3.3 确认订单详情
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("订单终态正确", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "ABORTED", "状态应为 ABORTED");
+        client.assert(response.body.data.abortReason !== null, "应有取消原因");
+        client.assert(response.body.data.abortBy === "BLIND", "取消方应为 BLIND");
+    });
+    client.log("订单最终状态: " + response.body.data.status);
+    client.log("取消原因: " + response.body.data.abortReason);
+    client.log("取消方: " + response.body.data.abortBy);
+%}
+
+### ========================================
+### 测试完成
+### 预期结果：
+### 1. 登录成功获取 token
+### 2. 创建订单成功（MATCHING 状态）
+### 3. 取消订单成功（ABORTED 状态）
+### 4. abortReason 和 abortBy 字段正确
+### ========================================

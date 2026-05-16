@@ -55,6 +55,14 @@ class UserPreferences @Inject constructor(
         store.edit { it[Keys.TTS_SPEECH_RATE] = rate }
     }
 
+    /** 观察主题 ID，默认 "orange" */
+    fun observeThemeId(): Flow<String> =
+        store.data.map { it[Keys.THEME_ID] ?: DEFAULT_THEME_ID }
+
+    suspend fun saveThemeId(themeId: String) {
+        store.edit { it[Keys.THEME_ID] = themeId }
+    }
+
     fun observeActiveRequestId(): Flow<String?> =
         store.data.map { it[Keys.ACTIVE_REQUEST_ID] }
 
@@ -80,9 +88,11 @@ class UserPreferences @Inject constructor(
         val ACTIVE_ROLE = stringPreferencesKey("active_role")
         val TTS_SPEECH_RATE = floatPreferencesKey("tts_speech_rate")
         val ACTIVE_REQUEST_ID = stringPreferencesKey("active_request_id")
+        val THEME_ID = stringPreferencesKey("theme_id")
     }
 
     companion object {
         const val DEFAULT_TTS_SPEECH_RATE = 1.5f
+        const val DEFAULT_THEME_ID = "orange"
     }
 }

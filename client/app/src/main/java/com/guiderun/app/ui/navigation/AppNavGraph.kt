@@ -16,6 +16,8 @@ import com.guiderun.app.ui.volunteer.RequestDetailScreen
 import com.guiderun.app.ui.volunteer.TrackPlaybackScreen
 import com.guiderun.app.ui.volunteer.VolunteerHistoryScreen
 import com.guiderun.app.ui.profile.VolunteerProfileEditScreen
+import com.guiderun.app.ui.settings.SettingsScreen
+import com.guiderun.app.ui.settings.ThemeSelectionScreen
 import com.guiderun.app.ui.volunteer.VolunteerOrderListScreen
 import com.guiderun.app.ui.volunteer.VolunteerReviewScreen
 import com.guiderun.app.ui.volunteer.VolunteerRunningScreen
@@ -70,7 +72,7 @@ fun AppNavGraph(
                     navController.navigate(Screen.OrderList.route)
                 },
                 onNavigateToProfile = {
-                    navController.navigate(Screen.VolunteerProfileEdit.route)
+                    navController.navigate(Screen.Settings.route)
                 },
                 onNavigateToHistory = {
                     navController.navigate(Screen.VolunteerHistory.route)
@@ -92,6 +94,21 @@ fun AppNavGraph(
         composable(Screen.VolunteerProfileEdit.route) {
             VolunteerProfileEditScreen(
                 onSaved = { navController.popBackStack() },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+            )
+        }
+
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToProfile = { navController.navigate(Screen.VolunteerProfileEdit.route) },
+                onNavigateToTheme = { navController.navigate(Screen.ThemeSelection.route) },
+            )
+        }
+
+        composable(Screen.ThemeSelection.route) {
+            ThemeSelectionScreen(
+                onBack = { navController.popBackStack() },
             )
         }
 

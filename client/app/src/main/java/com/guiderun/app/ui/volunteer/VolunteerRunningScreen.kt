@@ -1,7 +1,13 @@
 package com.guiderun.app.ui.volunteer
 
-import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,11 +17,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -37,17 +44,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.ui.common.CallPeerButton
 import com.guiderun.app.ui.common.InterruptDialog
+import com.guiderun.app.ui.theme.AppRadius
+import com.guiderun.app.ui.theme.AppSpacing
 import com.guiderun.app.util.PaceCalculator
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,7 +70,6 @@ fun VolunteerRunningScreen(
     var showEndConfirm by remember { mutableStateOf(false) }
     var showInterruptDialog by remember { mutableStateOf(false) }
 
-    // 跑步中服务端不接受 cancel/abandon，返回首页让订单继续在前台服务中后台运行
     BackHandler { showInterruptDialog = true }
 
     if (showInterruptDialog) {
@@ -101,7 +107,12 @@ fun VolunteerRunningScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.volunteer_running_title)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.volunteer_running_title),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
                 actions = {
                     CallPeerButton(phone = uiState.request?.blindRunner?.phone)
                 },
@@ -110,13 +121,17 @@ fun VolunteerRunningScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
         ) {
             // 距离大字
             DistanceDisplay(
                 distanceMeters = uiState.totalDistanceMeters,
                 isPaused = uiState.isPaused,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AppSpacing.MD, vertical = AppSpacing.XL),
             )
 
             // 统计卡片
@@ -125,64 +140,78 @@ fun VolunteerRunningScreen(
                 currentPace = uiState.displayPaceSeconds,
                 avgPace = uiState.avgPaceSeconds,
                 isPaused = uiState.isPaused,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AppSpacing.MD),
             )
 
             Spacer(Modifier.weight(1f))
 
             // 等待视障端确认提示
-            if (uiState.endRequestPending) {
+            AnimatedVisibility(
+                visible = uiState.endRequestPending,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
                 Surface(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = AppSpacing.MD, vertical = AppSpacing.SM),
+                    shape = AppRadius.MediumShape,
                     color = MaterialTheme.colorScheme.tertiaryContainer,
                 ) {
                     Text(
                         text = stringResource(R.string.volunteer_running_end_waiting),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(
+                            horizontal = AppSpacing.MD,
+                            vertical = AppSpacing.MD,
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                         textAlign = TextAlign.Center,
                     )
                 }
-                Spacer(Modifier.height(12.dp))
             }
 
             // 结束按钮
             Button(
                 onClick = { showEndConfirm = true },
                 enabled = !uiState.endRequestPending,
-                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = AppSpacing.MD),
+                shape = AppRadius.LargeShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                ),
             ) {
                 Text(
                     text = if (uiState.endRequestPending)
                         stringResource(R.string.volunteer_running_end_pending)
                     else stringResource(R.string.volunteer_running_end),
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
-            Spacer(Modifier.height(16.dp))
-
-            if (showEndConfirm) {
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = { showEndConfirm = false },
-                    title = { Text(stringResource(R.string.volunteer_running_end_confirm_title)) },
-                    text = { Text(stringResource(R.string.volunteer_running_end_confirm_message)) },
-                    confirmButton = {
-                        androidx.compose.material3.TextButton(onClick = {
-                            showEndConfirm = false
-                            viewModel.requestEndRun()
-                        }) { Text(stringResource(R.string.confirm)) }
-                    },
-                    dismissButton = {
-                        androidx.compose.material3.TextButton(onClick = { showEndConfirm = false }) {
-                            Text(stringResource(R.string.cancel))
-                        }
-                    },
-                )
-            }
+            Spacer(Modifier.height(AppSpacing.MD))
         }
+    }
+
+    // 结束跑步确认弹窗
+    if (showEndConfirm) {
+        InterruptDialog(
+            title = stringResource(R.string.end_run_title),
+            message = stringResource(R.string.end_run_message),
+            onDismissRequest = { showEndConfirm = false },
+            stayLabel = stringResource(R.string.end_run_cancel),
+            onStay = { showEndConfirm = false },
+            cancelLabel = stringResource(R.string.end_run_confirm),
+            onCancel = {
+                showEndConfirm = false
+                viewModel.requestEndRun()
+            },
+        )
     }
 }
 
@@ -196,15 +225,20 @@ private fun DistanceDisplay(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (isPaused) {
+        AnimatedVisibility(
+            visible = isPaused,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
             Surface(
-                shape = MaterialTheme.shapes.small,
+                shape = AppRadius.SmallShape,
                 color = MaterialTheme.colorScheme.errorContainer,
+                modifier = Modifier.padding(bottom = AppSpacing.MD),
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = AppSpacing.MD, vertical = AppSpacing.SM),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Pause,
@@ -219,11 +253,11 @@ private fun DistanceDisplay(
                     )
                 }
             }
-            Spacer(Modifier.height(12.dp))
         }
+
         Text(
             text = "%.2f".format(distanceMeters / 1000.0),
-            fontSize = 64.sp,
+            style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Bold,
             color = if (isPaused) {
                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -249,12 +283,15 @@ private fun StatsCard(
 ) {
     Card(
         modifier = modifier,
+        shape = AppRadius.LargeShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = AppSpacing.LG),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             RunningStatItem(
@@ -296,16 +333,23 @@ private fun RunningStatItem(
     } else {
         MaterialTheme.colorScheme.onSurface
     }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.SM),
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = accent,
-        )
+        Surface(
+            shape = AppRadius.MediumShape,
+            color = accent.copy(alpha = 0.1f),
+            modifier = Modifier.size(44.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.padding(AppSpacing.SM),
+                tint = accent,
+            )
+        }
         Text(
             text = value,
             style = MaterialTheme.typography.headlineSmall,

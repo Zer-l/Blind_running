@@ -4,11 +4,14 @@
 ### 坐标来源：真实GPS采集，原样使用，不做任何采样或修改
 ### 每圈120个点，间隔2秒，一圈240秒（4分钟）
 ### ========================================
+### 运行方式：从上到下依次执行，每个请求等上一个返回后再执行下一个
+### 注意：轨迹时间戳为固定值，重复运行时服务端按 t 去重（upsert），不会重复插入
+### ========================================
 
 ### 0. 环境变量
 @baseUrl = http://localhost:8080/api/v1
 @volunteerPhone = 13900000010
-@blindPhone = 13900000001
+@blindPhone = 13800000001
 @smsCode = 123456
 
 ### ========================================
@@ -25,7 +28,12 @@ Content-Type: application/json
 }
 
 > {%
+    client.test("志愿者登录成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.accessToken !== undefined, "应返回 accessToken");
+    });
     client.global.set("volunteerToken", response.body.data.accessToken);
+    client.log("志愿者登录成功");
 %}
 
 ### 1.2 视障用户登录
@@ -38,7 +46,12 @@ Content-Type: application/json
 }
 
 > {%
+    client.test("视障用户登录成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.accessToken !== undefined, "应返回 accessToken");
+    });
     client.global.set("blindToken", response.body.data.accessToken);
+    client.log("视障用户登录成功");
 %}
 
 ### ========================================
@@ -62,6 +75,10 @@ Idempotency-Key: track-gen-full-{{$uuid}}
 }
 
 > {%
+    client.test("订单创建成功", function() {
+        client.assert(response.status === 200 || response.status === 201, "HTTP 200/201");
+        client.assert(response.body.data.status === "MATCHING", "状态应为 MATCHING");
+    });
     client.global.set("requestId", response.body.data.id);
     client.log("订单创建成功, requestId=" + response.body.data.id);
 %}
@@ -70,30 +87,62 @@ Idempotency-Key: track-gen-full-{{$uuid}}
 POST {{baseUrl}}/run-requests/{{requestId}}/accept
 Authorization: Bearer {{volunteerToken}}
 
+> {%
+    client.test("接单成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "ACCEPTED", "状态应为 ACCEPTED");
+    });
+%}
+
 ### 2.3 志愿者出发
 POST {{baseUrl}}/run-requests/{{requestId}}/depart
 Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("出发确认成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "EN_ROUTE", "状态应为 EN_ROUTE");
+    });
+%}
 
 ### 2.4 志愿者确认到达
 POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
 Authorization: Bearer {{volunteerToken}}
 
+> {%
+    client.test("志愿者确认到达成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "MET", "状态应为 MET");
+    });
+%}
+
 ### 2.5 视障用户确认汇合
 POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
 Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("视障用户确认汇合成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "MET", "状态应为 MET（幂等）");
+    });
+%}
 
 ### 2.6 开始跑步
 POST {{baseUrl}}/run-requests/{{requestId}}/start-run
 Authorization: Bearer {{volunteerToken}}
 
 > {%
+    client.test("开始跑步成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "RUNNING", "状态应为 RUNNING");
+    });
     client.log("跑步开始！requestId=" + client.global.get("requestId"));
 %}
 
 ### ========================================
 ### 3. 上传轨迹数据（完整120点/圈，不做采样）
 ### 每圈120个点，间隔2秒，一圈240秒
-### 7.5圈 = 840个点（最后半圈60个点）
+### 7.5圈 = 900个点（前7圈各120点，最后半圈60点）
 ### ========================================
 
 ### 3.1 第1圈（0:00 - 4:00）
@@ -228,7 +277,16 @@ Authorization: Bearer {{volunteerToken}}
 }
 
 > {%
-    client.log("第1圈轨迹上传完成 (120点)");
+    client.test("第1圈轨迹上传成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.pointCount === 120, "应有 120 个轨迹点");
+        client.assert(response.body.data.totalDistanceMeters > 0, "总距离应 > 0");
+        client.assert(response.body.data.totalDurationSeconds > 0, "总时长应 > 0");
+    });
+    client.log("第1圈完成 | 点数=" + response.body.data.pointCount
+        + " 距离=" + response.body.data.totalDistanceMeters + "m"
+        + " 时长=" + response.body.data.totalDurationSeconds + "s"
+        + " 配速=" + response.body.data.avgPaceSeconds + "s/km");
 %}
 
 ### 3.2 第2圈（4:00 - 8:00）
@@ -1132,6 +1190,12 @@ Authorization: Bearer {{volunteerToken}}
   "avgPaceSeconds": 600
 }
 
+> {%
+    client.test("中期指标推送成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+%}
+
 ### 4.2 后期指标（25分钟，约2500米）
 POST {{baseUrl}}/run-requests/{{requestId}}/peer-metrics
 Content-Type: application/json
@@ -1144,14 +1208,33 @@ Authorization: Bearer {{volunteerToken}}
   "avgPaceSeconds": 600
 }
 
+> {%
+    client.test("后期指标推送成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+%}
+
 ### ========================================
-### 5. 结束跑步
+### 5. 结束跑步（协商式：志愿者申请 → 视障端确认）
+### 状态机约束：只有 BLIND 角色可触发 RUNNING → FINISHED
+### 志愿者调 request-end-run 不改变状态，仅推送 WebSocket 通知视障端
 ### ========================================
 
-### 5.1 结束跑步
+### 5.1 志愿者申请结束跑步
+POST {{baseUrl}}/run-requests/{{requestId}}/request-end-run
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("志愿者申请结束跑步成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+    client.log("志愿者已申请结束跑步，视障端将收到 WebSocket 通知");
+%}
+
+### 5.2 视障端确认结束跑步
 POST {{baseUrl}}/run-requests/{{requestId}}/end-run
 Content-Type: application/json
-Authorization: Bearer {{volunteerToken}}
+Authorization: Bearer {{blindToken}}
 
 {
   "actualDistanceMeters": 3000,
@@ -1181,8 +1264,22 @@ GET {{baseUrl}}/run-requests/{{requestId}}/tracks
 Authorization: Bearer {{volunteerToken}}
 
 > {%
-    if (response.body.data) {
-        client.log("轨迹查询成功，点数: " + response.body.data.length);
+    client.test("轨迹查询成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data !== undefined, "应返回轨迹数据");
+    });
+    if (response.body.data && response.body.data.items) {
+        var track = response.body.data.items[0];
+        client.test("轨迹统计数据正确", function() {
+            client.assert(track.pointCount === 900, "应有 900 个轨迹点 (7×120+60)");
+            client.assert(track.totalDistanceMeters > 0, "总距离应 > 0");
+            client.assert(track.totalDurationSeconds > 0, "总时长应 > 0");
+        });
+        client.log("轨迹统计 | 点数=" + track.pointCount
+            + " 距离=" + track.totalDistanceMeters + "m"
+            + " 时长=" + track.totalDurationSeconds + "s"
+            + " 配速=" + track.avgPaceSeconds + "s/km"
+            + " 最高速度=" + track.maxSpeed + "m/s");
     }
 %}
 
@@ -1191,7 +1288,12 @@ GET {{baseUrl}}/run-requests/{{requestId}}
 Authorization: Bearer {{volunteerToken}}
 
 > {%
+    client.test("订单已结束", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "FINISHED", "状态应为 FINISHED");
+    });
     client.log("订单状态: " + response.body.data.status);
     client.log("实际距离: " + response.body.data.actualDistanceMeters + "米");
     client.log("实际时长: " + response.body.data.actualDurationSeconds + "秒");
+    client.log("平均配速: " + response.body.data.avgPaceSeconds + "秒/公里");
 %}

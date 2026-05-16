@@ -27,6 +27,8 @@ import com.guiderun.app.R
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.model.UserRole
+import com.guiderun.app.ui.theme.AppRadius
+import com.guiderun.app.ui.theme.AppSpacing
 
 @Composable
 fun HomeScreen(
@@ -64,7 +66,7 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(AppSpacing.XL),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(Modifier.height(48.dp))
@@ -77,11 +79,12 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.primary,
                 )
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(AppSpacing.XXL))
 
                 // 用户信息卡片
                 Card(
                     modifier = Modifier.fillMaxWidth(),
+                    shape = AppRadius.LargeShape,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                     ),
@@ -89,15 +92,15 @@ fun HomeScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
+                            .padding(AppSpacing.LG),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
                             text = stringResource(R.string.home_welcome, uiState.nickname),
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.SemiBold,
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(AppSpacing.XS))
                         Text(
                             text = stringResource(R.string.home_current_role, uiState.activeRole),
                             style = MaterialTheme.typography.bodyMedium,
@@ -107,19 +110,19 @@ fun HomeScreen(
                 }
 
                 activeRequest?.let { request ->
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(AppSpacing.MD))
                     ActiveOrderBanner(
                         request = request,
                         onClick = { onResumeActiveOrder(request) },
                     )
                 }
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(AppSpacing.XXL))
 
                 // 功能按钮区域
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.SM),
                 ) {
                     // 视障端入口：有进行中订单时禁用「开始跑步」，引导用户通过横幅恢复
                     if (uiState.activeRoleEnum == UserRole.BLIND_RUNNER) {
@@ -160,16 +163,16 @@ fun HomeScreen(
                             enabled = activeRequest == null,
                         )
                         HomeMenuItem(
-                            icon = Icons.Default.Person,
-                            title = stringResource(R.string.home_btn_profile),
-                            subtitle = stringResource(R.string.home_btn_profile_desc),
-                            onClick = onNavigateToProfile,
-                        )
-                        HomeMenuItem(
                             icon = Icons.Default.History,
                             title = stringResource(R.string.home_btn_history),
                             subtitle = stringResource(R.string.home_btn_history_desc),
                             onClick = onNavigateToHistory,
+                        )
+                        HomeMenuItem(
+                            icon = Icons.Default.Settings,
+                            title = stringResource(R.string.home_btn_settings),
+                            subtitle = stringResource(R.string.home_btn_settings_desc),
+                            onClick = onNavigateToProfile,
                         )
                     }
                 }
@@ -180,6 +183,7 @@ fun HomeScreen(
                 OutlinedButton(
                     onClick = viewModel::logout,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = AppRadius.LargeShape,
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error,
                     ),
@@ -189,11 +193,11 @@ fun HomeScreen(
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(AppSpacing.SM))
                     Text(stringResource(R.string.btn_logout))
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(AppSpacing.MD))
             }
         }
     }
@@ -221,6 +225,7 @@ private fun ActiveOrderBanner(
                 role = Role.Button
                 contentDescription = "您有进行中的订单：$statusText，双击恢复"
             },
+        shape = AppRadius.LargeShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
         ),
@@ -228,21 +233,27 @@ private fun ActiveOrderBanner(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(AppSpacing.MD),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                Icons.AutoMirrored.Filled.DirectionsRun,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier.size(28.dp),
-            )
-            Spacer(Modifier.width(12.dp))
+            Surface(
+                shape = AppRadius.MediumShape,
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(44.dp),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.DirectionsRun,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiary,
+                    modifier = Modifier.padding(AppSpacing.SM),
+                )
+            }
+            Spacer(Modifier.width(AppSpacing.MD))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "您有进行中的订单",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
                 Text(
@@ -254,7 +265,7 @@ private fun ActiveOrderBanner(
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.6f),
             )
         }
     }
@@ -276,14 +287,14 @@ private fun HomeMenuItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(72.dp),
-            shape = MaterialTheme.shapes.large,
+            shape = AppRadius.LargeShape,
         ) {
             Icon(
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(AppSpacing.SM))
             Column(
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.Start,
@@ -291,7 +302,7 @@ private fun HomeMenuItem(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Text(
                     text = subtitle,
@@ -304,25 +315,32 @@ private fun HomeMenuItem(
         OutlinedCard(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth(),
+            shape = AppRadius.LargeShape,
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(AppSpacing.MD),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.width(16.dp))
+                Surface(
+                    shape = AppRadius.MediumShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(44.dp),
+                ) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        modifier = Modifier.padding(AppSpacing.SM),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(Modifier.width(AppSpacing.MD))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.SemiBold,
                     )
                     Text(
                         text = subtitle,

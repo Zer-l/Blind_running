@@ -1,0 +1,209 @@
+### 志愿者端真机联调脚本
+### 视障端在真机操作，此脚本只包含志愿者端的接口调用
+### 运行方式：视障端发起请求后，从上到下依次执行
+
+### 0. 环境变量
+@baseUrl = http://localhost:8080/api/v1
+@volunteerPhone = 13900000010
+@smsCode = 123456
+
+### ========================================
+### 1. 登录
+### ========================================
+
+### 1.1 志愿者登录
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"phone": "{{volunteerPhone}}", "smsCode": "{{smsCode}}"}
+
+> {%
+    client.test("登录成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.accessToken !== undefined, "应返回 accessToken");
+    });
+    client.global.set("volunteerToken", response.body.data.accessToken);
+    client.log("登录成功");
+%}
+
+### ========================================
+### 2. 查找可接订单
+### 视障端发起请求后，执行此步找到订单
+### ========================================
+
+### 2.1 查询附近可接单
+GET {{baseUrl}}/run-requests/available?lat=22.91012&lng=113.869346&radius=5000
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    var items = response.body.data.items;
+    if (items.length > 0) {
+        client.global.set("requestId", items[0].id);
+        client.log("找到可接订单: " + items[0].id);
+        client.log("集合地点: " + items[0].meetingLocationDesc);
+    } else {
+        client.log("暂无可接订单，请等视障端发起请求后重试");
+    }
+%}
+
+### ========================================
+### 3. 接单
+### ========================================
+
+### 3.1 接单
+POST {{baseUrl}}/run-requests/{{requestId}}/accept
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("接单成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "ACCEPTED", "状态应为 ACCEPTED");
+    });
+    client.log("========================================");
+    client.log("接单成功！状态: " + response.body.data.status);
+    if (response.body.data.blindRunner) {
+        client.log("视障用户: " + response.body.data.blindRunner.nickname);
+        client.log("电话: " + response.body.data.blindRunner.phone);
+    }
+    client.log("========================================");
+%}
+
+### ========================================
+### 4. 前往集合点
+### ========================================
+
+### 4.1 出发
+POST {{baseUrl}}/run-requests/{{requestId}}/depart
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("出发成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "EN_ROUTE", "状态应为 EN_ROUTE");
+    });
+    client.log("出发前往集合点，状态: " + response.body.data.status);
+%}
+
+### 4.2 上报位置（可重复执行）
+POST {{baseUrl}}/run-requests/{{requestId}}/position
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "lat": 22.91012,
+  "lng": 113.869346,
+  "accuracy": 10.0
+}
+
+> {%
+    client.log("位置已上报");
+%}
+
+### ========================================
+### 5. 确认到达集合点
+### ========================================
+
+### 5.1 确认到达
+POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("确认到达成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "MET", "状态应为 MET");
+    });
+    client.log("========================================");
+    client.log("已到达集合点，状态: " + response.body.data.status);
+    client.log("等待视障端确认汇合后，双端自动进入跑步状态");
+    client.log("========================================");
+%}
+
+### ========================================
+### 6. 查询跑步状态（可重复执行，确认视障端已确认汇合）
+### 视障端确认汇合后，双端自动进入 RUNNING
+### ========================================
+
+### 6.1 查询订单状态
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.log("当前状态: " + response.body.data.status);
+    if (response.body.data.status === "RUNNING") {
+        client.log("跑步进行中！");
+    }
+%}
+
+### ========================================
+### 7. 推送实时指标（可重复执行）
+### ========================================
+
+### 7.1 推送指标
+POST {{baseUrl}}/run-requests/{{requestId}}/peer-metrics
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "totalDistanceMeters": 1500,
+  "totalDurationSeconds": 900,
+  "currentPaceSeconds": 600,
+  "avgPaceSeconds": 600
+}
+
+> {%
+    client.log("实时指标已推送");
+%}
+
+### ========================================
+### 8. 申请结束跑步
+### ========================================
+
+### 8.1 申请结束
+POST {{baseUrl}}/run-requests/{{requestId}}/request-end-run
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.test("申请结束跑步成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+    });
+    client.log("========================================");
+    client.log("已申请结束跑步，等待视障端确认");
+    client.log("========================================");
+%}
+
+### ========================================
+### 9. 查询最终状态
+### 视障端确认结束后，执行此步查看结果
+### ========================================
+
+### 9.1 查询订单
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{volunteerToken}}
+
+> {%
+    client.log("订单状态: " + response.body.data.status);
+    client.log("实际距离: " + response.body.data.actualDistanceMeters + "m");
+    client.log("实际时长: " + response.body.data.actualDurationSeconds + "s");
+%}
+
+### ========================================
+### 10. 评价视障用户
+### ========================================
+
+### 10.1 评价
+POST {{baseUrl}}/run-requests/{{requestId}}/reviews
+Content-Type: application/json
+Authorization: Bearer {{volunteerToken}}
+
+{
+  "rating": 5,
+  "tags": ["配合好", "沟通顺畅", "准时"],
+  "comment": "视障用户非常配合，跑步体验很好"
+}
+
+> {%
+    client.test("评价成功", function() {
+        client.assert(response.status === 200 || response.status === 201, "HTTP 200/201");
+    });
+    client.log("评价已提交");
+%}

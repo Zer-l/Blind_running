@@ -15,6 +15,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,7 @@ import com.guiderun.app.ui.navigation.ActiveOrderRouter
 import com.guiderun.app.ui.navigation.AppNavGraph
 import com.guiderun.app.ui.navigation.Screen
 import com.guiderun.app.ui.theme.GuideRunTheme
+import com.guiderun.app.ui.theme.getPresetTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -77,7 +79,8 @@ class MainActivity : ComponentActivity(), VoiceCommandHost {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            GuideRunTheme {
+            val themeId by viewModel.themeId.collectAsState()
+            GuideRunTheme(appColorScheme = getPresetTheme(themeId)) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,

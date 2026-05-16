@@ -1,15 +1,17 @@
 package com.guiderun.app.ui.volunteer
 
-import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Navigation
@@ -24,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -34,7 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,6 +48,8 @@ import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.ui.common.CallPeerButton
 import com.guiderun.app.ui.common.InterruptDialog
 import com.guiderun.app.ui.shared.map.GuideRunMap
+import com.guiderun.app.ui.theme.AppRadius
+import com.guiderun.app.ui.theme.AppSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +65,6 @@ fun NavigatingScreen(
     BackHandler { showInterruptDialog = true }
 
     if (showInterruptDialog) {
-        // ACCEPTED/EN_ROUTE 才允许中断，其他状态由 UI 决定显示按钮
         val status = uiState.request?.status
         val canInterrupt = status == RunRequestStatus.ACCEPTED || status == RunRequestStatus.EN_ROUTE
         InterruptDialog(
@@ -102,7 +106,12 @@ fun NavigatingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.navigating_title)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.navigating_title),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
                 actions = {
                     CallPeerButton(phone = uiState.request?.blindRunner?.phone)
                 },
@@ -110,12 +119,23 @@ fun NavigatingScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            // 地图区域 - 带圆角和内边距
             GuideRunMap(
                 state = uiState.mapState,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = AppSpacing.MD, vertical = AppSpacing.XS)
+                    .clip(RoundedCornerShape(AppRadius.Large)),
             )
-            NavigatingBottomPanel(
+
+            // 底部信息面板 - 与 MetScreen 统一风格
+            NavigatingBottomCard(
                 runnerName = uiState.request?.blindRunner?.nickname ?: "",
                 address = uiState.request?.meetingLocation?.description ?: "",
                 isConfirming = uiState.isConfirmingMet,
@@ -126,59 +146,90 @@ fun NavigatingScreen(
 }
 
 @Composable
-private fun NavigatingBottomPanel(
+private fun NavigatingBottomCard(
     runnerName: String,
     address: String,
     isConfirming: Boolean,
     onArrivedClick: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = AppSpacing.MD, vertical = AppSpacing.SM),
+        shape = AppRadius.LargeShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(AppSpacing.LG),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.MD),
         ) {
-            // 跑友信息
+            // 跑友信息行
             if (runnerName.isNotEmpty()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.MD),
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = runnerName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                    )
+                    Surface(
+                        shape = AppRadius.MediumShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.padding(AppSpacing.SM),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "跑友",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = runnerName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
 
-            // 目的地
+            // 地点信息行
             if (address.isNotEmpty()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.MD),
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = address,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Surface(
+                        shape = AppRadius.MediumShape,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.padding(AppSpacing.SM),
+                            tint = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "集合地点",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = address,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
 
@@ -186,11 +237,14 @@ private fun NavigatingBottomPanel(
             Button(
                 onClick = onArrivedClick,
                 enabled = !isConfirming,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = AppRadius.LargeShape,
             ) {
                 if (isConfirming) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
@@ -200,9 +254,11 @@ private fun NavigatingBottomPanel(
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
                     )
+                    Spacer(Modifier.width(AppSpacing.SM))
                     Text(
                         text = stringResource(R.string.navigating_btn_arrived),
-                        modifier = Modifier.padding(start = 8.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }

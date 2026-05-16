@@ -9,6 +9,8 @@ sealed class Screen(val route: String) {
     /** 志愿者接单列表（"志愿者主战场"，不是欢迎页；欢迎页是 [Home]）。 */
     data object OrderList : Screen("order_list")
     data object VolunteerProfileEdit : Screen("volunteer_profile_edit")
+    data object Settings : Screen("settings")
+    data object ThemeSelection : Screen("theme_selection")
     data object RequestDetail : Screen("request_detail/{requestId}") {
         fun createRoute(requestId: String) = "request_detail/$requestId"
     }

@@ -1,0 +1,166 @@
+### 视障端真机联调脚本
+### 志愿者端在真机操作，此脚本只包含视障端的接口调用
+### 运行方式：每一步等志愿者端操作完成后，再执行下一步
+
+### 0. 环境变量
+@baseUrl = http://localhost:8080/api/v1
+@blindPhone = 13800000001
+@smsCode = 123456
+
+### ========================================
+### 1. 登录
+### ========================================
+
+### 1.1 视障用户登录
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"phone": "{{blindPhone}}", "smsCode": "{{smsCode}}"}
+
+> {%
+    client.test("登录成功", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.accessToken !== undefined, "应返回 accessToken");
+    });
+    client.global.set("blindToken", response.body.data.accessToken);
+    client.log("登录成功");
+%}
+
+### ========================================
+### 2. 发起跑步请求
+### ========================================
+
+### 2.1 创建跑步请求
+POST {{baseUrl}}/run-requests
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+Idempotency-Key: blind-manual-{{$uuid}}
+
+{
+  "expectedDurationMinutes": 30,
+  "expectedDistanceMeters": 3000,
+  "meetingLocation": {
+    "lat": 22.91012,
+    "lng": 113.869346,
+    "description": "东莞理工学院"
+  },
+  "notes": "真机联调测试"
+}
+
+> {%
+    client.test("创建成功", function() {
+        client.assert(response.status === 200 || response.status === 201, "HTTP 200/201");
+        client.assert(response.body.data.status === "MATCHING", "状态应为 MATCHING");
+    });
+    client.global.set("requestId", response.body.data.id);
+    client.log("========================================");
+    client.log("订单创建成功 ID: " + response.body.data.id);
+    client.log("请在志愿者端接单后，继续执行下一步");
+    client.log("========================================");
+%}
+
+### ========================================
+### 3. 查询订单状态（可重复执行，确认志愿者已接单）
+### ========================================
+
+### 3.1 查询订单状态
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("当前状态: " + response.body.data.status);
+    if (response.body.data.volunteer) {
+        client.log("志愿者: " + response.body.data.volunteer.nickname);
+    }
+%}
+
+### ========================================
+### 4. 确认汇合 + 开始跑步
+### 等志愿者到达集合点后（状态为 MET），执行此步
+### 真实 App 中客户端会连续调用 confirm-met + start-run，一步进入跑步状态
+### ========================================
+
+### 4.1 确认汇合
+POST {{baseUrl}}/run-requests/{{requestId}}/confirm-met
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("确认汇合", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "MET", "状态应为 MET");
+    });
+    client.log("汇合确认，状态: " + response.body.data.status);
+%}
+
+### 4.2 开始跑步（客户端自动连调）
+POST {{baseUrl}}/run-requests/{{requestId}}/start-run
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.test("开始跑步", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "RUNNING", "状态应为 RUNNING");
+    });
+    client.log("========================================");
+    client.log("跑步开始！状态: " + response.body.data.status);
+    client.log("========================================");
+%}
+
+### ========================================
+### 5. 结束跑步
+### 志愿者申请结束后，执行此步确认
+### ========================================
+
+### 5.1 确认结束跑步
+POST {{baseUrl}}/run-requests/{{requestId}}/end-run
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{}
+
+> {%
+    client.test("结束跑步", function() {
+        client.assert(response.status === 200, "HTTP 200");
+        client.assert(response.body.data.status === "FINISHED", "状态应为 FINISHED");
+    });
+    client.log("========================================");
+    client.log("跑步结束！状态: " + response.body.data.status);
+    client.log("========================================");
+%}
+
+### ========================================
+### 6. 评价志愿者
+### ========================================
+
+### 6.1 评价
+POST {{baseUrl}}/run-requests/{{requestId}}/reviews
+Content-Type: application/json
+Authorization: Bearer {{blindToken}}
+
+{
+  "rating": 5,
+  "tags": ["守时", "耐心", "专业"],
+  "comment": "志愿者非常专业，全程细心陪伴"
+}
+
+> {%
+    client.test("评价成功", function() {
+        client.assert(response.status === 200 || response.status === 201, "HTTP 200/201");
+    });
+    client.log("评价已提交");
+%}
+
+### ========================================
+### 7. 查看最终状态
+### ========================================
+
+### 7.1 查询订单详情
+GET {{baseUrl}}/run-requests/{{requestId}}
+Authorization: Bearer {{blindToken}}
+
+> {%
+    client.log("订单状态: " + response.body.data.status);
+    client.log("实际距离: " + response.body.data.actualDistanceMeters + "m");
+    client.log("实际时长: " + response.body.data.actualDurationSeconds + "s");
+    client.log("已评价: " + response.body.data.myReviewSubmitted);
+%}
