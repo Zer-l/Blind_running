@@ -5,8 +5,11 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.BlindFeedback
 import com.guiderun.app.accessibility.HapticFeedback
@@ -16,6 +19,7 @@ import com.guiderun.app.accessibility.voice.VoiceCommandHost
 import com.guiderun.app.accessibility.voice.VoiceCommandManager
 import com.guiderun.app.accessibility.voice.VolumeKeyDispatcher
 import com.guiderun.app.data.local.UserPreferences
+import com.guiderun.app.ui.theme.BlindFontScaler
 import com.guiderun.app.ui.theme.BlindThemeResolver
 import com.guiderun.app.util.PhoneDialer
 import dagger.hilt.EntryPoint
@@ -84,6 +88,22 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
 
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // 视障端所有 Fragment 在 onViewCreated 后自动应用字号缩放，
+        // 避免各 Fragment 自己调用 BlindFontScaler.apply（容易遗漏）。
+        supportFragmentManager.registerFragmentLifecycleCallbacks(
+            object : FragmentManager.FragmentLifecycleCallbacks() {
+                override fun onFragmentViewCreated(
+                    fm: FragmentManager,
+                    f: Fragment,
+                    v: View,
+                    savedInstanceState: Bundle?,
+                ) {
+                    BlindFontScaler.apply(v, currentBlindFontScale)
+                }
+            },
+            true,
+        )
     }
 
     override fun onDestroy() {

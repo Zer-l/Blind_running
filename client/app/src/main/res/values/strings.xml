@@ -392,7 +392,7 @@
     <string name="tts_hint_blind_stats">显示您的跑步统计数据</string>
     <string name="tts_hint_emergency_contact_list">可添加、编辑或删除紧急联系人</string>
     <string name="tts_hint_emergency_contact_edit">填写姓名、手机号和关系</string>
-    <string name="tts_hint_accessibility_settings">可调整语音播报语速</string>
+    <string name="tts_hint_accessibility_settings">可调整字号缩放、对比度主题、语音播报语速和音量、震动强度</string>
 
     <!-- ==================== TTS 操作结果 ==================== -->
     <string name="tts_location_success">定位成功，%1$s</string>

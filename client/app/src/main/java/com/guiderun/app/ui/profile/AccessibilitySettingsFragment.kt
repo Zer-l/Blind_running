@@ -17,9 +17,7 @@ import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentAccessibilitySettingsBinding
-import com.guiderun.app.ui.blind.BaseBlindActivity
 import com.guiderun.app.ui.theme.BlindDesignTokens
-import com.guiderun.app.ui.theme.BlindFontScaler
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -50,8 +48,7 @@ class AccessibilitySettingsFragment : Fragment() {
         EdgeToEdgeHelper.applyInsets(view)
         ttsManager.acquire()
 
-        val scale = (requireActivity() as? BaseBlindActivity)?.currentBlindFontScale ?: 1.0f
-        BlindFontScaler.apply(view, scale)
+        // 字号缩放由 BaseBlindActivity 通过 FragmentLifecycleCallbacks 自动应用
 
         setupFontScaleToggle()
         setupContrastToggle()

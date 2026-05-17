@@ -25,7 +25,6 @@ import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentCreateRequestBinding
 import com.guiderun.app.ui.common.showInterruptDialog
-import com.guiderun.app.ui.theme.BlindFontScaler
 import com.guiderun.app.util.AppPermissions
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PermissionHelper
@@ -85,9 +84,7 @@ class CreateRequestFragment : Fragment() {
         setupBackPressInterception()
         setupVoiceCommands()
 
-        // 应用用户配置的字号缩放
-        val scale = (requireActivity() as? BaseBlindActivity)?.currentBlindFontScale ?: 1.0f
-        BlindFontScaler.apply(view, scale)
+        // 字号缩放由 BaseBlindActivity 通过 FragmentLifecycleCallbacks 自动应用
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {

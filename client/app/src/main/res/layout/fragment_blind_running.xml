@@ -1,89 +1,97 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/blindBackground"
-    android:fitsSystemWindows="true"
-    android:orientation="vertical"
-    android:padding="@dimen/blind_space_lg">
+    android:fillViewport="true"
+    android:fitsSystemWindows="true">
 
-    <!-- 页面顶部：标题 + 跑步状态 -->
-    <com.guiderun.app.ui.blind.widget.BlindPageHeader
-        android:id="@+id/header"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/blind_space_md"
-        app:headerTitle="@string/blind_running_title" />
-
-    <!-- 自动暂停角标 -->
-    <TextView
-        android:id="@+id/tv_paused_badge"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="@dimen/blind_space_md"
-        android:accessibilityLiveRegion="polite"
-        android:background="?attr/blindWarning"
-        android:paddingHorizontal="@dimen/blind_space_md"
-        android:paddingVertical="@dimen/blind_space_xs"
-        android:text="@string/running_paused_label"
-        android:textColor="?attr/blindOnPrimary"
-        android:textSize="@dimen/blind_text_label"
-        android:textStyle="bold"
-        android:visibility="gone" />
-
-    <!-- 距离卡（顶部最大权重） -->
-    <com.guiderun.app.ui.blind.widget.BlindMetricCard
-        android:id="@+id/card_distance"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/blind_space_md"
-        app:metricLabel="@string/blind_ui_running_distance_label"
-        app:metricUnit="@string/blind_ui_running_distance_unit" />
-
-    <!-- 时长 / 配速横向并排 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/blind_space_md"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:padding="@dimen/blind_space_lg">
 
-        <com.guiderun.app.ui.blind.widget.BlindMetricCard
-            android:id="@+id/card_duration"
-            android:layout_width="0dp"
+        <!-- 页面顶部：标题 + 跑步状态 -->
+        <com.guiderun.app.ui.blind.widget.BlindPageHeader
+            android:id="@+id/header"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="@dimen/blind_space_xs"
-            android:layout_weight="1"
-            app:metricLabel="@string/blind_ui_running_duration_label" />
+            android:layout_marginBottom="@dimen/blind_space_md"
+            app:headerTitle="@string/blind_running_title" />
 
-        <com.guiderun.app.ui.blind.widget.BlindMetricCard
-            android:id="@+id/card_pace"
-            android:layout_width="0dp"
+        <!-- 自动暂停角标 -->
+        <TextView
+            android:id="@+id/tv_paused_badge"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/blind_space_xs"
-            android:layout_weight="1"
-            app:metricLabel="@string/blind_ui_running_pace_label" />
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="@dimen/blind_space_md"
+            android:accessibilityLiveRegion="polite"
+            android:background="?attr/blindWarning"
+            android:paddingHorizontal="@dimen/blind_space_md"
+            android:paddingVertical="@dimen/blind_space_xs"
+            android:text="@string/running_paused_label"
+            android:textColor="?attr/blindOnPrimary"
+            android:textSize="@dimen/blind_text_label"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <!-- 距离卡 -->
+        <com.guiderun.app.ui.blind.widget.BlindMetricCard
+            android:id="@+id/card_distance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/blind_space_md"
+            app:metricLabel="@string/blind_ui_running_distance_label"
+            app:metricUnit="@string/blind_ui_running_distance_unit" />
+
+        <!-- 时长 / 配速横向并排 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/blind_space_md"
+            android:orientation="horizontal">
+
+            <com.guiderun.app.ui.blind.widget.BlindMetricCard
+                android:id="@+id/card_duration"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/blind_space_xs"
+                android:layout_weight="1"
+                app:metricLabel="@string/blind_ui_running_duration_label" />
+
+            <com.guiderun.app.ui.blind.widget.BlindMetricCard
+                android:id="@+id/card_pace"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/blind_space_xs"
+                android:layout_weight="1"
+                app:metricLabel="@string/blind_ui_running_pace_label" />
+        </LinearLayout>
+
+        <!-- 状态文字（assertive 区域：志愿者申请结束等关键状态强制朗读）
+             不再用 weight=1（ScrollView 内不生效），用 minHeight 在小字号时保留视觉占位 -->
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/blind_space_md"
+            android:accessibilityLiveRegion="assertive"
+            android:gravity="center"
+            android:minHeight="@dimen/blind_touch_min"
+            android:padding="@dimen/blind_space_md"
+            android:textColor="?attr/blindOnSurface"
+            android:textSize="@dimen/blind_text_body" />
+
+        <!-- 操作底部：长按 2s+5s 倒计时申请结束 -->
+        <com.guiderun.app.ui.blind.widget.BlindActionFooter
+            android:id="@+id/footer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:primaryLabel="@string/blind_ui_running_btn_end"
+            app:primaryHint="@string/blind_hint_running_end" />
+
     </LinearLayout>
-
-    <!-- 状态文字（assertive 区域：志愿者申请结束等关键状态强制朗读） -->
-    <TextView
-        android:id="@+id/tv_status"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:accessibilityLiveRegion="assertive"
-        android:gravity="center"
-        android:padding="@dimen/blind_space_md"
-        android:textColor="?attr/blindOnSurface"
-        android:textSize="@dimen/blind_text_body" />
-
-    <!-- 操作底部：长按 2s+5s 倒计时申请结束 -->
-    <com.guiderun.app.ui.blind.widget.BlindActionFooter
-        android:id="@+id/footer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:primaryLabel="@string/blind_ui_running_btn_end"
-        app:primaryHint="@string/blind_hint_running_end" />
-
-</LinearLayout>
+</ScrollView>
