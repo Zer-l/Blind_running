@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
@@ -19,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.BlindFeedback
 import com.guiderun.app.accessibility.SpeechRecognizerManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
@@ -26,6 +26,7 @@ import com.guiderun.app.databinding.FragmentEditRequestBinding
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class EditRequestFragment : Fragment() {
@@ -34,12 +35,14 @@ class EditRequestFragment : Fragment() {
     private var _binding: FragmentEditRequestBinding? = null
     private val binding get() = _binding!!
 
+    @Inject lateinit var blindFeedback: BlindFeedback
+
     private var voiceInputManager: SpeechRecognizerManager? = null
     private val micPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) startVoiceInputForNotes()
-        else toast(R.string.voice_input_permission_denied)
+        else blindFeedback.permissionDenied(R.string.voice_input_permission_denied)
     }
 
     override fun onCreateView(
@@ -123,22 +126,14 @@ class EditRequestFragment : Fragment() {
                 binding.etNotes.setText(merged)
                 binding.etNotes.setSelection(merged.length)
             },
-            onError = { msg -> toast(msg) },
-            onStartListening = { toast(R.string.voice_input_listening) },
+            onError = { msg -> blindFeedback.error(msg) },
+            onStartListening = { blindFeedback.info(R.string.voice_input_listening) },
         ).also { voiceInputManager = it }
         if (!manager.isAvailable) {
-            toast(R.string.voice_input_unavailable)
+            blindFeedback.warning(R.string.voice_input_unavailable)
             return
         }
         manager.start()
-    }
-
-    private fun toast(text: String) {
-        Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show()
-    }
-
-    private fun toast(@androidx.annotation.StringRes resId: Int) {
-        Toast.makeText(requireContext(), resId, Toast.LENGTH_SHORT).show()
     }
 
     private suspend fun collectNavEvents() {

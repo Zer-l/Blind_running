@@ -516,6 +516,21 @@
     <string name="blind_hint_matched_waiting">志愿者尚未到达，请耐心等待</string>
     <string name="blind_tts_matched_confirm_threshold">5 秒后开始跑步，松开按钮可撤销</string>
 
+    <!-- ====== 视障端推广重构第三波：EditRequest / BlindHistory / EmergencyContactList ====== -->
+    <!-- BlindHistory 统计卡片 -->
+    <string name="blind_ui_history_stats_title">我的跑步统计</string>
+    <string name="blind_ui_history_stat_runs">完成次数</string>
+    <string name="blind_ui_history_stat_distance">总距离</string>
+    <string name="blind_ui_history_stat_duration">总时长</string>
+    <string name="blind_ui_history_stat_aborted">已取消</string>
+
+    <!-- EmergencyContactList -->
+    <string name="blind_ui_emergency_contact_list_title">紧急联系人</string>
+    <string name="blind_ui_emergency_contact_list_empty">还没有紧急联系人\n点击下方按钮添加</string>
+    <string name="blind_ui_emergency_contact_btn_edit">编辑</string>
+    <string name="blind_ui_emergency_contact_btn_delete">删除</string>
+    <string name="blind_ui_emergency_contact_fab_add">添加紧急联系人</string>
+
     <!-- BlindReview -->
     <string name="blind_ui_blind_review_btn_submit">提交评价</string>
     <string name="blind_ui_blind_review_btn_skip">跳过评价</string>

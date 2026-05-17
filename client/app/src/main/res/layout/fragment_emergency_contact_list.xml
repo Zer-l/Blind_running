@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/blind_background"
+    android:background="?attr/blindBackground"
     android:fitsSystemWindows="true">
 
     <LinearLayout
@@ -11,16 +11,12 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- 标题 -->
-        <TextView
+        <!-- 页面顶部 -->
+        <com.guiderun.app.ui.blind.widget.BlindPageHeader
+            android:id="@+id/header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:padding="16dp"
-            android:text="紧急联系人"
-            android:textColor="@color/blind_primary"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            app:headerTitle="@string/blind_ui_emergency_contact_list_title" />
 
         <ProgressBar
             android:id="@+id/progressBar"
@@ -28,6 +24,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:indeterminate="true"
+            android:indeterminateTint="?attr/blindPrimary"
             android:visibility="gone" />
 
         <TextView
@@ -36,10 +33,10 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:padding="16dp"
-            android:text="还没有紧急联系人\n点击下方按钮添加"
-            android:textColor="@color/blind_on_surface"
-            android:textSize="18sp"
+            android:padding="@dimen/blind_space_md"
+            android:text="@string/blind_ui_emergency_contact_list_empty"
+            android:textColor="?attr/blindOnSurface"
+            android:textSize="@dimen/blind_text_body"
             android:visibility="gone" />
 
         <androidx.recyclerview.widget.RecyclerView
@@ -48,8 +45,8 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:clipToPadding="false"
-            android:padding="16dp"
-            android:paddingBottom="80dp" />
+            android:padding="@dimen/blind_space_md"
+            android:paddingBottom="@dimen/blind_space_xxl" />
     </LinearLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -57,10 +54,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:contentDescription="添加紧急联系人"
+        android:layout_margin="@dimen/blind_space_md"
+        android:contentDescription="@string/blind_ui_emergency_contact_fab_add"
         android:src="@android:drawable/ic_input_add"
-        app:backgroundTint="@color/blind_primary"
-        app:tint="@color/blind_on_primary" />
+        app:backgroundTint="?attr/blindPrimary"
+        app:tint="?attr/blindOnPrimary" />
 
 </FrameLayout>
