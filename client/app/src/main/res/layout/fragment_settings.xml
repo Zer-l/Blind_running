@@ -3,37 +3,34 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/blind_background"
+    android:background="?attr/blindBackground"
+    android:fillViewport="true"
     android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/blind_space_md">
 
-        <!-- 标题 -->
-        <TextView
-            android:id="@+id/tv_title"
+        <!-- 页面顶部 -->
+        <com.guiderun.app.ui.blind.widget.BlindPageHeader
+            android:id="@+id/header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:gravity="center"
-            android:text="@string/settings_title"
-            android:textColor="@color/blind_primary"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            android:layout_marginBottom="@dimen/blind_space_md"
+            app:headerTitle="@string/settings_title" />
 
         <!-- 快捷入口卡片 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="@color/blind_surface"
-            app:cardCornerRadius="16dp"
+            android:layout_marginBottom="@dimen/blind_space_md"
+            app:cardBackgroundColor="?attr/blindSurface"
+            app:cardCornerRadius="@dimen/blind_radius_card"
             app:cardElevation="0dp"
-            app:strokeColor="@color/blind_primary"
-            app:strokeWidth="1dp">
+            app:strokeColor="?attr/blindPrimary"
+            app:strokeWidth="@dimen/blind_stroke_card">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -44,160 +41,175 @@
                 <LinearLayout
                     android:id="@+id/itemProfile"
                     android:layout_width="match_parent"
-                    android:layout_height="64dp"
+                    android:layout_height="wrap_content"
                     android:background="?android:attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="@dimen/blind_touch_min"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="20dp">
+                    android:paddingHorizontal="@dimen/blind_space_md"
+                    android:paddingVertical="@dimen/blind_space_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/settings_edit_profile"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp" />
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:importantForAccessibility="no"
                         android:text="→"
-                        android:textColor="@color/blind_primary"
-                        android:textSize="24sp" />
+                        android:textColor="?attr/blindPrimary"
+                        android:textSize="@dimen/blind_text_headline" />
                 </LinearLayout>
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/blind_on_surface" />
+                    android:background="?attr/blindOnSurface" />
 
                 <!-- 紧急联系人 -->
                 <LinearLayout
                     android:id="@+id/itemEmergencyContacts"
                     android:layout_width="match_parent"
-                    android:layout_height="64dp"
+                    android:layout_height="wrap_content"
                     android:background="?android:attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="@dimen/blind_touch_min"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="20dp">
+                    android:paddingHorizontal="@dimen/blind_space_md"
+                    android:paddingVertical="@dimen/blind_space_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/settings_emergency_contacts"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp" />
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:importantForAccessibility="no"
                         android:text="→"
-                        android:textColor="@color/blind_primary"
-                        android:textSize="24sp" />
+                        android:textColor="?attr/blindPrimary"
+                        android:textSize="@dimen/blind_text_headline" />
                 </LinearLayout>
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/blind_on_surface" />
+                    android:background="?attr/blindOnSurface" />
 
                 <!-- 跑步统计 -->
                 <LinearLayout
                     android:id="@+id/itemBlindStats"
                     android:layout_width="match_parent"
-                    android:layout_height="64dp"
+                    android:layout_height="wrap_content"
                     android:background="?android:attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="@dimen/blind_touch_min"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="20dp">
+                    android:paddingHorizontal="@dimen/blind_space_md"
+                    android:paddingVertical="@dimen/blind_space_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/settings_stats_title"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp" />
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:importantForAccessibility="no"
                         android:text="→"
-                        android:textColor="@color/blind_primary"
-                        android:textSize="24sp" />
+                        android:textColor="?attr/blindPrimary"
+                        android:textSize="@dimen/blind_text_headline" />
                 </LinearLayout>
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/blind_on_surface" />
+                    android:background="?attr/blindOnSurface" />
 
                 <!-- 无障碍设置 -->
                 <LinearLayout
                     android:id="@+id/itemAccessibility"
                     android:layout_width="match_parent"
-                    android:layout_height="64dp"
+                    android:layout_height="wrap_content"
                     android:background="?android:attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="@dimen/blind_touch_min"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="20dp">
+                    android:paddingHorizontal="@dimen/blind_space_md"
+                    android:paddingVertical="@dimen/blind_space_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/settings_voice"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp" />
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:importantForAccessibility="no"
                         android:text="→"
-                        android:textColor="@color/blind_primary"
-                        android:textSize="24sp" />
+                        android:textColor="?attr/blindPrimary"
+                        android:textSize="@dimen/blind_text_headline" />
                 </LinearLayout>
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/blind_on_surface" />
+                    android:background="?attr/blindOnSurface" />
 
                 <!-- 关于 -->
                 <LinearLayout
                     android:id="@+id/itemAbout"
                     android:layout_width="match_parent"
-                    android:layout_height="64dp"
+                    android:layout_height="wrap_content"
                     android:background="?android:attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="@dimen/blind_touch_min"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="20dp">
+                    android:paddingHorizontal="@dimen/blind_space_md"
+                    android:paddingVertical="@dimen/blind_space_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/settings_about"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp" />
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:importantForAccessibility="no"
                         android:text="→"
-                        android:textColor="@color/blind_primary"
-                        android:textSize="24sp" />
+                        android:textColor="?attr/blindPrimary"
+                        android:textSize="@dimen/blind_text_headline" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

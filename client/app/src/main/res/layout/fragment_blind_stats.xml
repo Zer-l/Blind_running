@@ -3,97 +3,98 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/blind_background"
+    android:background="?attr/blindBackground"
+    android:fillViewport="true"
     android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/blind_space_md">
 
-        <!-- 标题 -->
-        <TextView
+        <!-- 页面顶部 -->
+        <com.guiderun.app.ui.blind.widget.BlindPageHeader
+            android:id="@+id/header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:paddingBottom="16dp"
-            android:text="跑步统计"
-            android:textColor="@color/blind_primary"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            android:layout_marginBottom="@dimen/blind_space_md"
+            app:headerTitle="@string/settings_stats_title" />
 
         <ProgressBar
             android:id="@+id/progressBar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/blind_space_sm"
             android:indeterminate="true"
+            android:indeterminateTint="?attr/blindPrimary"
             android:visibility="invisible" />
 
         <!-- 统计卡片 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/blind_surface"
-            app:cardCornerRadius="16dp"
+            app:cardBackgroundColor="?attr/blindSurface"
+            app:cardCornerRadius="@dimen/blind_radius_card"
             app:cardElevation="0dp"
-            app:strokeColor="@color/blind_primary"
-            app:strokeWidth="1dp">
+            app:strokeColor="?attr/blindPrimary"
+            app:strokeWidth="@dimen/blind_stroke_card">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/blind_space_md">
 
                 <!-- 完成次数 -->
                 <TextView
                     android:id="@+id/tvTotalRuns"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:text="总计跑步：0 次"
-                    android:textColor="@color/blind_on_surface"
-                    android:textSize="18sp" />
+                    android:layout_marginBottom="@dimen/blind_space_md"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body" />
 
                 <!-- 总距离 -->
                 <TextView
                     android:id="@+id/tvTotalDistance"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:text="总距离：0 公里"
-                    android:textColor="@color/blind_on_surface"
-                    android:textSize="18sp" />
+                    android:layout_marginBottom="@dimen/blind_space_md"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body" />
 
                 <!-- 总时长 -->
                 <TextView
                     android:id="@+id/tvTotalDuration"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:text="总时长：0 分钟"
-                    android:textColor="@color/blind_on_surface"
-                    android:textSize="18sp" />
+                    android:layout_marginBottom="@dimen/blind_space_md"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body" />
 
                 <!-- 本月跑步 -->
                 <TextView
                     android:id="@+id/tvCurrentMonthRuns"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="本月跑步：0 次"
-                    android:textColor="@color/blind_on_surface"
-                    android:textSize="18sp" />
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body" />
 
-                <!-- 平均时长（隐藏） -->
+                <!-- 平均时长（可选） -->
                 <TextView
                     android:id="@+id/tvAverageDuration"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:textColor="@color/blind_on_surface"
-                    android:textSize="18sp"
+                    android:layout_marginTop="@dimen/blind_space_md"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body"
                     android:visibility="gone" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
