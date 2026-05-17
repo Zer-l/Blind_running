@@ -18,27 +18,33 @@
         <item name="android:textColor">@color/blind_on_background</item>
     </style>
 
-    <!-- 视障端评价：5 个全屏宽卡片纵排，layout_weight=1 平均分配 -->
+    <!--
+        视障端评价 5 个全屏宽卡片纵排。
+        改 wrap_content + minHeight（ScrollView 内 layout_weight=1 不生效），
+        颜色用 ?attr/blindXxx 适配 3 套对比度主题。
+    -->
     <style name="BlindReview.Card" parent="">
         <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">0dp</item>
-        <item name="android:layout_weight">1</item>
-        <item name="android:layout_marginVertical">4dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">@dimen/blind_touch_primary</item>
+        <item name="android:layout_marginVertical">@dimen/blind_space_xs</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
-        <item name="cardBackgroundColor">@color/blind_surface</item>
-        <item name="cardCornerRadius">16dp</item>
+        <item name="cardBackgroundColor">?attr/blindSurface</item>
+        <item name="cardCornerRadius">@dimen/blind_radius_card</item>
         <item name="cardElevation">0dp</item>
-        <item name="strokeColor">@color/blind_on_surface</item>
-        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">?attr/blindOnSurface</item>
+        <item name="strokeWidth">@dimen/blind_stroke_card</item>
     </style>
 
     <style name="BlindReview.CardLabel" parent="">
         <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
         <item name="android:gravity">center</item>
-        <item name="android:textColor">@color/blind_on_surface</item>
-        <item name="android:textSize">26sp</item>
+        <item name="android:minHeight">@dimen/blind_touch_primary</item>
+        <item name="android:padding">@dimen/blind_space_md</item>
+        <item name="android:textColor">?attr/blindOnSurface</item>
+        <item name="android:textSize">@dimen/blind_text_headline</item>
         <item name="android:textStyle">bold</item>
     </style>
 

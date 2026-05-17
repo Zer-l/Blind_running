@@ -1,9 +1,7 @@
 package com.guiderun.app.ui.blind
 
 import android.os.Bundle
-import android.os.SystemClock
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
@@ -15,15 +13,17 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.card.MaterialCardView
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.HapticFeedback
+import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentBlindReviewBinding
 import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
+import com.guiderun.app.util.resolveThemeColor
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class BlindReviewFragment : Fragment() {
@@ -32,11 +32,10 @@ class BlindReviewFragment : Fragment() {
     private var _binding: FragmentBlindReviewBinding? = null
     private val binding get() = _binding!!
 
-    private var ratingCards: List<MaterialCardView> = emptyList()
+    @Inject lateinit var ttsManager: TtsManager
+    @Inject lateinit var hapticFeedback: HapticFeedback
 
-    private var pressStartTime = 0L
-    private var pressThresholdJob: Job? = null
-    private var gestureConsumedByCountdownDismiss = false
+    private var ratingCards: List<MaterialCardView> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -60,10 +59,10 @@ class BlindReviewFragment : Fragment() {
             binding.cardRating5,
         )
         ratingCards.forEachIndexed { index, card ->
-            // 卡片单击仅选择评分，不提交；提交由 dispatchTouchEvent 双击触发
             card.setOnClickListener { viewModel.selectRating(index + 1) }
         }
 
+        setupGestureFooter()
         setupVoiceCommands()
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -74,7 +73,19 @@ class BlindReviewFragment : Fragment() {
         }
     }
 
-    /** 评价页：RATE_x 选择 + CONFIRM 提交 + SKIP 跳过 */
+    private fun setupGestureFooter() {
+        binding.footer.primaryGesture.bind(
+            scope = viewLifecycleOwner.lifecycleScope,
+            ttsManager = ttsManager,
+            hapticFeedback = hapticFeedback,
+            thresholdLabelRes = R.string.blind_tts_blind_review_submit_threshold,
+            countdownLabelRes = R.string.blind_tts_long_press_cancelled,
+            onCountdownCommitted = { viewModel.executeSubmit() },
+        )
+        binding.footer.secondaryButton.setOnClickListener { viewModel.skip() }
+    }
+
+    /** 评价页：RATE_x 选择 + CONFIRM/SAVE 提交 + SKIP/CANCEL 跳过 + STATUS 朗读当前选择。 */
     private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
         when (cmd) {
             VoiceCommand.RATE_1 -> { viewModel.selectRating(1); true }
@@ -82,8 +93,9 @@ class BlindReviewFragment : Fragment() {
             VoiceCommand.RATE_3 -> { viewModel.selectRating(3); true }
             VoiceCommand.RATE_4 -> { viewModel.selectRating(4); true }
             VoiceCommand.RATE_5 -> { viewModel.selectRating(5); true }
-            VoiceCommand.CONFIRM, VoiceCommand.SAVE -> { viewModel.onSubmitPressed(); true }
+            VoiceCommand.CONFIRM, VoiceCommand.SAVE -> { viewModel.executeSubmit(); true }
             VoiceCommand.SKIP, VoiceCommand.CANCEL -> { viewModel.skip(); true }
+            VoiceCommand.STATUS -> { viewModel.announceCurrentSelection(); true }
             else -> false
         }
     }
@@ -110,12 +122,12 @@ class BlindReviewFragment : Fragment() {
 
     private fun updateCardSelection(selected: Int) {
         val ctx = requireContext()
-        val selectedStroke = ContextCompat.getColor(ctx, R.color.blind_primary)
-        val unselectedStroke = ContextCompat.getColor(ctx, R.color.blind_on_surface)
-        val selectedBg = ContextCompat.getColor(ctx, R.color.blind_primary)
-        val unselectedBg = ContextCompat.getColor(ctx, R.color.blind_surface)
-        val selectedText = ContextCompat.getColor(ctx, R.color.blind_on_primary)
-        val unselectedText = ContextCompat.getColor(ctx, R.color.blind_on_surface)
+        val selectedStroke = ctx.resolveThemeColor(R.attr.blindPrimary)
+        val unselectedStroke = ctx.resolveThemeColor(R.attr.blindOnSurface)
+        val selectedBg = ctx.resolveThemeColor(R.attr.blindPrimary)
+        val unselectedBg = ctx.resolveThemeColor(R.attr.blindSurface)
+        val selectedText = ctx.resolveThemeColor(R.attr.blindOnPrimary)
+        val unselectedText = ctx.resolveThemeColor(R.attr.blindOnSurface)
 
         ratingCards.forEachIndexed { index, card ->
             val rating = index + 1
@@ -129,73 +141,23 @@ class BlindReviewFragment : Fragment() {
         }
     }
 
-    /**
-     * 全局触摸（仅响应空白区域；卡片自身 onClick 已消费 DOWN，不会落到这里）：
-     * - 短按 < 2s → 朗读当前选中评分
-     * - 长按 ≥ 2s 松手 → 启动 5s 倒计时提交评分
-     * - 倒计时进行中按下 → 撤销
-     * 跳过评价改走返回键弹窗 / 语音 SKIP 指令。
-     */
-    private fun onGestureEvent(event: MotionEvent) {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                if (viewModel.uiState.value.submitCountdown != null) {
-                    gestureConsumedByCountdownDismiss = true
-                    viewModel.onSubmitPressed() // toggle 撤销
-                    return
-                }
-                gestureConsumedByCountdownDismiss = false
-                pressStartTime = SystemClock.elapsedRealtime()
-                pressThresholdJob?.cancel()
-                pressThresholdJob = viewLifecycleOwner.lifecycleScope.launch {
-                    delay(2_000)
-                    viewModel.onLongPressThresholdSubmit()
-                }
-            }
-            MotionEvent.ACTION_UP -> {
-                if (gestureConsumedByCountdownDismiss) {
-                    gestureConsumedByCountdownDismiss = false
-                    return
-                }
-                pressThresholdJob?.cancel()
-                pressThresholdJob = null
-                val elapsed = SystemClock.elapsedRealtime() - pressStartTime
-                if (elapsed >= 2_000) viewModel.onSubmitPressed()
-                else viewModel.onShortPressHint()
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                gestureConsumedByCountdownDismiss = false
-                pressThresholdJob?.cancel()
-                pressThresholdJob = null
-            }
-        }
-    }
-
     override fun onResume() {
         super.onResume()
         viewModel.onScreenResumed()
         (activity as? BaseBlindActivity)?.apply {
             activeRequestId = null
             activeCallPeerPhone = viewModel.uiState.value.peerPhone
-            touchEventForwarder = ::onGestureEvent
         }
     }
 
     override fun onPause() {
         super.onPause()
         viewModel.onScreenPaused()
-        pressThresholdJob?.cancel()
-        pressThresholdJob = null
-        (activity as? BaseBlindActivity)?.apply {
-            activeCallPeerPhone = null
-            touchEventForwarder = null
-        }
+        binding.footer.primaryGesture.reset()
+        (activity as? BaseBlindActivity)?.activeCallPeerPhone = null
     }
 
-    /**
-     * 返回键：弹「确定离开（不评价）/继续评价」对话框。
-     * 用户选择离开 → 调 viewModel.skip()，复用现有跳过评价逻辑。
-     */
+    /** 返回键：弹「确定离开（不评价）/继续评价」对话框。 */
     private fun setupBackPressInterception() {
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,

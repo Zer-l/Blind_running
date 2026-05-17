@@ -1,9 +1,7 @@
 package com.guiderun.app.ui.blind
 
 import android.os.Bundle
-import android.os.SystemClock
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
@@ -14,6 +12,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.HapticFeedback
+import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentMatchedBinding
@@ -21,9 +21,8 @@ import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MatchedFragment : Fragment() {
@@ -32,9 +31,8 @@ class MatchedFragment : Fragment() {
     private var _binding: FragmentMatchedBinding? = null
     private val binding get() = _binding!!
 
-    private var pressStartTime = 0L
-    private var pressThresholdJob: Job? = null
-    private var gestureConsumedByCountdownDismiss = false
+    @Inject lateinit var ttsManager: TtsManager
+    @Inject lateinit var hapticFeedback: HapticFeedback
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -48,6 +46,7 @@ class MatchedFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         EdgeToEdgeHelper.applyInsets(view)
+        setupGestureFooter()
         setupBackPressInterception()
         setupVoiceCommands()
 
@@ -59,28 +58,37 @@ class MatchedFragment : Fragment() {
         }
     }
 
+    private fun setupGestureFooter() {
+        binding.footer.primaryGesture.bind(
+            scope = viewLifecycleOwner.lifecycleScope,
+            ttsManager = ttsManager,
+            hapticFeedback = hapticFeedback,
+            thresholdLabelRes = R.string.blind_tts_matched_confirm_threshold,
+            countdownLabelRes = R.string.blind_tts_long_press_cancelled,
+            onCountdownCommitted = { viewModel.executeConfirmMet() },
+        )
+        // 初始 disabled：仅 MET 状态会启用，由 collectUiState 控制
+        binding.footer.primaryGesture.isEnabled = false
+    }
+
     /**
-     * 已匹配页：CONFIRM 等价于 1 秒长按"我已见到志愿者"；CANCEL 取消订单。
-     * 3 秒长按"松开开始跑步"目前只能用手势触发，不支持语音（语义易混淆）。
+     * 已匹配页：CONFIRM 在 ViewModel 内部根据状态分支决定是否真 startRun；
+     * CANCEL 仅在非 MET 状态时允许（MET 后服务端不允许 cancel）。
      */
     private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
         when (cmd) {
-            VoiceCommand.CONFIRM -> { viewModel.onConfirmMetPressed(); true }
+            VoiceCommand.CONFIRM -> { viewModel.executeConfirmMet(); true }
             VoiceCommand.CANCEL -> {
                 if (viewModel.uiState.value.currentStatus != RunRequestStatus.MET) {
                     viewModel.cancelByUser()
                 }
                 true
             }
+            VoiceCommand.STATUS -> { viewModel.announceCurrentStatus(); true }
             else -> false
         }
     }
 
-    /**
-     * 返回键：按当前状态分支显示对话框。
-     * - ACCEPTED/EN_ROUTE：可取消订单（服务端允许 cancel）
-     * - MET：服务端状态机不允许 cancel/abandon，仅显示「留在此页/最小化」
-     */
     private fun setupBackPressInterception() {
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
@@ -109,46 +117,10 @@ class MatchedFragment : Fragment() {
         )
     }
 
-    private fun onGestureEvent(event: MotionEvent) {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                // 5 秒倒计时进行中：任何按下=撤销，不启动阈值 Job
-                if (viewModel.uiState.value.confirmCountdown != null) {
-                    gestureConsumedByCountdownDismiss = true
-                    viewModel.onConfirmMetPressed()
-                    return
-                }
-                gestureConsumedByCountdownDismiss = false
-                pressStartTime = SystemClock.elapsedRealtime()
-                pressThresholdJob?.cancel()
-                pressThresholdJob = viewLifecycleOwner.lifecycleScope.launch {
-                    delay(2_000)
-                    viewModel.onLongPressThreshold2s()
-                }
-            }
-            MotionEvent.ACTION_UP -> {
-                if (gestureConsumedByCountdownDismiss) {
-                    gestureConsumedByCountdownDismiss = false
-                    return
-                }
-                pressThresholdJob?.cancel()
-                pressThresholdJob = null
-                val elapsed = SystemClock.elapsedRealtime() - pressStartTime
-                if (elapsed >= 2_000) viewModel.onConfirmMetPressed()
-                else viewModel.onShortPress()
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                gestureConsumedByCountdownDismiss = false
-                pressThresholdJob?.cancel()
-                pressThresholdJob = null
-            }
-        }
-    }
-
     private suspend fun collectUiState() {
         viewModel.uiState.collect { state ->
-            // peer phone 异步加载完成后实时同步给 Activity，供音量+键拨号使用
             (activity as? BaseBlindActivity)?.activeCallPeerPhone = state.peerPhone
+
             binding.tvVolunteerName.text = if (state.volunteerName.isNotEmpty())
                 getString(R.string.matched_volunteer_name, state.volunteerName)
             else ""
@@ -158,6 +130,18 @@ class MatchedFragment : Fragment() {
             else ""
 
             binding.tvStatus.text = state.statusText
+
+            // ★ footer 主按钮：仅 MET 状态可用；hint 文案动态切换
+            val isMet = state.currentStatus == RunRequestStatus.MET
+            binding.footer.primaryGesture.isEnabled = isMet
+            binding.footer.hintText.text = getString(
+                if (isMet) R.string.blind_hint_matched_confirm
+                else R.string.blind_hint_matched_waiting
+            )
+            binding.footer.primaryGesture.contentDescription = getString(
+                if (isMet) R.string.blind_hint_matched_confirm
+                else R.string.blind_hint_matched_waiting
+            )
         }
     }
 
@@ -180,18 +164,16 @@ class MatchedFragment : Fragment() {
         (activity as? BaseBlindActivity)?.apply {
             activeRequestId = viewModel.requestId
             activeCallPeerPhone = viewModel.uiState.value.peerPhone
-            touchEventForwarder = ::onGestureEvent
         }
     }
 
     override fun onPause() {
         super.onPause()
         viewModel.onScreenPaused()
-        pressThresholdJob?.cancel()
+        binding.footer.primaryGesture.reset()
         (activity as? BaseBlindActivity)?.apply {
             activeRequestId = null
             activeCallPeerPhone = null
-            touchEventForwarder = null
         }
     }
 

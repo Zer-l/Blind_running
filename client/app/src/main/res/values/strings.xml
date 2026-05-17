@@ -502,4 +502,23 @@
     <string name="blind_tts_running_paused">已自动暂停</string>
     <string name="blind_tts_running_resumed">已恢复跑步</string>
     <string name="blind_tts_running_status_announce">距离 %1$s 公里，时长 %2$d 分钟，配速 %3$s 每公里</string>
+
+    <!-- ====== 视障端推广重构第二波：WaitingMatch / Matched / BlindReview ====== -->
+    <!-- WaitingMatch -->
+    <string name="blind_ui_waiting_match_status">正在等待志愿者接单</string>
+    <string name="blind_ui_waiting_match_btn_cancel">取消订单</string>
+    <string name="blind_hint_waiting_match_cancel">长按 2 秒取消订单，5 秒倒计时内松开撤销</string>
+    <string name="blind_tts_waiting_match_cancel_threshold">5 秒后取消订单，松开按钮可撤销</string>
+
+    <!-- Matched -->
+    <string name="blind_ui_matched_btn_confirm">确认汇合</string>
+    <string name="blind_hint_matched_confirm">长按 2 秒确认汇合，5 秒倒计时内松开撤销</string>
+    <string name="blind_hint_matched_waiting">志愿者尚未到达，请耐心等待</string>
+    <string name="blind_tts_matched_confirm_threshold">5 秒后开始跑步，松开按钮可撤销</string>
+
+    <!-- BlindReview -->
+    <string name="blind_ui_blind_review_btn_submit">提交评价</string>
+    <string name="blind_ui_blind_review_btn_skip">跳过评价</string>
+    <string name="blind_hint_blind_review_submit">单击卡片选择，长按 2 秒提交评价，5 秒倒计时内松开撤销</string>
+    <string name="blind_tts_blind_review_submit_threshold">5 秒后提交评价，松开按钮可撤销</string>
 </resources>

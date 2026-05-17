@@ -1,70 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/blind_background"
-    android:fitsSystemWindows="true"
-    android:gravity="center_horizontal"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:background="?attr/blindBackground"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true">
 
-    <!-- 标题 -->
-    <TextView
-        android:id="@+id/tv_title"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:gravity="center"
-        android:text="@string/waiting_match_title"
-        android:textColor="@color/blind_primary"
-        android:textSize="24sp"
-        android:textStyle="bold" />
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="@dimen/blind_space_lg">
 
-    <!-- 等待动画（循环进度条） -->
-    <ProgressBar
-        android:id="@+id/progress_waiting"
-        style="@android:style/Widget.ProgressBar.Large"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginBottom="24dp"
-        android:importantForAccessibility="no"
-        android:indeterminateTint="@color/blind_primary" />
+        <!-- 页面顶部：标题 + 状态 -->
+        <com.guiderun.app.ui.blind.widget.BlindPageHeader
+            android:id="@+id/header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/blind_space_md"
+            app:headerTitle="@string/waiting_match_title"
+            app:headerStatus="@string/blind_ui_waiting_match_status" />
 
-    <!-- 已等待时长 -->
-    <TextView
-        android:id="@+id/tv_elapsed"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:accessibilityLiveRegion="polite"
-        android:gravity="center"
-        android:textColor="@color/blind_primary"
-        android:textSize="20sp"
-        android:textStyle="bold" />
+        <!-- 等待动画（循环进度条），无障碍上忽略 -->
+        <ProgressBar
+            android:id="@+id/progress_waiting"
+            style="@android:style/Widget.ProgressBar.Large"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginBottom="@dimen/blind_space_lg"
+            android:importantForAccessibility="no"
+            android:indeterminateTint="?attr/blindPrimary" />
 
-    <!-- 情绪曲线等待提示语（自动更新） -->
-    <TextView
-        android:id="@+id/tv_waiting_message"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:accessibilityLiveRegion="polite"
-        android:gravity="center"
-        android:padding="16dp"
-        android:textColor="@color/blind_on_background"
-        android:textSize="18sp" />
+        <!-- 已等待时长（数字大号显示） -->
+        <TextView
+            android:id="@+id/tv_elapsed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/blind_space_md"
+            android:accessibilityLiveRegion="polite"
+            android:gravity="center"
+            android:minHeight="@dimen/blind_touch_min"
+            android:textColor="?attr/blindPrimary"
+            android:textSize="@dimen/blind_text_title"
+            android:textStyle="bold" />
 
-    <!-- 手势提示 / 取消倒计时状态 -->
-    <TextView
-        android:id="@+id/tv_cancel_status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:accessibilityLiveRegion="assertive"
-        android:gravity="center"
-        android:padding="16dp"
-        android:text="@string/waiting_match_gesture_hint"
-        android:textColor="@color/blind_warning"
-        android:textSize="16sp" />
+        <!-- 情绪曲线等待提示语（自动更新） -->
+        <TextView
+            android:id="@+id/tv_waiting_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/blind_space_md"
+            android:accessibilityLiveRegion="polite"
+            android:gravity="center"
+            android:minHeight="@dimen/blind_touch_min"
+            android:padding="@dimen/blind_space_md"
+            android:textColor="?attr/blindOnSurface"
+            android:textSize="@dimen/blind_text_body" />
 
-</LinearLayout>
+        <!-- 倒计时实时状态（仅倒计时进行中显示） -->
+        <TextView
+            android:id="@+id/tv_cancel_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/blind_space_md"
+            android:accessibilityLiveRegion="assertive"
+            android:gravity="center"
+            android:padding="@dimen/blind_space_sm"
+            android:textColor="?attr/blindWarning"
+            android:textSize="@dimen/blind_text_body"
+            android:textStyle="bold" />
+
+        <!-- 操作底部：长按 2 秒 + 5 秒倒计时取消订单 -->
+        <com.guiderun.app.ui.blind.widget.BlindActionFooter
+            android:id="@+id/footer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:primaryLabel="@string/blind_ui_waiting_match_btn_cancel"
+            app:primaryHint="@string/blind_hint_waiting_match_cancel" />
+
+    </LinearLayout>
+</ScrollView>

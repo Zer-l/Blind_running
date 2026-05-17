@@ -12,9 +12,7 @@ import com.guiderun.app.domain.usecase.CancelRunRequestUseCase
 import com.guiderun.app.domain.usecase.PollRunRequestUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -29,7 +27,6 @@ import javax.inject.Inject
 data class WaitingMatchUiState(
     val elapsedSeconds: Long = 0L,
     val waitingMessage: String = "",
-    val cancelCountdown: Int? = null,
     val isCancelling: Boolean = false,
 )
 
@@ -38,6 +35,12 @@ sealed interface WaitingMatchNavEvent {
     data object ToHome : WaitingMatchNavEvent
 }
 
+/**
+ * 等待匹配 ViewModel（推广重构第二波）。
+ *
+ * 手势模型：长按 2s+5s 由 footer 的 LongPressGestureView 接管，
+ * 本 VM 只暴露 [executeCancel] 作为"已经确认取消"的执行入口（手势/语音/返回键统一调用）。
+ */
 @HiltViewModel
 class WaitingMatchViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -56,12 +59,9 @@ class WaitingMatchViewModel @Inject constructor(
     private val _navEvent = MutableSharedFlow<WaitingMatchNavEvent>(replay = 0)
     val navEvent: SharedFlow<WaitingMatchNavEvent> = _navEvent.asSharedFlow()
 
-    private var cancelCountdownJob: Job? = null
-
-    // ★ 关键操作后抑制自动播报的时间窗（elapsedRealtime 毫秒）
+    // 关键操作后抑制自动播报的时间窗（System.currentTimeMillis 毫秒）
     private var suppressAutoAnnounceUntil = 0L
 
-    // 抑制时长常量：关键操作后 8 秒内不自动播报
     private companion object {
         const val SUPPRESS_DURATION_MS = 8_000L
     }
@@ -73,7 +73,6 @@ class WaitingMatchViewModel @Inject constructor(
         startPolling()
     }
 
-    // ★ 设置抑制窗口：关键操作前调用
     private fun suppressAutoAnnounce() {
         suppressAutoAnnounceUntil = System.currentTimeMillis() + SUPPRESS_DURATION_MS
     }
@@ -85,11 +84,7 @@ class WaitingMatchViewModel @Inject constructor(
                 val elapsed = _uiState.value.elapsedSeconds + 1
                 _uiState.update { it.copy(elapsedSeconds = elapsed) }
                 if (elapsed % 15 == 0L) {
-                    // ★ 检查是否在抑制窗口内
-                    if (System.currentTimeMillis() < suppressAutoAnnounceUntil) {
-                        // 抑制期内，跳过本次播报
-                        continue
-                    }
+                    if (System.currentTimeMillis() < suppressAutoAnnounceUntil) continue
                     val msg = WaitingMessageGenerator.getMessage(elapsed)
                     _uiState.update { it.copy(waitingMessage = msg) }
                     ttsManager.speak(msg, TtsManager.Priority.NORMAL)
@@ -108,14 +103,12 @@ class WaitingMatchViewModel @Inject constructor(
                     RunRequestStatus.ACCEPTED,
                     RunRequestStatus.EN_ROUTE,
                     RunRequestStatus.MET -> {
-                        cancelCountdownJob?.cancel()
                         suppressAutoAnnounce()
                         ttsManager.speak(context.getString(R.string.tts_match_found), TtsManager.Priority.HIGH)
                         hapticFeedback.confirm()
                         _navEvent.emit(WaitingMatchNavEvent.ToMatched(requestId))
                     }
                     RunRequestStatus.ABORTED -> {
-                        cancelCountdownJob?.cancel()
                         suppressAutoAnnounce()
                         ttsManager.speak(context.getString(R.string.tts_request_aborted), TtsManager.Priority.HIGH)
                         _navEvent.emit(WaitingMatchNavEvent.ToHome)
@@ -139,71 +132,11 @@ class WaitingMatchViewModel @Inject constructor(
 
     fun onScreenPaused() {
         ttsManager.release()
-        cancelCountdownJob?.cancel()
-        cancelCountdownJob = null
-        _uiState.update { it.copy(cancelCountdown = null) }
     }
 
-    /**
-     * 长按取消：先播提示语 → 再倒数。
-     * 若倒计时已在进行（重入），走撤销分支，确保任何路径（手势/语音/返回键）行为一致。
-     */
-    fun onLongPressCancel() {
-        if (cancelCountdownJob?.isActive == true) {
-            cancelCountdownJob?.cancel()
-            cancelCountdownJob = null
-            _uiState.update { it.copy(cancelCountdown = null) }
-            suppressAutoAnnounce()
-            hapticFeedback.confirm()
-            ttsManager.speak(context.getString(R.string.tts_cancelled), TtsManager.Priority.HIGH)
-            return
-        }
-
-        hapticFeedback.warning()
+    /** 朗读当前等待时长（语音指令 STATUS 入口）。 */
+    fun announceWaitTime() {
         suppressAutoAnnounce()
-        cancelCountdownJob = viewModelScope.launch {
-            ttsManager.speakAndWait(context.getString(R.string.tts_cancel_countdown, 5), TtsManager.Priority.HIGH)
-
-            for (i in 5 downTo 1) {
-                ensureActive()
-                _uiState.update { it.copy(cancelCountdown = i) }
-                ttsManager.speakAndWait("$i", TtsManager.Priority.HIGH)
-                suppressAutoAnnounce()
-            }
-
-            ensureActive()
-            _uiState.update { it.copy(cancelCountdown = null) }
-            executeCancelRequest()
-        }
-    }
-
-    /** 按住达到 2 秒阈值时的触觉反馈 + 语音提示。 */
-    fun onLongPressThreshold2s() {
-        hapticFeedback.warning()
-        suppressAutoAnnounce()
-        ttsManager.speak(context.getString(R.string.tts_cancel_release), TtsManager.Priority.HIGH)
-    }
-
-    // ★ 短按：播报等待时长（唯一入口）
-    fun onShortPressHint() {
-        suppressAutoAnnounce()
-        speakWaitTime()
-    }
-
-    fun onCancelPressed() {
-        if (cancelCountdownJob?.isActive == true) {
-            cancelCountdownJob?.cancel()
-            cancelCountdownJob = null
-            _uiState.update { it.copy(cancelCountdown = null) }
-            suppressAutoAnnounce()
-            hapticFeedback.confirm()
-            ttsManager.speak(context.getString(R.string.tts_cancelled), TtsManager.Priority.HIGH)
-        } else {
-            onLongPressCancel()
-        }
-    }
-
-    private fun speakWaitTime() {
         val state = _uiState.value
         val minutes = state.elapsedSeconds / 60
         val seconds = state.elapsedSeconds % 60
@@ -214,19 +147,28 @@ class WaitingMatchViewModel @Inject constructor(
         ttsManager.speak(msg, TtsManager.Priority.HIGH)
     }
 
-    private suspend fun executeCancelRequest() {
-        _uiState.update { it.copy(isCancelling = true, cancelCountdown = null) }
-        suppressAutoAnnounce()
-        cancelRunRequest(requestId, reason = "用户主动取消")
-            .onSuccess {
-                ttsManager.speak(context.getString(R.string.tts_cancel_success), TtsManager.Priority.HIGH)
-                hapticFeedback.confirm()
-                _navEvent.emit(WaitingMatchNavEvent.ToHome)
-            }
-            .onFailure { e ->
-                _uiState.update { it.copy(isCancelling = false) }
-                ttsManager.speak(context.getString(R.string.tts_cancel_failed, e.message ?: "请重试"))
-                hapticFeedback.error()
-            }
+    /**
+     * 真正执行取消订单：来自三个入口
+     * 1. footer LongPressGestureView 长按 2s+5s 后 onCountdownCommitted
+     * 2. 语音指令 CANCEL
+     * 3. 返回键弹窗"取消订单"按钮
+     */
+    fun executeCancel() {
+        if (_uiState.value.isCancelling) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCancelling = true) }
+            suppressAutoAnnounce()
+            cancelRunRequest(requestId, reason = "用户主动取消")
+                .onSuccess {
+                    ttsManager.speak(context.getString(R.string.tts_cancel_success), TtsManager.Priority.HIGH)
+                    hapticFeedback.confirm()
+                    _navEvent.emit(WaitingMatchNavEvent.ToHome)
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isCancelling = false) }
+                    ttsManager.speak(context.getString(R.string.tts_cancel_failed, e.message ?: "请重试"))
+                    hapticFeedback.error()
+                }
+        }
     }
 }
