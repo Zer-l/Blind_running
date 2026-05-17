@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/blind_background"
+    android:background="?attr/blindBackground"
     android:fillViewport="true"
     android:fitsSystemWindows="true">
 
@@ -11,61 +11,33 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/blind_space_lg">
 
-        <!-- 标题 -->
-        <TextView
-            android:id="@+id/tv_title"
+        <!-- 页面顶部：标题 + 当前位置状态 -->
+        <com.guiderun.app.ui.blind.widget.BlindPageHeader
+            android:id="@+id/header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:gravity="center"
-            android:text="@string/create_request_title"
-            android:textColor="@color/blind_primary"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            android:layout_marginBottom="@dimen/blind_space_lg"
+            app:headerTitle="@string/create_request_title"
+            app:headerStatus="@string/create_request_location_loading" />
 
-        <!-- 位置状态卡片 -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_location"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="@color/blind_surface"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/blind_primary"
-            app:strokeWidth="1dp">
-
-            <TextView
-                android:id="@+id/tv_location_status"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:accessibilityLiveRegion="polite"
-                android:gravity="center"
-                android:minHeight="64dp"
-                android:padding="16dp"
-                android:text="@string/create_request_location_loading"
-                android:textColor="@color/blind_on_surface"
-                android:textSize="18sp" />
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 预计时长标签 -->
+        <!-- 时长选择标签 -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="@dimen/blind_space_sm"
             android:text="@string/create_request_duration_label"
-            android:textColor="@color/blind_on_background"
-            android:textSize="16sp"
+            android:textColor="?attr/blindOnSurface"
+            android:textSize="@dimen/blind_text_label"
             android:textStyle="bold" />
 
-        <!-- 时长选择 -->
+        <!-- 时长 4 按钮：保留原结构，提升尺寸与无障碍属性 -->
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/toggle_duration"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="@dimen/blind_space_lg"
             app:selectionRequired="true"
             app:singleSelection="true">
 
@@ -73,55 +45,73 @@
                 android:id="@+id/btn_30min"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="72dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:minHeight="@dimen/blind_touch_min"
+                android:paddingVertical="@dimen/blind_space_sm"
                 android:contentDescription="@string/create_request_duration_30"
                 android:text="@string/create_request_duration_30"
-                android:textSize="12sp" />
+                android:textColor="?attr/blindOnSurface"
+                android:textSize="@dimen/blind_text_body"
+                app:strokeColor="?attr/blindOnSurface" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_60min"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="72dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:minHeight="@dimen/blind_touch_min"
+                android:paddingVertical="@dimen/blind_space_sm"
                 android:contentDescription="@string/create_request_duration_60"
                 android:text="@string/create_request_duration_60"
-                android:textSize="12sp" />
+                android:textColor="?attr/blindOnSurface"
+                android:textSize="@dimen/blind_text_body"
+                app:strokeColor="?attr/blindOnSurface" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_90min"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="72dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:minHeight="@dimen/blind_touch_min"
+                android:paddingVertical="@dimen/blind_space_sm"
                 android:contentDescription="@string/create_request_duration_90"
                 android:text="@string/create_request_duration_90"
-                android:textSize="12sp" />
+                android:textColor="?attr/blindOnSurface"
+                android:textSize="@dimen/blind_text_body"
+                app:strokeColor="?attr/blindOnSurface" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_120min"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="72dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:minHeight="@dimen/blind_touch_min"
+                android:paddingVertical="@dimen/blind_space_sm"
                 android:contentDescription="@string/create_request_duration_120"
                 android:text="@string/create_request_duration_120"
-                android:textSize="12sp" />
+                android:textColor="?attr/blindOnSurface"
+                android:textSize="@dimen/blind_text_body"
+                app:strokeColor="?attr/blindOnSurface" />
 
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <!-- 备注输入 -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/til_notes"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="@dimen/blind_space_md"
             android:hint="@string/create_request_notes_hint"
-            app:endIconMode="custom"
-            app:endIconDrawable="@drawable/ic_mic"
+            app:boxStrokeColor="?attr/blindOnSurface"
             app:endIconContentDescription="@string/voice_input_content_description"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+            app:endIconDrawable="@drawable/ic_mic"
+            app:endIconMode="custom"
+            app:hintTextColor="?attr/blindOnSurface">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/et_notes"
@@ -129,59 +119,31 @@
                 android:layout_height="wrap_content"
                 android:inputType="text"
                 android:maxLines="2"
-                android:textColor="@color/blind_on_surface"
-                android:textSize="16sp" />
+                android:textColor="?attr/blindOnSurface"
+                android:textSize="@dimen/blind_text_body" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- 错误提示（通常 GONE） -->
+        <!-- 错误提示（默认 GONE，错误时显示） -->
         <TextView
             android:id="@+id/tv_error"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="@dimen/blind_space_md"
             android:accessibilityLiveRegion="assertive"
-            android:padding="12dp"
-            android:background="@color/blind_warning"
+            android:background="?attr/blindWarning"
+            android:padding="@dimen/blind_space_md"
             android:textColor="@color/white"
-            android:textSize="16sp"
+            android:textSize="@dimen/blind_text_body"
             android:visibility="gone" />
 
-        <!-- 确认按钮（倒计时时文字变化） -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_confirm"
+        <!-- 操作底部：主按钮 LongPressGestureView + 次按钮 修改参数 -->
+        <com.guiderun.app.ui.blind.widget.BlindActionFooter
+            android:id="@+id/footer"
             android:layout_width="match_parent"
-            android:layout_height="72dp"
-            android:layout_marginBottom="12dp"
-            android:text="@string/create_request_btn_confirm"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            app:backgroundTint="@color/blind_primary"
-            app:cornerRadius="16dp" />
-
-        <!-- 修改参数按钮 -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_modify"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:layout_marginBottom="8dp"
-            android:text="@string/create_request_btn_modify"
-            android:textSize="16sp"
-            app:backgroundTint="@color/blind_surface"
-            app:cornerRadius="16dp"
-            app:strokeColor="@color/blind_primary"
-            app:strokeWidth="1dp" />
-
-        <!-- 取消/返回按钮 -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_cancel"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="@string/create_request_btn_cancel"
-            android:textSize="18sp"
-            app:backgroundTint="@color/blind_surface"
-            app:cornerRadius="16dp"
-            app:strokeColor="@color/blind_primary"
-            app:strokeWidth="2dp" />
+            android:layout_height="wrap_content"
+            app:primaryLabel="@string/blind_ui_create_request_btn_primary"
+            app:primaryHint="@string/blind_hint_create_request_primary"
+            app:secondaryLabel="@string/blind_ui_create_request_btn_secondary" />
 
     </LinearLayout>
 </ScrollView>

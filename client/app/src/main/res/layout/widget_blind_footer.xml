@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- minHeight 而非固定高度：大字号 (150%/200%) 时按钮自动撑高，避免文字截断 -->
+    <com.guiderun.app.ui.blind.widget.LongPressGestureView
+        android:id="@+id/btn_footer_primary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="@dimen/blind_touch_primary"
+        android:paddingVertical="@dimen/blind_space_md"
+        android:textColor="?attr/blindOnPrimary"
+        android:textSize="@dimen/blind_text_headline"
+        android:textStyle="bold"
+        app:backgroundTint="?attr/blindPrimary"
+        app:cornerRadius="@dimen/blind_radius_button" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_footer_secondary"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/blind_space_sm"
+        android:minHeight="@dimen/blind_touch_min"
+        android:paddingVertical="@dimen/blind_space_sm"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_body"
+        android:visibility="gone"
+        app:cornerRadius="@dimen/blind_radius_button"
+        app:strokeColor="?attr/blindOnSurface" />
+
+    <TextView
+        android:id="@+id/tv_footer_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/blind_space_sm"
+        android:gravity="center"
+        android:importantForAccessibility="no"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_hint" />
+
+</merge>

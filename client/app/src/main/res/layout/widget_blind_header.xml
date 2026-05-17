@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <TextView
+        android:id="@+id/tv_header_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingBottom="@dimen/blind_space_sm"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_title"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tv_header_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:accessibilityLiveRegion="polite"
+        android:gravity="center"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_body" />
+
+</merge>

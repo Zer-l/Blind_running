@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.data.local.RequestPreferences
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.UserRole
@@ -38,6 +39,7 @@ class HomeViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val userPreferences: UserPreferences,
     private val ttsManager: TtsManager,
+    private val requestPreferences: RequestPreferences,
     runRequestRepository: RunRequestRepository,
 ) : ViewModel() {
 
@@ -48,8 +50,22 @@ class HomeViewModel @Inject constructor(
     val activeRequest: StateFlow<RunRequest?> = runRequestRepository.activeRequest
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /**
+     * 一键发起是否可用：依赖 RequestPreferences.loadLast() 是否非空。
+     * 在 init 和 refreshUser 时刷新（视障端用户发起一次后回到 Home 即可使用）。
+     */
+    private val _quickStartEnabled = MutableStateFlow(false)
+    val quickStartEnabled: StateFlow<Boolean> = _quickStartEnabled.asStateFlow()
+
     init {
         loadUser()
+        refreshQuickStartEnabled()
+    }
+
+    private fun refreshQuickStartEnabled() {
+        viewModelScope.launch {
+            _quickStartEnabled.value = requestPreferences.loadLast() != null
+        }
     }
 
     private var isInitialLoad = true
@@ -107,5 +123,6 @@ class HomeViewModel @Inject constructor(
 
     fun refreshUser() {
         loadUser()
+        refreshQuickStartEnabled()
     }
 }

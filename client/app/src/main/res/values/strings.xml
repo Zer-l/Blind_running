@@ -451,4 +451,55 @@
     <string name="tts_sos_load_failed">无法获取紧急联系人信息</string>
     <string name="tts_welcome">你好，%1$s。当前角色：%2$s。</string>
     <string name="tts_welcome_no_role">你好，%1$s。</string>
+
+    <!-- ====== 视障端 UI 重构（通用） ====== -->
+    <!-- LongPressGestureView 通用文案：进入倒计时阈值播报 / 撤销播报 / 屏幕提示 -->
+    <string name="blind_tts_long_press_into_countdown">5 秒后执行，松开按钮可撤销</string>
+    <string name="blind_tts_long_press_cancelled">已撤销</string>
+    <string name="blind_hint_long_press_2s_5s">长按 2 秒，5 秒倒计时内松开可撤销</string>
+
+    <!-- CreateRequest 试点 -->
+    <string name="blind_ui_create_request_btn_primary">确认发起</string>
+    <string name="blind_ui_create_request_btn_secondary">修改参数</string>
+    <string name="blind_hint_create_request_primary">长按 2 秒，5 秒倒计时内松开撤销</string>
+    <string name="blind_tts_create_request_threshold">5 秒后发起请求，松开按钮可撤销</string>
+    <string name="blind_tts_quick_start_no_prefs">还没有保存的偏好，请先正常发起一次</string>
+    <string name="home_btn_blind_long_press_hint">轻触正常发起，长按 2 秒用上次偏好快速发起</string>
+
+    <!-- ====== AccessibilitySettings 改造 ====== -->
+    <string name="blind_ui_a11y_title">无障碍设置</string>
+    <string name="blind_ui_a11y_font_scale_label">字号缩放</string>
+    <string name="blind_ui_a11y_font_scale_100">标准 100%</string>
+    <string name="blind_ui_a11y_font_scale_125">较大 125%</string>
+    <string name="blind_ui_a11y_font_scale_150">大 150%</string>
+    <string name="blind_ui_a11y_font_scale_200">超大 200%</string>
+    <string name="blind_ui_a11y_contrast_label">对比度主题</string>
+    <string name="blind_ui_a11y_contrast_black">黑底白字</string>
+    <string name="blind_ui_a11y_contrast_white">白底黑字</string>
+    <string name="blind_ui_a11y_contrast_yellow">黄底黑字</string>
+    <string name="blind_ui_a11y_tts_speed">TTS 语速</string>
+    <string name="blind_ui_a11y_tts_volume">TTS 音量</string>
+    <string name="blind_ui_a11y_haptic_label">震动强度</string>
+    <string name="blind_ui_a11y_haptic_off">关闭</string>
+    <string name="blind_ui_a11y_haptic_normal">标准</string>
+    <string name="blind_ui_a11y_haptic_strong">强</string>
+    <string name="blind_tts_a11y_setting_applied">设置已应用，正在刷新界面</string>
+
+    <!-- BlindRunning 试点 -->
+    <string name="blind_ui_running_distance_label">距离</string>
+    <string name="blind_ui_running_distance_unit">公里</string>
+    <string name="blind_ui_running_duration_label">时长</string>
+    <string name="blind_ui_running_duration_unit"></string>
+    <string name="blind_ui_running_pace_label">配速</string>
+    <string name="blind_ui_running_pace_unit"></string>
+    <string name="blind_ui_running_status_label">状态</string>
+    <string name="blind_ui_running_btn_end">申请结束</string>
+    <string name="blind_hint_running_end">长按 2 秒申请结束，5 秒倒计时内松开撤销</string>
+    <string name="blind_tts_running_end_threshold">5 秒后申请结束跑步，松开按钮可撤销</string>
+    <string name="blind_tts_running_milestone_distance">已跑 %1$s 公里</string>
+    <string name="blind_tts_running_milestone_duration">已跑 %1$d 分钟</string>
+    <string name="blind_tts_running_pace_change">当前配速 %1$s 每公里</string>
+    <string name="blind_tts_running_paused">已自动暂停</string>
+    <string name="blind_tts_running_resumed">已恢复跑步</string>
+    <string name="blind_tts_running_status_announce">距离 %1$s 公里，时长 %2$d 分钟，配速 %3$s 每公里</string>
 </resources>

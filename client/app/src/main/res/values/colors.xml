@@ -8,7 +8,7 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- 视障端高对比度主题色 -->
+    <!-- 视障端高对比度主题色（向后兼容旧布局，对应 BLACK 主题） -->
     <color name="blind_background">#000000</color>
     <color name="blind_surface">#1A1A1A</color>
     <color name="blind_primary">#FFDD00</color>
@@ -16,4 +16,33 @@
     <color name="blind_on_background">#FFFFFF</color>
     <color name="blind_on_surface">#FFFFFF</color>
     <color name="blind_warning">#FF4444</color>
+
+    <!-- ====== HighContrastBlack 主题（默认） ====== -->
+    <color name="blind_bg_black">#000000</color>
+    <color name="blind_surface_black">#1A1A1A</color>
+    <color name="blind_primary_yellow">#FFDD00</color>
+    <color name="blind_on_primary_black">#000000</color>
+    <color name="blind_text_white">#FFFFFF</color>
+    <color name="blind_warning_red">#FF4444</color>
+    <color name="blind_error_red">#FF1744</color>
+    <color name="blind_focus_yellow">#FFEB3B</color>
+
+    <!-- ====== HighContrastWhite 主题 ====== -->
+    <color name="blind_bg_white">#FFFFFF</color>
+    <color name="blind_surface_white">#F5F5F5</color>
+    <color name="blind_primary_indigo">#1A1A8C</color>
+    <color name="blind_on_primary_white">#FFFFFF</color>
+    <color name="blind_text_black">#000000</color>
+    <color name="blind_warning_magenta">#C2185B</color>
+    <color name="blind_error_darkred">#8E0000</color>
+    <color name="blind_focus_blue">#1A237E</color>
+
+    <!-- ====== HighContrastYellow 主题 ====== -->
+    <color name="blind_bg_yellow">#FFEB3B</color>
+    <color name="blind_surface_yellow">#FFF59D</color>
+    <color name="blind_primary_yellow_black">#000000</color>
+    <color name="blind_on_primary_yellow">#FFEB3B</color>
+    <color name="blind_warning_darkred">#B71C1C</color>
+    <color name="blind_error_brown">#5D4037</color>
+    <color name="blind_focus_black">#000000</color>
 </resources>

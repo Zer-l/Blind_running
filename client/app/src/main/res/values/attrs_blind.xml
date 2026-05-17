@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    视障端自定义属性：
+    - 主题色 attr：用于三套对比度主题切换（黑底/白底/黄底），styles_blind.xml 各主题覆盖具体值；
+                布局中用 ?attr/blindXxx 而非 @color/blind_xxx 引用，主题切换时自动生效。
+    - 组件 attr：LongPressGestureView / BlindMetricCard 等自定义控件的属性。
+-->
+<resources>
+
+    <!-- ====== 主题色 attr ====== -->
+    <attr name="blindBackground" format="color" />
+    <attr name="blindSurface" format="color" />
+    <attr name="blindPrimary" format="color" />
+    <attr name="blindOnPrimary" format="color" />
+    <attr name="blindOnSurface" format="color" />
+    <attr name="blindWarning" format="color" />
+    <attr name="blindError" format="color" />
+    <attr name="blindFocusRing" format="color" />
+
+    <!-- ====== LongPressGestureView ====== -->
+    <declare-styleable name="LongPressGestureView">
+        <attr name="thresholdMs" format="integer" />
+        <attr name="countdownMs" format="integer" />
+        <attr name="tickHapticEnabled" format="boolean" />
+        <attr name="announceEverySecond" format="boolean" />
+        <attr name="thresholdLabel" format="reference|string" />
+        <attr name="countdownLabel" format="reference|string" />
+    </declare-styleable>
+
+    <!-- ====== BlindMetricCard ====== -->
+    <declare-styleable name="BlindMetricCard">
+        <attr name="metricLabel" format="reference|string" />
+        <attr name="metricUnit" format="reference|string" />
+        <attr name="metricValue" format="string" />
+    </declare-styleable>
+
+    <!-- ====== BlindPageHeader ====== -->
+    <declare-styleable name="BlindPageHeader">
+        <attr name="headerTitle" format="reference|string" />
+        <attr name="headerStatus" format="reference|string" />
+    </declare-styleable>
+
+    <!-- ====== BlindActionFooter ====== -->
+    <declare-styleable name="BlindActionFooter">
+        <attr name="primaryLabel" format="reference|string" />
+        <attr name="primaryHint" format="reference|string" />
+        <attr name="secondaryLabel" format="reference|string" />
+        <attr name="secondaryVisible" format="boolean" />
+    </declare-styleable>
+
+</resources>

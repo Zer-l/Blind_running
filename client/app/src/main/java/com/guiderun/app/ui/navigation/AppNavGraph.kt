@@ -29,6 +29,7 @@ fun AppNavGraph(
     onEnterBlindFlow: () -> Unit,
     onEnterBlindSettings: () -> Unit = {},
     onEnterBlindHistory: () -> Unit = {},
+    onQuickStartBlindFlow: () -> Unit = {},
     onResumeActiveOrder: (RunRequest) -> Unit = {},
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
@@ -68,6 +69,7 @@ fun AppNavGraph(
                 onEnterBlindFlow = onEnterBlindFlow,
                 onEnterBlindSettings = onEnterBlindSettings,
                 onEnterBlindHistory = onEnterBlindHistory,
+                onQuickStartBlindFlow = onQuickStartBlindFlow,
                 onEnterVolunteerFlow = {
                     navController.navigate(Screen.OrderList.route)
                 },

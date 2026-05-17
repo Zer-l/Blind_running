@@ -1,5 +1,8 @@
 package com.guiderun.app.ui.home
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
@@ -10,6 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -29,6 +35,7 @@ import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.model.UserRole
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
+import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
 fun HomeScreen(
@@ -36,6 +43,7 @@ fun HomeScreen(
     onEnterBlindFlow: () -> Unit,
     onEnterBlindSettings: () -> Unit = {},
     onEnterBlindHistory: () -> Unit = {},
+    onQuickStartBlindFlow: () -> Unit = {},
     onEnterVolunteerFlow: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
@@ -44,6 +52,7 @@ fun HomeScreen(
 ) {
     val activeRequest by viewModel.activeRequest.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val quickStartEnabled by viewModel.quickStartEnabled.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
     LaunchedEffect(lifecycle) {
@@ -126,15 +135,22 @@ fun HomeScreen(
                 ) {
                     // 视障端入口：有进行中订单时禁用「开始跑步」，引导用户通过横幅恢复
                     if (uiState.activeRoleEnum == UserRole.BLIND_RUNNER) {
+                        val subtitleText = when {
+                            activeRequest != null ->
+                                stringResource(R.string.home_btn_disabled_has_active)
+                            quickStartEnabled ->
+                                stringResource(R.string.home_btn_blind_long_press_hint)
+                            else -> stringResource(R.string.home_btn_start_running_desc)
+                        }
                         HomeMenuItem(
                             icon = Icons.AutoMirrored.Filled.DirectionsRun,
                             title = stringResource(R.string.home_btn_enter_blind),
-                            subtitle = if (activeRequest != null)
-                                stringResource(R.string.home_btn_disabled_has_active)
-                            else stringResource(R.string.home_btn_start_running_desc),
+                            subtitle = subtitleText,
                             onClick = onEnterBlindFlow,
                             isPrimary = true,
                             enabled = activeRequest == null,
+                            onLongPress = if (quickStartEnabled && activeRequest == null)
+                                onQuickStartBlindFlow else null,
                         )
                         HomeMenuItem(
                             icon = Icons.Default.Settings,
@@ -279,36 +295,50 @@ private fun HomeMenuItem(
     onClick: () -> Unit,
     isPrimary: Boolean = false,
     enabled: Boolean = true,
+    onLongPress: (() -> Unit)? = null,
 ) {
     if (isPrimary) {
-        Button(
-            onClick = onClick,
-            enabled = enabled,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(72.dp),
-            shape = AppRadius.LargeShape,
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
+        if (onLongPress != null) {
+            // 视障端一键发起：长按 2s 触发 onLongPress，短按 onClick
+            // 用 Surface + pointerInput 自定义手势，因为 Button 的 onClick 与 pointerInput 长按检测冲突
+            BlindPrimaryButton(
+                icon = icon,
+                title = title,
+                subtitle = subtitle,
+                onClick = onClick,
+                onLongPress = onLongPress,
+                enabled = enabled,
             )
-            Spacer(Modifier.width(AppSpacing.SM))
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.Start,
+        } else {
+            Button(
+                onClick = onClick,
+                enabled = enabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 72.dp),
+                shape = AppRadius.LargeShape,
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
                 )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                )
+                Spacer(Modifier.width(AppSpacing.SM))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.Start,
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                    )
+                }
             }
         }
     } else {
@@ -357,3 +387,75 @@ private fun HomeMenuItem(
         }
     }
 }
+
+/**
+ * 视障端主入口按钮：短按 onClick + 长按 2 秒 onLongPress。
+ *
+ * 长按 2 秒明显长于 Material 默认 500ms，避免视障用户偶尔停顿造成误触。
+ * 长按触发时给一次 LongPress haptic 反馈，等用户抬起再退出当前手势。
+ */
+@Composable
+private fun BlindPrimaryButton(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit,
+    enabled: Boolean,
+) {
+    val haptic = LocalHapticFeedback.current
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    val released = withTimeoutOrNull(LONG_PRESS_MS) {
+                        waitForUpOrCancellation()
+                    }
+                    if (released != null) {
+                        onClick()
+                    } else {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLongPress()
+                        waitForUpOrCancellation()
+                    }
+                }
+            }
+            .semantics {
+                role = Role.Button
+                contentDescription = "$title。$subtitle。双击进入正常发起，长按 2 秒一键发起"
+            },
+        shape = AppRadius.LargeShape,
+        color = if (enabled) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (enabled) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = AppSpacing.LG, vertical = AppSpacing.MD),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, null, modifier = Modifier.size(28.dp))
+            Spacer(Modifier.width(AppSpacing.SM))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalContentColor.current.copy(alpha = 0.8f),
+                )
+            }
+        }
+    }
+}
+
+private const val LONG_PRESS_MS: Long = 2_000L

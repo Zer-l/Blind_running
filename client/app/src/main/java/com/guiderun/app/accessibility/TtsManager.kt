@@ -46,6 +46,9 @@ class TtsManager @Inject constructor(
 
     private var retryCount = 0
 
+    /** 当前 TTS 音量倍率（由 UserPreferences.getBlindTtsVolume 自动更新） */
+    @Volatile private var currentVolume: Float = 1.0f
+
     // ★ 播报完成回调机制：utteranceId → CompletableDeferred
     private val pendingUtterances = ConcurrentHashMap<String, CompletableDeferred<Unit>>()
 
@@ -108,6 +111,11 @@ class TtsManager @Inject constructor(
                 engine?.setSpeechRate(rate)
             }
         }
+        scope.launch {
+            userPreferences.getBlindTtsVolume().collect { volume ->
+                currentVolume = volume.coerceIn(0f, 1f)
+            }
+        }
     }
 
     fun acquire() {
@@ -133,7 +141,7 @@ class TtsManager @Inject constructor(
         val utteranceId = generateUtteranceId(text)
         val mode = if (priority == Priority.HIGH) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         val params = Bundle().apply {
-            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, currentVolume)
         }
         val result = engine?.speak(text, mode, params, utteranceId)
         if (result == TextToSpeech.ERROR) {
@@ -159,7 +167,7 @@ class TtsManager @Inject constructor(
 
         val mode = if (priority == Priority.HIGH) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         val params = Bundle().apply {
-            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, currentVolume)
         }
         val result = engine?.speak(text, mode, params, utteranceId)
         if (result == TextToSpeech.ERROR) {

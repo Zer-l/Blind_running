@@ -2,12 +2,9 @@ package com.guiderun.app.ui.blind
 
 import android.Manifest
 import android.os.Bundle
-import android.os.SystemClock
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.bundleOf
@@ -20,18 +17,21 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.BlindFeedback
+import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.SpeechRecognizerManager
+import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentCreateRequestBinding
 import com.guiderun.app.ui.common.showInterruptDialog
+import com.guiderun.app.ui.theme.BlindFontScaler
 import com.guiderun.app.util.AppPermissions
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class CreateRequestFragment : Fragment() {
@@ -40,27 +40,25 @@ class CreateRequestFragment : Fragment() {
     private var _binding: FragmentCreateRequestBinding? = null
     private val binding get() = _binding!!
 
+    @Inject lateinit var blindFeedback: BlindFeedback
+    @Inject lateinit var ttsManager: TtsManager
+    @Inject lateinit var hapticFeedback: HapticFeedback
+
     private lateinit var permissionHelper: PermissionHelper
     private var permissionChecked = false
-
-    // 确认按钮的"按住2秒"手势状态
-    private var confirmPressStartTime = 0L
-    private var confirmThresholdJob: Job? = null
-    private var confirmGestureConsumedByCountdownDismiss = false
 
     private var voiceInputManager: SpeechRecognizerManager? = null
     private val micPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) startVoiceInputForNotes()
-        else toast(R.string.voice_input_permission_denied)
+        else blindFeedback.permissionDenied(R.string.voice_input_permission_denied)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         permissionHelper = PermissionHelper(this) { allGranted, _ ->
             if (allGranted) {
-                // ★ 权限授予后才启动定位
                 viewModel.startLocationUpdates()
             } else {
                 viewModel.onLocationPermissionDenied()
@@ -82,9 +80,14 @@ class CreateRequestFragment : Fragment() {
         EdgeToEdgeHelper.applyInsets(view)
         setupDurationToggle()
         setupListeners()
+        setupGestureFooter()
         setupEditResultListener()
         setupBackPressInterception()
         setupVoiceCommands()
+
+        // 应用用户配置的字号缩放
+        val scale = (requireActivity() as? BaseBlindActivity)?.currentBlindFontScale ?: 1.0f
+        BlindFontScaler.apply(view, scale)
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -92,13 +95,42 @@ class CreateRequestFragment : Fragment() {
                 launch { collectNavEvents() }
             }
         }
+
+        // 一键发起入口：HomeScreen 长按 2s 触发，跳过手势确认直接用上次偏好提交
+        if (arguments?.getBoolean(BlindActivity.EXTRA_QUICK_START) == true) {
+            arguments?.remove(BlindActivity.EXTRA_QUICK_START)
+            viewModel.submitWithLastPrefs()
+        }
+    }
+
+    private fun setupGestureFooter() {
+        binding.footer.primaryGesture.bind(
+            scope = viewLifecycleOwner.lifecycleScope,
+            ttsManager = ttsManager,
+            hapticFeedback = hapticFeedback,
+            thresholdLabelRes = R.string.blind_tts_create_request_threshold,
+            countdownLabelRes = R.string.blind_tts_long_press_cancelled,
+            onCountdownCommitted = { viewModel.submit() },
+        )
+        binding.footer.secondaryButton.setOnClickListener { navigateToEditRequest() }
     }
 
     private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
         when (cmd) {
-            VoiceCommand.CONFIRM -> { viewModel.onConfirmPressed(); true }
-            VoiceCommand.CANCEL -> { viewModel.onCancelPressed(); true }
-            VoiceCommand.MODIFY_REQUEST -> { navigateToEditRequest(); true }
+            VoiceCommand.CONFIRM, VoiceCommand.SAVE -> {
+                // 语音指令为明确意图，跳过 2s+5s 渐进确认，直接提交
+                viewModel.submit()
+                true
+            }
+            VoiceCommand.CANCEL -> {
+                binding.footer.primaryGesture.reset()
+                viewModel.onBackRequested()
+                true
+            }
+            VoiceCommand.MODIFY_REQUEST -> {
+                navigateToEditRequest()
+                true
+            }
             VoiceCommand.DURATION_30 -> { viewModel.onDurationSelected(30); true }
             VoiceCommand.DURATION_60 -> { viewModel.onDurationSelected(60); true }
             VoiceCommand.DURATION_90 -> { viewModel.onDurationSelected(90); true }
@@ -107,10 +139,6 @@ class CreateRequestFragment : Fragment() {
         }
     }
 
-    /**
-     * 返回键拦截：CreateRequest 是订单流程入口，未提交时返回会丢失草稿。
-     * 弹「放弃创建/留在此页」对话框，确认放弃才退出 Activity。
-     */
     private fun setupBackPressInterception() {
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
@@ -147,12 +175,12 @@ class CreateRequestFragment : Fragment() {
 
     private fun setupEditResultListener() {
         setFragmentResultListener("edit_request_result") { _, bundle ->
-            // lat/lng 仅在地理编码成功时存在；缺失则保留旧 GPS 坐标
             val newLat = if (bundle.containsKey("lat")) bundle.getDouble("lat") else null
             val newLng = if (bundle.containsKey("lng")) bundle.getDouble("lng") else null
             viewModel.onEditRequestResult(
                 durationMinutes = bundle.getInt("durationMinutes", 60),
-                locationDescription = bundle.getString("locationDescription", "当前位置") ?: "当前位置",
+                locationDescription = bundle.getString("locationDescription", "当前位置")
+                    ?: "当前位置",
                 notes = bundle.getString("notes", "") ?: "",
                 newLat = newLat,
                 newLng = newLng,
@@ -164,48 +192,7 @@ class CreateRequestFragment : Fragment() {
         binding.etNotes.doAfterTextChanged { text ->
             viewModel.onNotesChanged(text?.toString() ?: "")
         }
-        // 按住2秒触发"5秒倒计时"提交；短按朗读当前选择；倒计时进行中按下=撤销
-        binding.btnConfirm.setOnTouchListener { v, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    if (viewModel.uiState.value.confirmCountdown != null) {
-                        confirmGestureConsumedByCountdownDismiss = true
-                        viewModel.onConfirmPressed() // toggle → 撤销
-                        return@setOnTouchListener true
-                    }
-                    confirmGestureConsumedByCountdownDismiss = false
-                    confirmPressStartTime = SystemClock.elapsedRealtime()
-                    confirmThresholdJob?.cancel()
-                    confirmThresholdJob = viewLifecycleOwner.lifecycleScope.launch {
-                        delay(2_000)
-                        viewModel.onLongPressThresholdConfirm()
-                    }
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    if (confirmGestureConsumedByCountdownDismiss) {
-                        confirmGestureConsumedByCountdownDismiss = false
-                        return@setOnTouchListener true
-                    }
-                    confirmThresholdJob?.cancel()
-                    confirmThresholdJob = null
-                    val elapsed = SystemClock.elapsedRealtime() - confirmPressStartTime
-                    if (elapsed >= 2_000) viewModel.onConfirmPressed()
-                    else viewModel.onShortPressConfirm()
-                    true
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    confirmGestureConsumedByCountdownDismiss = false
-                    confirmThresholdJob?.cancel()
-                    confirmThresholdJob = null
-                    true
-                }
-                else -> false
-            }
-        }
-        binding.btnCancel.setOnClickListener { viewModel.onCancelPressed() }
-        binding.tvLocationStatus.setOnClickListener { viewModel.onRetryLocation() }
-        binding.btnModify.setOnClickListener { navigateToEditRequest() }
+        binding.header.setOnClickListener { viewModel.onRetryLocation() }
         binding.tilNotes.setEndIconOnClickListener { onMicClicked() }
     }
 
@@ -226,22 +213,14 @@ class CreateRequestFragment : Fragment() {
                 binding.etNotes.setText(merged)
                 binding.etNotes.setSelection(merged.length)
             },
-            onError = { msg -> toast(msg) },
-            onStartListening = { toast(R.string.voice_input_listening) },
+            onError = { msg -> blindFeedback.error(msg) },
+            onStartListening = { blindFeedback.info(R.string.voice_input_listening) },
         ).also { voiceInputManager = it }
         if (!manager.isAvailable) {
-            toast(R.string.voice_input_unavailable)
+            blindFeedback.warning(R.string.voice_input_unavailable)
             return
         }
         manager.start()
-    }
-
-    private fun toast(text: String) {
-        Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show()
-    }
-
-    private fun toast(@androidx.annotation.StringRes resId: Int) {
-        Toast.makeText(requireContext(), resId, Toast.LENGTH_SHORT).show()
     }
 
     private fun navigateToEditRequest() {
@@ -272,7 +251,7 @@ class CreateRequestFragment : Fragment() {
                 binding.etNotes.setText(state.notes)
             }
 
-            binding.tvLocationStatus.text = when (state.locationStatus) {
+            binding.header.status = when (state.locationStatus) {
                 LocationStatus.Loading -> getString(R.string.create_request_location_loading)
                 is LocationStatus.Located -> getString(R.string.create_request_location_found)
                 LocationStatus.Failed -> getString(R.string.create_request_location_failed)
@@ -285,18 +264,15 @@ class CreateRequestFragment : Fragment() {
                 binding.tvError.visibility = View.GONE
             }
 
-            val isCountingDown = state.confirmCountdown != null
-            binding.btnConfirm.text = when {
-                state.isSubmitting -> getString(R.string.create_request_submitting)
-                isCountingDown -> getString(R.string.create_request_btn_confirm_countdown, state.confirmCountdown)
-                else -> getString(R.string.create_request_btn_confirm)
+            // 提交进行中：主按钮临时禁用，文字提示
+            binding.footer.primaryGesture.isEnabled = !state.isSubmitting
+            if (state.isSubmitting) {
+                binding.footer.primaryGesture.text =
+                    getString(R.string.create_request_submitting)
+            } else {
+                binding.footer.primaryGesture.text =
+                    getString(R.string.blind_ui_create_request_btn_primary)
             }
-            binding.btnConfirm.isEnabled = !state.isSubmitting
-
-            binding.btnCancel.text = if (isCountingDown)
-                getString(R.string.create_request_btn_cancel_countdown)
-            else
-                getString(R.string.create_request_btn_cancel)
         }
     }
 
@@ -305,11 +281,11 @@ class CreateRequestFragment : Fragment() {
             when (event) {
                 is CreateRequestNavEvent.ToWaitingMatch -> {
                     val args = bundleOf("requestId" to event.requestId)
-                    findNavController().navigate(R.id.action_createRequest_to_waitingMatch, args)
+                    findNavController().navigate(
+                        R.id.action_createRequest_to_waitingMatch,
+                        args,
+                    )
                 }
-                // CreateRequest 是 nav graph 起始目的地，没有"上一页"。
-                // 调 popBackStack 会清空 backQueue 把 NavController 弄成废状态，后续 navigate 必崩。
-                // 直接 finish 回 MainActivity HomeScreen 才是正确语义。
                 CreateRequestNavEvent.Back -> requireActivity().finish()
             }
         }
@@ -327,17 +303,14 @@ class CreateRequestFragment : Fragment() {
                 permissionHelper.request(*AppPermissions.LOCATION)
             }
         } else if (viewModel.uiState.value.locationStatus is LocationStatus.Failed) {
-            // ★ GPS 关闭再打开后，重新请求定位
             viewModel.onRetryLocation()
         }
-
-        // no-op: this page has no active request
     }
 
     override fun onPause() {
         super.onPause()
         viewModel.onScreenPaused()
-        // no-op
+        binding.footer.primaryGesture.reset()
     }
 
     override fun onDestroyView() {

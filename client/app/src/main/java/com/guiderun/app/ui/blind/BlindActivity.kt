@@ -34,9 +34,25 @@ class BlindActivity : BaseBlindActivity() {
         /** 从外部传入活跃订单状态 name，与 [EXTRA_RECOVERY_REQUEST_ID] 配合决定起始 fragment。 */
         const val EXTRA_RECOVERY_STATUS = "recovery_status"
 
+        /**
+         * HomeScreen 视障入口长按 2 秒触发的"一键发起"路径标志。
+         * CreateRequestFragment.onViewCreated 检测此标志即调用 ViewModel.submitWithLastPrefs()，
+         * 跳过手势确认直接用上次偏好提交。
+         */
+        const val EXTRA_QUICK_START = "quick_start"
+
         fun start(context: Context, destination: String = DEST_CREATE_REQUEST) {
             val intent = Intent(context, BlindActivity::class.java).apply {
                 putExtra(EXTRA_DESTINATION, destination)
+            }
+            context.startActivity(intent)
+        }
+
+        /** 一键发起：跳过 CreateRequest 手势确认，用上次偏好直接提交。 */
+        fun startForQuickStart(context: Context) {
+            val intent = Intent(context, BlindActivity::class.java).apply {
+                putExtra(EXTRA_DESTINATION, DEST_CREATE_REQUEST)
+                putExtra(EXTRA_QUICK_START, true)
             }
             context.startActivity(intent)
         }

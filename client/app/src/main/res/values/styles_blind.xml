@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    视障端 3 套对比度主题。
+    继承 Theme.GuideRun.Blind，覆盖标准 Material attr + 自定义 blindXxx attr。
+    BaseBlindActivity 在 onCreate 之前根据 UserPreferences.CONTRAST_THEME 调用 setTheme(...) 切换。
+    切换主题后需 recreate()。
+-->
+<resources>
+
+    <!-- 默认黑底主题（WCAG AAA, 对比度 21:1） -->
+    <style name="BlindTheme.HighContrastBlack" parent="Theme.GuideRun.Blind">
+        <item name="blindBackground">@color/blind_bg_black</item>
+        <item name="blindSurface">@color/blind_surface_black</item>
+        <item name="blindPrimary">@color/blind_primary_yellow</item>
+        <item name="blindOnPrimary">@color/blind_on_primary_black</item>
+        <item name="blindOnSurface">@color/blind_text_white</item>
+        <item name="blindWarning">@color/blind_warning_red</item>
+        <item name="blindError">@color/blind_error_red</item>
+        <item name="blindFocusRing">@color/blind_focus_yellow</item>
+
+        <item name="colorPrimary">@color/blind_primary_yellow</item>
+        <item name="colorOnPrimary">@color/blind_on_primary_black</item>
+        <item name="colorSurface">@color/blind_surface_black</item>
+        <item name="colorOnSurface">@color/blind_text_white</item>
+        <item name="android:windowBackground">@color/blind_bg_black</item>
+        <item name="android:textColor">@color/blind_text_white</item>
+    </style>
+
+    <!-- 白底黑字（室内/低视力友好） -->
+    <style name="BlindTheme.HighContrastWhite" parent="Theme.GuideRun.Blind">
+        <item name="blindBackground">@color/blind_bg_white</item>
+        <item name="blindSurface">@color/blind_surface_white</item>
+        <item name="blindPrimary">@color/blind_primary_indigo</item>
+        <item name="blindOnPrimary">@color/blind_on_primary_white</item>
+        <item name="blindOnSurface">@color/blind_text_black</item>
+        <item name="blindWarning">@color/blind_warning_magenta</item>
+        <item name="blindError">@color/blind_error_darkred</item>
+        <item name="blindFocusRing">@color/blind_focus_blue</item>
+
+        <item name="colorPrimary">@color/blind_primary_indigo</item>
+        <item name="colorOnPrimary">@color/blind_on_primary_white</item>
+        <item name="colorSurface">@color/blind_surface_white</item>
+        <item name="colorOnSurface">@color/blind_text_black</item>
+        <item name="android:windowBackground">@color/blind_bg_white</item>
+        <item name="android:textColor">@color/blind_text_black</item>
+    </style>
+
+    <!-- ====== AccessibilitySettings 卡片样式 ====== -->
+    <style name="BlindSettingsCard" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:background">@drawable/bg_blind_card</item>
+        <item name="android:padding">@dimen/blind_space_md</item>
+    </style>
+
+    <style name="BlindSettingsCardLabel" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">@dimen/blind_space_sm</item>
+        <item name="android:textColor">?attr/blindOnSurface</item>
+        <item name="android:textSize">@dimen/blind_text_body</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- 黄底黑字（黄斑变性偏好） -->
+    <style name="BlindTheme.HighContrastYellow" parent="Theme.GuideRun.Blind">
+        <item name="blindBackground">@color/blind_bg_yellow</item>
+        <item name="blindSurface">@color/blind_surface_yellow</item>
+        <item name="blindPrimary">@color/blind_primary_yellow_black</item>
+        <item name="blindOnPrimary">@color/blind_on_primary_yellow</item>
+        <item name="blindOnSurface">@color/blind_text_black</item>
+        <item name="blindWarning">@color/blind_warning_darkred</item>
+        <item name="blindError">@color/blind_error_brown</item>
+        <item name="blindFocusRing">@color/blind_focus_black</item>
+
+        <item name="colorPrimary">@color/blind_primary_yellow_black</item>
+        <item name="colorOnPrimary">@color/blind_on_primary_yellow</item>
+        <item name="colorSurface">@color/blind_surface_yellow</item>
+        <item name="colorOnSurface">@color/blind_text_black</item>
+        <item name="android:windowBackground">@color/blind_bg_yellow</item>
+        <item name="android:textColor">@color/blind_text_black</item>
+    </style>
+
+</resources>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    视障端尺寸 Token（基准值，scale=1.0）。
+    与 BlindDesignTokens.kt 一一对应。
+    XML 布局中优先引用此处资源，避免硬编码。
+-->
+<resources>
+
+    <!-- 字号（sp） -->
+    <dimen name="blind_text_display">48sp</dimen>
+    <dimen name="blind_text_title">28sp</dimen>
+    <dimen name="blind_text_headline">22sp</dimen>
+    <dimen name="blind_text_body">18sp</dimen>
+    <dimen name="blind_text_label">16sp</dimen>
+    <dimen name="blind_text_hint">14sp</dimen>
+
+    <!-- 间距（dp） -->
+    <dimen name="blind_space_xs">8dp</dimen>
+    <dimen name="blind_space_sm">12dp</dimen>
+    <dimen name="blind_space_md">16dp</dimen>
+    <dimen name="blind_space_lg">24dp</dimen>
+    <dimen name="blind_space_xl">32dp</dimen>
+    <dimen name="blind_space_xxl">48dp</dimen>
+
+    <!-- 触摸目标（dp） -->
+    <dimen name="blind_touch_min">64dp</dimen>
+    <dimen name="blind_touch_primary">96dp</dimen>
+    <dimen name="blind_touch_emergency">128dp</dimen>
+
+    <!-- 描边 / 圆角（dp） -->
+    <dimen name="blind_stroke_card">2dp</dimen>
+    <dimen name="blind_stroke_focus_ring">4dp</dimen>
+    <dimen name="blind_radius_card">16dp</dimen>
+    <dimen name="blind_radius_button">16dp</dimen>
+
+</resources>

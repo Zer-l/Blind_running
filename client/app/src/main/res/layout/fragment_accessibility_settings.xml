@@ -3,77 +3,284 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/blind_background"
+    android:background="?attr/blindBackground"
     android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/blind_space_lg">
 
-        <!-- 标题 -->
-        <TextView
+        <com.guiderun.app.ui.blind.widget.BlindPageHeader
+            android:id="@+id/header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:paddingBottom="16dp"
-            android:text="无障碍设置"
-            android:textColor="@color/blind_primary"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            android:layout_marginBottom="@dimen/blind_space_lg"
+            app:headerTitle="@string/blind_ui_a11y_title" />
 
-        <!-- 设置卡片 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/blind_surface"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/blind_primary"
-            app:strokeWidth="1dp">
+        <!-- 1. 字号缩放 -->
+        <LinearLayout
+            style="@style/BlindSettingsCard"
+            android:layout_marginBottom="@dimen/blind_space_md">
+
+            <TextView
+                style="@style/BlindSettingsCardLabel"
+                android:text="@string/blind_ui_a11y_font_scale_label" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggle_font_scale"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_font_100"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_a11y_font_scale_100"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_label"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_font_125"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_a11y_font_scale_125"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_label"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_font_150"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_a11y_font_scale_150"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_label"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_font_200"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_a11y_font_scale_200"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_label"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </LinearLayout>
+
+        <!-- 2. 对比度主题 -->
+        <LinearLayout
+            style="@style/BlindSettingsCard"
+            android:layout_marginBottom="@dimen/blind_space_md">
+
+            <TextView
+                style="@style/BlindSettingsCardLabel"
+                android:text="@string/blind_ui_a11y_contrast_label" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggle_contrast"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_contrast_black"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_a11y_contrast_black"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_label"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_contrast_white"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_a11y_contrast_white"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_label"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_contrast_yellow"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_a11y_contrast_yellow"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_label"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </LinearLayout>
+
+        <!-- 3. TTS 语速 -->
+        <LinearLayout
+            style="@style/BlindSettingsCard"
+            android:layout_marginBottom="@dimen/blind_space_md">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
-                    android:layout_width="match_parent"
+                    style="@style/BlindSettingsCardLabel"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginBottom="0dp"
+                    android:text="@string/blind_ui_a11y_tts_speed" />
+
+                <TextView
+                    android:id="@+id/tv_tts_speed_value"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:text="TTS 语速"
-                    android:textColor="@color/blind_on_surface"
-                    android:textSize="18sp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <SeekBar
-                        android:id="@+id/seekBarTtsSpeed"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:max="30"
-                        android:progressTint="@color/blind_primary"
-                        android:thumbTint="@color/blind_primary" />
-
-                    <TextView
-                        android:id="@+id/tvTtsSpeedValue"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:text="1.5x"
-                        android:textColor="@color/blind_primary"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
+                    android:text="1.5x"
+                    android:textColor="?attr/blindPrimary"
+                    android:textSize="@dimen/blind_text_body"
+                    android:textStyle="bold" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+
+            <SeekBar
+                android:id="@+id/seekBarTtsSpeed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/blind_space_sm"
+                android:max="30"
+                android:progressTint="?attr/blindPrimary"
+                android:thumbTint="?attr/blindPrimary" />
+        </LinearLayout>
+
+        <!-- 4. TTS 音量 -->
+        <LinearLayout
+            style="@style/BlindSettingsCard"
+            android:layout_marginBottom="@dimen/blind_space_md">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/BlindSettingsCardLabel"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginBottom="0dp"
+                    android:text="@string/blind_ui_a11y_tts_volume" />
+
+                <TextView
+                    android:id="@+id/tv_tts_volume_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="100%"
+                    android:textColor="?attr/blindPrimary"
+                    android:textSize="@dimen/blind_text_body"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <SeekBar
+                android:id="@+id/seekBarTtsVolume"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/blind_space_sm"
+                android:max="10"
+                android:progressTint="?attr/blindPrimary"
+                android:thumbTint="?attr/blindPrimary" />
+        </LinearLayout>
+
+        <!-- 5. 震动强度 -->
+        <LinearLayout
+            style="@style/BlindSettingsCard"
+            android:layout_marginBottom="@dimen/blind_space_md">
+
+            <TextView
+                style="@style/BlindSettingsCardLabel"
+                android:text="@string/blind_ui_a11y_haptic_label" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggle_haptic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_haptic_off"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_a11y_haptic_off"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_label"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_haptic_normal"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_a11y_haptic_normal"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_label"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_haptic_strong"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_a11y_haptic_strong"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_label"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>

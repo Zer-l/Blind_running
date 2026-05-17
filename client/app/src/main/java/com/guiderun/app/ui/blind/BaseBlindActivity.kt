@@ -5,27 +5,46 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.MotionEvent
-import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.BlindFeedback
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.SosCoordinator
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommandHost
 import com.guiderun.app.accessibility.voice.VoiceCommandManager
 import com.guiderun.app.accessibility.voice.VolumeKeyDispatcher
+import com.guiderun.app.data.local.UserPreferences
+import com.guiderun.app.ui.theme.BlindThemeResolver
 import com.guiderun.app.util.PhoneDialer
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @AndroidEntryPoint
 abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
 
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface BlindActivityEntryPoint {
+        fun userPreferences(): UserPreferences
+    }
+
     @Inject lateinit var sosCoordinator: SosCoordinator
     @Inject lateinit var ttsManager: TtsManager
     @Inject lateinit var hapticFeedback: HapticFeedback
     @Inject lateinit var voiceCommandManager: VoiceCommandManager
+    @Inject lateinit var blindFeedback: BlindFeedback
+    @Inject lateinit var userPreferences: UserPreferences
+
+    /** 当前生效的字号缩放，由 Fragment 通过 BlindFontScaler.apply 应用。 */
+    var currentBlindFontScale: Float = UserPreferences.DEFAULT_BLIND_FONT_SCALE
+        private set
 
     /** Active fragment sets this to the current requestId so SOS can call the API. */
     override var activeRequestId: String? = null
@@ -53,6 +72,16 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 用户偏好通过 Hilt EntryPoint 在 Hilt @Inject 注入之前拿到，
+        // 因为 setTheme 必须在 super.onCreate(setContentView) 之前调用。
+        val prefs = EntryPointAccessors.fromApplication(
+            applicationContext,
+            BlindActivityEntryPoint::class.java,
+        ).userPreferences()
+        val themeId = runBlocking { prefs.getBlindContrastThemeOnce() }
+        currentBlindFontScale = runBlocking { prefs.getBlindFontScaleOnce() }
+        setTheme(BlindThemeResolver.resolve(themeId))
+
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
     }
@@ -89,8 +118,7 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
                 hapticFeedback.confirm()
             }
             PhoneDialer.Result.Failed -> {
-                Toast.makeText(this, R.string.call_peer_failed, Toast.LENGTH_SHORT).show()
-                hapticFeedback.error()
+                blindFeedback.error(R.string.call_peer_failed)
             }
             PhoneDialer.Result.InvalidPhone -> {
                 ttsManager.speak(getString(R.string.blind_call_no_phone), TtsManager.Priority.HIGH)

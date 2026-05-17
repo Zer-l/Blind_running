@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 视障端通用卡片背景：?attr/blindSurface 填充 + 高对比度描边 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/blindSurface" />
+    <stroke
+        android:width="@dimen/blind_stroke_card"
+        android:color="?attr/blindOnSurface" />
+    <corners android:radius="@dimen/blind_radius_card" />
+</shape>

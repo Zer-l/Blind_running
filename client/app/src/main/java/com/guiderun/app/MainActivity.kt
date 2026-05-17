@@ -114,6 +114,7 @@ class MainActivity : ComponentActivity(), VoiceCommandHost {
                             onEnterBlindFlow = { BlindActivity.start(this@MainActivity, BlindActivity.DEST_CREATE_REQUEST) },
                             onEnterBlindSettings = { BlindActivity.start(this@MainActivity, BlindActivity.DEST_SETTINGS) },
                             onEnterBlindHistory = { BlindActivity.start(this@MainActivity, BlindActivity.DEST_HISTORY) },
+                            onQuickStartBlindFlow = { BlindActivity.startForQuickStart(this@MainActivity) },
                             onResumeActiveOrder = { request ->
                                 routeToActiveOrder(request, viewModel.currentRole(), navController)
                             },

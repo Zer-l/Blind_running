@@ -48,8 +48,7 @@ data class BlindRunningUiState(
     /** 本机采集端是否处于自动暂停。 */
     val isPaused: Boolean = false,
     val statusText: String = "",
-    val endCountdown: Int? = null,
-    /** 志愿者已发起结束申请，等待视障端长按 3 秒确认。 */
+    /** 志愿者已发起结束申请，等待视障端确认。 */
     val endRequestedByVolunteer: Boolean = false,
     /** 志愿者手机号；接单后下发，供视障端音量+键拨号。 */
     val peerPhone: String? = null,
@@ -82,7 +81,6 @@ class BlindRunningViewModel @Inject constructor(
     val navEvent = _navEvent.receiveAsFlow()
 
     private var userId: String = ""
-    private var endCountdownJob: Job? = null
     private var suppressAnnounceUntil = 0L
     private var lastPeerMetricsTimeMs: Long = 0L
     private var lastAnnouncedKm: Int = 0
@@ -275,58 +273,34 @@ class BlindRunningViewModel @Inject constructor(
         }
     }
 
-    /** 长按 2 秒触发"结束跑步"5 秒倒计时；倒计时进行中再按一次即撤销。 */
-    fun onEndRunPressed() {
-        if (endCountdownJob?.isActive == true) {
-            endCountdownJob?.cancel()
-            endCountdownJob = null
-            _uiState.update { it.copy(endCountdown = null) }
-            hapticFeedback.confirm()
-            suppressAndSpeak(context.getString(R.string.tts_cancelled), TtsManager.Priority.HIGH)
-            return
-        }
-
-        hapticFeedback.warning()
-        endCountdownJob = viewModelScope.launch {
-            suppressAndSpeak(context.getString(R.string.tts_running_end_countdown), TtsManager.Priority.HIGH)
-
-            for (i in 5 downTo 1) {
-                ensureActive()
-                _uiState.update { it.copy(endCountdown = i) }
-                ttsManager.speakAndWait("$i", TtsManager.Priority.HIGH)
-                suppressAnnounceUntil = System.currentTimeMillis() + 2_000L
-            }
-
-            ensureActive()
-            _uiState.update { it.copy(endCountdown = null) }
-            doEndRun()
-        }
+    /**
+     * 统一的"申请结束跑步"入口：
+     * - 由 LongPressGestureView 长按 2s + 5s 倒计时结束后调用（手势路径）；
+     * - 由语音指令 END_RUN 直接调用（语音路径，跳过倒计时）。
+     */
+    fun executeEndRun() {
+        hapticFeedback.confirm()
+        suppressAndSpeak(
+            context.getString(R.string.tts_running_ending),
+            TtsManager.Priority.HIGH,
+        )
+        viewModelScope.launch { doEndRun() }
     }
 
-    /** 长按达到 2 秒阈值瞬时反馈：震动 + 提示松开。 */
-    fun onLongPressThresholdEndRun() {
-        hapticFeedback.warning()
-        suppressAndSpeak(context.getString(R.string.tts_running_end_release), TtsManager.Priority.HIGH)
-    }
-
-    /** 短按：朗读当前跑步状态（距离/时长/配速）。 */
-    fun onShortPressHint() {
+    /** 朗读当前跑步状态（距离/时长/配速）。供语音指令 STATUS 调用。 */
+    fun announceCurrentStatus() {
         val state = _uiState.value
         val distanceKm = state.totalDistanceMeters / 1000.0
         val minutes = state.totalDurationSeconds / 60
         val seconds = state.totalDurationSeconds % 60
         val paceText = state.displayPaceSeconds?.let { p ->
-            val pm = p / 60; val ps = p % 60
+            val pm = p / 60
+            val ps = p % 60
             "${pm}分${ps}秒每公里"
         } ?: "暂无配速"
-        val msg = "已跑${"%.2f".format(distanceKm)}公里，用时${minutes}分${seconds}秒，配速${paceText}"
+        val msg =
+            "已跑${"%.2f".format(distanceKm)}公里，用时${minutes}分${seconds}秒，配速${paceText}"
         suppressAndSpeak(msg, TtsManager.Priority.HIGH)
-    }
-
-    fun executeEndRun() {
-        hapticFeedback.confirm()
-        suppressAndSpeak(context.getString(R.string.tts_running_ending), TtsManager.Priority.HIGH)
-        viewModelScope.launch { doEndRun() }
     }
 
     private suspend fun doEndRun() {
@@ -354,8 +328,6 @@ class BlindRunningViewModel @Inject constructor(
 
     fun onScreenPaused() {
         ttsManager.release()
-        endCountdownJob?.cancel()
-        endCountdownJob = null
     }
 
     override fun onCleared() {

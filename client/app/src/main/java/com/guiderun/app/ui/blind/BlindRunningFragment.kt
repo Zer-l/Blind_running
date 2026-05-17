@@ -1,9 +1,7 @@
 package com.guiderun.app.ui.blind
 
 import android.os.Bundle
-import android.os.SystemClock
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -15,17 +13,18 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentBlindRunningBinding
 import com.guiderun.app.ui.common.showInterruptDialog
+import com.guiderun.app.ui.theme.BlindFontScaler
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PaceCalculator
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class BlindRunningFragment : Fragment() {
@@ -34,9 +33,9 @@ class BlindRunningFragment : Fragment() {
     private var _binding: FragmentBlindRunningBinding? = null
     private val binding get() = _binding!!
 
-    private var pressStartTime = 0L
-    private var pressThresholdJob: Job? = null
-    private var gestureConsumedByCountdownDismiss = false
+    @Inject lateinit var ttsManager: TtsManager
+    @Inject lateinit var hapticFeedback: HapticFeedback
+
     private var savedBrightness: Float = -1f
 
     override fun onCreateView(
@@ -52,8 +51,12 @@ class BlindRunningFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         EdgeToEdgeHelper.applyInsets(view)
         view.keepScreenOn = true
+        setupGestureFooter()
         setupBackPressInterception()
         setupVoiceCommands()
+
+        val scale = (requireActivity() as? BaseBlindActivity)?.currentBlindFontScale ?: 1.0f
+        BlindFontScaler.apply(view, scale)
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -63,25 +66,41 @@ class BlindRunningFragment : Fragment() {
         }
     }
 
-    /** 跑步中：END_RUN 直接申请结束（等价 3 秒长按 + 松开） */
+    private fun setupGestureFooter() {
+        binding.footer.primaryGesture.bind(
+            scope = viewLifecycleOwner.lifecycleScope,
+            ttsManager = ttsManager,
+            hapticFeedback = hapticFeedback,
+            thresholdLabelRes = R.string.blind_tts_running_end_threshold,
+            countdownLabelRes = R.string.blind_tts_long_press_cancelled,
+            onCountdownCommitted = { viewModel.executeEndRun() },
+        )
+    }
+
     private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
         when (cmd) {
-            VoiceCommand.END_RUN -> { viewModel.executeEndRun(); true }
+            VoiceCommand.END_RUN -> {
+                viewModel.executeEndRun()
+                true
+            }
+            VoiceCommand.STATUS -> {
+                viewModel.announceCurrentStatus()
+                true
+            }
             else -> false
         }
     }
 
     /**
-     * 返回键：跑步中不允许直接退出（避免误操作丢失里程数据）。
-     * 服务端状态机限制：RUNNING 状态不接受 cancel，只能通过 endRun 或 emergency 结束。
-     * 仅显示「最小化/留在此页」+ TTS 提示长按结束。
+     * 返回键：跑步中不允许直接退出（服务端状态机限制 RUNNING 不接受 cancel）。
+     * 弹「最小化/留在此页」对话框 + TTS 提示长按结束。
      */
     private fun setupBackPressInterception() {
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    (activity as? BaseBlindActivity)?.ttsManager?.speak(
+                    ttsManager.speak(
                         getString(R.string.interrupt_message_leave_running),
                         TtsManager.Priority.HIGH,
                     )
@@ -106,7 +125,6 @@ class BlindRunningFragment : Fragment() {
         (activity as? BaseBlindActivity)?.apply {
             activeRequestId = viewModel.requestId
             activeCallPeerPhone = viewModel.uiState.value.peerPhone
-            touchEventForwarder = ::onGestureEvent
         }
     }
 
@@ -114,12 +132,10 @@ class BlindRunningFragment : Fragment() {
         super.onPause()
         setScreenDim(false)
         viewModel.onScreenPaused()
-        pressThresholdJob?.cancel()
-        pressThresholdJob = null
+        binding.footer.primaryGesture.reset()
         (activity as? BaseBlindActivity)?.apply {
             activeRequestId = null
             activeCallPeerPhone = null
-            touchEventForwarder = null
         }
     }
 
@@ -141,60 +157,37 @@ class BlindRunningFragment : Fragment() {
         window.attributes = lp
     }
 
-    private fun onGestureEvent(event: MotionEvent) {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                pressStartTime = SystemClock.elapsedRealtime()
-                pressThresholdJob?.cancel()
-                // 5 秒倒计时进行中：任何按下=撤销
-                if (viewModel.uiState.value.endCountdown != null) {
-                    gestureConsumedByCountdownDismiss = true
-                    viewModel.onEndRunPressed()
-                    return
-                }
-                gestureConsumedByCountdownDismiss = false
-                pressThresholdJob = viewLifecycleOwner.lifecycleScope.launch {
-                    delay(2_000)
-                    viewModel.onLongPressThresholdEndRun()
-                }
-            }
-            MotionEvent.ACTION_UP -> {
-                if (gestureConsumedByCountdownDismiss) {
-                    gestureConsumedByCountdownDismiss = false
-                    return
-                }
-                pressThresholdJob?.cancel()
-                pressThresholdJob = null
-                val elapsed = SystemClock.elapsedRealtime() - pressStartTime
-                if (elapsed >= 2_000) {
-                    viewModel.onEndRunPressed()
-                } else {
-                    viewModel.onShortPressHint()
-                }
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                gestureConsumedByCountdownDismiss = false
-                pressThresholdJob?.cancel()
-                pressThresholdJob = null
-            }
-        }
-    }
-
     private suspend fun collectUiState() {
         viewModel.uiState.collect { state ->
-            // peer phone 异步加载完成后实时同步给 Activity，供音量+键拨号使用
             (activity as? BaseBlindActivity)?.activeCallPeerPhone = state.peerPhone
-            binding.tvDistance.text = "%.2f".format(state.totalDistanceMeters / 1000.0)
-            binding.tvDuration.text = formatDuration(state.totalDurationSeconds)
-            // 显示用配速，暂停时为 null → 显示 --'--"
-            binding.tvPace.text = state.displayPaceSeconds?.let { PaceCalculator.formatPace(it) } ?: "--'--\""
+
+            val distanceKm = "%.2f".format(state.totalDistanceMeters / 1000.0)
+            binding.cardDistance.setValue(distanceKm)
+
+            val durationStr = formatDuration(state.totalDurationSeconds)
+            val minutes = state.totalDurationSeconds / 60
+            val seconds = state.totalDurationSeconds % 60
+            binding.cardDuration.setValue(durationStr, ttsRead = "${minutes}分${seconds}秒")
+
+            val paceStr = state.displayPaceSeconds?.let { PaceCalculator.formatPace(it) }
+                ?: "--'--\""
+            val paceTts = state.displayPaceSeconds?.let { p ->
+                "${p / 60}分${p % 60}秒每公里"
+            } ?: "暂无配速"
+            binding.cardPace.setValue(paceStr, ttsRead = paceTts)
+
             binding.tvPausedBadge.visibility = if (state.isPaused) View.VISIBLE else View.GONE
 
-            val countdown = state.endCountdown
             binding.tvStatus.text = when {
-                countdown != null -> getString(R.string.blind_running_end_confirm)
-                state.endRequestedByVolunteer -> getString(R.string.blind_running_end_requested_by_volunteer)
+                state.endRequestedByVolunteer ->
+                    getString(R.string.blind_running_end_requested_by_volunteer)
                 else -> getString(R.string.blind_running_status_running)
+            }
+
+            binding.header.status = if (state.isPaused) {
+                getString(R.string.running_paused_label)
+            } else {
+                getString(R.string.blind_running_status_running)
             }
         }
     }
