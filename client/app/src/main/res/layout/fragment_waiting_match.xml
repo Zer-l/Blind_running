@@ -1,84 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/blindBackground"
-    android:fillViewport="true"
     android:fitsSystemWindows="true">
 
-    <LinearLayout
+    <com.guiderun.app.ui.blind.widget.BlindPageHeader
+        android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:padding="@dimen/blind_space_lg">
+        app:headerTitle="@string/waiting_match_title"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- 页面顶部：标题 + 状态 -->
-        <com.guiderun.app.ui.blind.widget.BlindPageHeader
-            android:id="@+id/header"
+    <View
+        android:id="@+id/divider_top"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintTop_toBottomOf="@id/header" />
+
+    <ScrollView
+        android:id="@+id/scroll_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/divider_top"
+        app:layout_constraintBottom_toTopOf="@id/divider_bottom">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            app:headerTitle="@string/waiting_match_title"
-            app:headerStatus="@string/blind_ui_waiting_match_status" />
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="@dimen/blind_space_md">
 
-        <!-- 等待动画（循环进度条），无障碍上忽略 -->
-        <ProgressBar
-            android:id="@+id/progress_waiting"
-            style="@android:style/Widget.ProgressBar.Large"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:layout_marginBottom="@dimen/blind_space_lg"
-            android:importantForAccessibility="no"
-            android:indeterminateTint="?attr/blindPrimary" />
+            <ProgressBar
+                android:id="@+id/progress_waiting"
+                style="@android:style/Widget.ProgressBar.Large"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_marginBottom="@dimen/blind_space_lg"
+                android:importantForAccessibility="no"
+                android:indeterminateTint="?attr/blindPrimary" />
 
-        <!-- 已等待时长（数字大号显示） -->
-        <TextView
-            android:id="@+id/tv_elapsed"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            android:accessibilityLiveRegion="polite"
-            android:gravity="center"
-            android:minHeight="@dimen/blind_touch_min"
-            android:textColor="?attr/blindPrimary"
-            android:textSize="@dimen/blind_text_title"
-            android:textStyle="bold" />
+            <TextView
+                android:id="@+id/tv_elapsed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/blind_space_md"
+                android:accessibilityLiveRegion="polite"
+                android:gravity="center"
+                android:minHeight="@dimen/blind_touch_min"
+                android:textColor="?attr/blindPrimary"
+                android:textSize="@dimen/blind_text_title"
+                android:textStyle="bold" />
 
-        <!-- 情绪曲线等待提示语（自动更新） -->
-        <TextView
-            android:id="@+id/tv_waiting_message"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            android:accessibilityLiveRegion="polite"
-            android:gravity="center"
-            android:minHeight="@dimen/blind_touch_min"
-            android:padding="@dimen/blind_space_md"
-            android:textColor="?attr/blindOnSurface"
-            android:textSize="@dimen/blind_text_body" />
+            <TextView
+                android:id="@+id/tv_cancel_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:accessibilityLiveRegion="assertive"
+                android:gravity="center"
+                android:padding="@dimen/blind_space_sm"
+                android:textColor="?attr/blindWarning"
+                android:textSize="@dimen/blind_text_body"
+                android:textStyle="bold" />
 
-        <!-- 倒计时实时状态（仅倒计时进行中显示） -->
-        <TextView
-            android:id="@+id/tv_cancel_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            android:accessibilityLiveRegion="assertive"
-            android:gravity="center"
-            android:padding="@dimen/blind_space_sm"
-            android:textColor="?attr/blindWarning"
-            android:textSize="@dimen/blind_text_body"
-            android:textStyle="bold" />
+        </LinearLayout>
+    </ScrollView>
 
-        <!-- 操作底部：长按 2 秒 + 5 秒倒计时取消订单 -->
-        <com.guiderun.app.ui.blind.widget.BlindActionFooter
-            android:id="@+id/footer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:primaryLabel="@string/blind_ui_waiting_match_btn_cancel"
-            app:primaryHint="@string/blind_hint_waiting_match_cancel" />
+    <View
+        android:id="@+id/divider_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintBottom_toTopOf="@id/tv_action_hint" />
 
-    </LinearLayout>
-</ScrollView>
+    <TextView
+        android:id="@+id/tv_action_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:importantForAccessibility="no"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingVertical="@dimen/blind_space_sm"
+        android:text="@string/blind_hint_waiting_match_cancel"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_hint"
+        app:layout_constraintBottom_toTopOf="@id/footer" />
+
+    <com.guiderun.app.ui.blind.widget.BlindActionFooter
+        android:id="@+id/footer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingTop="0dp"
+        android:paddingBottom="@dimen/blind_space_lg"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:primaryLabel="@string/blind_ui_waiting_match_btn_cancel"
+        app:primaryHint="@string/blind_hint_waiting_match_cancel" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

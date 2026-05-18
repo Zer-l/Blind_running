@@ -1,15 +1,13 @@
 package com.guiderun.app.ui.blind
 
 import android.content.Context
+import android.content.res.Configuration
 import android.media.AudioManager
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.MotionEvent
-import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.BlindFeedback
 import com.guiderun.app.accessibility.HapticFeedback
@@ -19,7 +17,6 @@ import com.guiderun.app.accessibility.voice.VoiceCommandHost
 import com.guiderun.app.accessibility.voice.VoiceCommandManager
 import com.guiderun.app.accessibility.voice.VolumeKeyDispatcher
 import com.guiderun.app.data.local.UserPreferences
-import com.guiderun.app.ui.theme.BlindFontScaler
 import com.guiderun.app.ui.theme.BlindThemeResolver
 import com.guiderun.app.util.PhoneDialer
 import dagger.hilt.EntryPoint
@@ -46,10 +43,6 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
     @Inject lateinit var blindFeedback: BlindFeedback
     @Inject lateinit var userPreferences: UserPreferences
 
-    /** 当前生效的字号缩放，由 Fragment 通过 BlindFontScaler.apply 应用。 */
-    var currentBlindFontScale: Float = UserPreferences.DEFAULT_BLIND_FONT_SCALE
-        private set
-
     /** Active fragment sets this to the current requestId so SOS can call the API. */
     override var activeRequestId: String? = null
 
@@ -75,35 +68,38 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
         )
     }
 
+    /**
+     * 字号缩放通过 Configuration.fontScale 注入到 Activity 的 base context，
+     * 让所有 TextView 通过系统的 sp→px 转换自动放大；
+     * 避免手动 walk View 树修改 textSize 的脆弱方案（在 Fragment 切换 / Material 控件状态变化时会失效）。
+     * 字号变化需 recreate() 才能生效（AccessibilitySettingsViewModel 已发 RecreateRequired 事件）。
+     */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        val prefs = EntryPointAccessors.fromApplication(
+            newBase.applicationContext,
+            BlindActivityEntryPoint::class.java,
+        ).userPreferences()
+        val scale = runBlocking { prefs.getBlindFontScaleOnce() }
+        if (scale != 1.0f) {
+            val overrideConfig = Configuration()
+            overrideConfig.fontScale = scale
+            applyOverrideConfiguration(overrideConfig)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 用户偏好通过 Hilt EntryPoint 在 Hilt @Inject 注入之前拿到，
+        // 主题通过 Hilt EntryPoint 在 Hilt @Inject 注入之前拿到，
         // 因为 setTheme 必须在 super.onCreate(setContentView) 之前调用。
         val prefs = EntryPointAccessors.fromApplication(
             applicationContext,
             BlindActivityEntryPoint::class.java,
         ).userPreferences()
         val themeId = runBlocking { prefs.getBlindContrastThemeOnce() }
-        currentBlindFontScale = runBlocking { prefs.getBlindFontScaleOnce() }
         setTheme(BlindThemeResolver.resolve(themeId))
 
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        // 视障端所有 Fragment 在 onViewCreated 后自动应用字号缩放，
-        // 避免各 Fragment 自己调用 BlindFontScaler.apply（容易遗漏）。
-        supportFragmentManager.registerFragmentLifecycleCallbacks(
-            object : FragmentManager.FragmentLifecycleCallbacks() {
-                override fun onFragmentViewCreated(
-                    fm: FragmentManager,
-                    f: Fragment,
-                    v: View,
-                    savedInstanceState: Bundle?,
-                ) {
-                    BlindFontScaler.apply(v, currentBlindFontScale)
-                }
-            },
-            true,
-        )
     }
 
     override fun onDestroy() {

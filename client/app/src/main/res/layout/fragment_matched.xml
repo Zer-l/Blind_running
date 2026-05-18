@@ -1,84 +1,122 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/blindBackground"
-    android:fillViewport="true"
     android:fitsSystemWindows="true">
 
-    <LinearLayout
+    <com.guiderun.app.ui.blind.widget.BlindPageHeader
+        android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="@dimen/blind_space_lg">
+        app:headerTitle="@string/matched_title"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- 页面顶部：标题 + 实时状态 -->
-        <com.guiderun.app.ui.blind.widget.BlindPageHeader
-            android:id="@+id/header"
+    <View
+        android:id="@+id/divider_top"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintTop_toBottomOf="@id/header" />
+
+    <ScrollView
+        android:id="@+id/scroll_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/divider_top"
+        app:layout_constraintBottom_toTopOf="@id/divider_bottom">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            app:headerTitle="@string/matched_title" />
+            android:orientation="vertical"
+            android:padding="@dimen/blind_space_md">
 
-        <!-- 志愿者信息卡 -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_volunteer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            app:cardBackgroundColor="?attr/blindSurface"
-            app:cardCornerRadius="@dimen/blind_radius_card"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/blindPrimary"
-            app:strokeWidth="@dimen/blind_stroke_card">
-
-            <LinearLayout
+            <!-- 志愿者信息卡 -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_volunteer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/blind_space_md">
+                android:layout_marginBottom="@dimen/blind_space_md"
+                app:cardBackgroundColor="?attr/blindSurface"
+                app:cardCornerRadius="@dimen/blind_radius_card"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/blindPrimary"
+                app:strokeWidth="@dimen/blind_stroke_card">
 
-                <TextView
-                    android:id="@+id/tv_volunteer_name"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="@dimen/blind_space_xs"
-                    android:gravity="center"
-                    android:textColor="?attr/blindOnSurface"
-                    android:textSize="@dimen/blind_text_headline"
-                    android:textStyle="bold" />
+                    android:orientation="vertical"
+                    android:padding="@dimen/blind_space_md">
 
-                <TextView
-                    android:id="@+id/tv_volunteer_rating"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:textColor="?attr/blindPrimary"
-                    android:textSize="@dimen/blind_text_label" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    <TextView
+                        android:id="@+id/tv_volunteer_name"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/blind_space_xs"
+                        android:gravity="center"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_headline"
+                        android:textStyle="bold" />
 
-        <!-- 实时状态描述（assertive，关键状态强制朗读） -->
-        <TextView
-            android:id="@+id/tv_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            android:accessibilityLiveRegion="assertive"
-            android:gravity="center"
-            android:minHeight="@dimen/blind_touch_min"
-            android:padding="@dimen/blind_space_md"
-            android:textColor="?attr/blindOnSurface"
-            android:textSize="@dimen/blind_text_body" />
+                    <TextView
+                        android:id="@+id/tv_volunteer_rating"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:textColor="?attr/blindPrimary"
+                        android:textSize="@dimen/blind_text_label" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-        <!-- 操作底部：仅 MET 状态可用 -->
-        <com.guiderun.app.ui.blind.widget.BlindActionFooter
-            android:id="@+id/footer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:primaryLabel="@string/blind_ui_matched_btn_confirm"
-            app:primaryHint="@string/blind_hint_matched_waiting" />
+            <!-- 关键状态文字：默认 GONE，仅 assertive 重要事件显示 -->
+            <TextView
+                android:id="@+id/tv_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:accessibilityLiveRegion="assertive"
+                android:gravity="center"
+                android:minHeight="@dimen/blind_touch_min"
+                android:padding="@dimen/blind_space_md"
+                android:textColor="?attr/blindOnSurface"
+                android:textSize="@dimen/blind_text_body"
+                android:visibility="gone" />
 
-    </LinearLayout>
-</ScrollView>
+        </LinearLayout>
+    </ScrollView>
+
+    <View
+        android:id="@+id/divider_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintBottom_toTopOf="@id/tv_action_hint" />
+
+    <TextView
+        android:id="@+id/tv_action_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:importantForAccessibility="no"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingVertical="@dimen/blind_space_sm"
+        android:text="@string/blind_hint_matched_waiting"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_hint"
+        app:layout_constraintBottom_toTopOf="@id/footer" />
+
+    <com.guiderun.app.ui.blind.widget.BlindActionFooter
+        android:id="@+id/footer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingTop="0dp"
+        android:paddingBottom="@dimen/blind_space_lg"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:primaryLabel="@string/blind_ui_matched_btn_confirm"
+        app:primaryHint="@string/blind_hint_matched_waiting" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

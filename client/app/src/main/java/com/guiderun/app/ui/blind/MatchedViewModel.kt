@@ -122,7 +122,7 @@ class MatchedViewModel @Inject constructor(
         val statusText = when (request.status) {
             RunRequestStatus.ACCEPTED -> "志愿者正在准备，即将出发"
             RunRequestStatus.EN_ROUTE -> "志愿者正在赶往汇合点"
-            RunRequestStatus.MET -> "志愿者已到达集合点，请长按屏幕确认汇合"
+            RunRequestStatus.MET -> context.getString(R.string.matched_status_met)
             RunRequestStatus.RUNNING -> {
                 navigateToRunning()
                 return
@@ -164,8 +164,10 @@ class MatchedViewModel @Inject constructor(
     fun onScreenResumed() {
         ttsManager.acquire()
         viewModelScope.launch {
+            // 仅播报页面名；操作提示由 handleUpdate 根据当前状态精确播报：
+            // ACCEPTED/EN_ROUTE → "志愿者正在准备/在赶往"，MET → "已到达汇合点，请长按确认按钮 2 秒汇合"
+            // 避免在按钮 disabled 状态下播报"按住 2 秒确认汇合"误导用户
             ttsManager.speakAndWait(context.getString(R.string.tts_page_matched), TtsManager.Priority.HIGH)
-            ttsManager.speak(context.getString(R.string.tts_hint_matched), TtsManager.Priority.HIGH)
         }
     }
 

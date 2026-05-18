@@ -3,18 +3,19 @@ package com.guiderun.app.ui.blind.widget
 import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
 
 /**
- * 视障端页面顶部统一结构：标题 + 状态行。
+ * 视障端页面顶部统一结构：标题 + 状态行（默认 GONE，只在文本非空时显示）。
  *
- * - 标题：headline 22sp，bold，居中
- * - 状态：body 18sp，居中，accessibilityLiveRegion=polite（变化时自动朗读）
+ * - 标题：title 28sp，bold，居中，无 includeFontPadding（避免标题与下方分割线之间出现字体冗余间距）
+ * - 状态：body 18sp，居中，accessibilityLiveRegion=polite（变化时自动朗读）；GONE 时不占空间
  *
- * Fragment.onViewCreated 调用 [announceOnEnter] 让 TtsManager 自动播报页面摘要。
+ * widget 自身无 padding/margin，外间距完全由各页面 ConstraintLayout 控制。
  */
 class BlindPageHeader @JvmOverloads constructor(
     context: Context,
@@ -39,14 +40,14 @@ class BlindPageHeader @JvmOverloads constructor(
         ).apply {
             try {
                 getString(R.styleable.BlindPageHeader_headerTitle)?.let { tvTitle.text = it }
-                getString(R.styleable.BlindPageHeader_headerStatus)?.let { tvStatus.text = it }
+                getString(R.styleable.BlindPageHeader_headerStatus)?.let {
+                    tvStatus.text = it
+                    if (it.isNotBlank()) tvStatus.visibility = View.VISIBLE
+                }
             } finally {
                 recycle()
             }
         }
-
-        val pad = resources.getDimensionPixelSize(R.dimen.blind_space_md)
-        setPadding(pad, pad, pad, pad)
     }
 
     var title: CharSequence
@@ -61,6 +62,7 @@ class BlindPageHeader @JvmOverloads constructor(
         set(value) {
             tvStatus.text = value
             tvStatus.contentDescription = value
+            tvStatus.visibility = if (value.isBlank()) View.GONE else View.VISIBLE
         }
 
     /** Fragment.onViewCreated/onResume 调用，让 TTS 播报完整页面摘要。 */

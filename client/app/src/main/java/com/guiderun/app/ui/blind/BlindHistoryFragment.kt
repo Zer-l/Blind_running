@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isVisible
+import androidx.core.widget.NestedScrollView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -72,16 +73,17 @@ class BlindHistoryFragment : Fragment() {
             viewModel.setFilter(filter)
         }
 
-        binding.rvHistory.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
-                if (dy <= 0) return
-                val total = lm.itemCount
-                val last = lm.findLastVisibleItemPosition()
-                if (last >= total - 3) {
+        // 分页监听改到 NestedScrollView（RecyclerView 已 nestedScrollingEnabled=false 不再独立滚动）
+        binding.nestedScroll.setOnScrollChangeListener(
+            NestedScrollView.OnScrollChangeListener { v, _, scrollY, _, oldScrollY ->
+                if (scrollY <= oldScrollY) return@OnScrollChangeListener
+                val child = v.getChildAt(0) ?: return@OnScrollChangeListener
+                val maxScroll = child.measuredHeight - v.measuredHeight
+                if (scrollY >= maxScroll - LOAD_MORE_TRIGGER_PX) {
                     viewModel.loadMore()
                 }
             }
-        })
+        )
 
         setupVoiceCommands()
 
@@ -98,10 +100,18 @@ class BlindHistoryFragment : Fragment() {
                     binding.layoutError.isVisible = hasError
                     binding.tvError.text = state.errorMessage
                     binding.cardStats.isVisible = hasData
-                    binding.tvStatRuns.text = "${state.totalRuns}"
-                    binding.tvStatDistance.text = "%.1f km".format(state.totalDistanceKm)
-                    binding.tvStatDuration.text = "%.1f h".format(state.totalDurationHours)
-                    binding.tvStatAborted.text = "${state.totalAborted}"
+                    binding.tvStatRuns.text = getString(
+                        R.string.blind_ui_history_stat_runs_format, state.totalRuns
+                    )
+                    binding.tvStatDistance.text = getString(
+                        R.string.blind_ui_history_stat_distance_format, state.totalDistanceKm
+                    )
+                    binding.tvStatDuration.text = getString(
+                        R.string.blind_ui_history_stat_duration_format, state.totalDurationHours
+                    )
+                    binding.tvStatAborted.text = getString(
+                        R.string.blind_ui_history_stat_aborted_format, state.totalAborted
+                    )
                     adapter.submitList(state.requests)
                 }
             }
@@ -147,6 +157,11 @@ class BlindHistoryFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private companion object {
+        // 距底部 300px 时预加载下一页
+        const val LOAD_MORE_TRIGGER_PX = 300
     }
 }
 

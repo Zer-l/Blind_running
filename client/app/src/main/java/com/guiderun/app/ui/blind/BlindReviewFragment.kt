@@ -103,11 +103,6 @@ class BlindReviewFragment : Fragment() {
     private suspend fun collectUiState() {
         viewModel.uiState.collect { state ->
             (activity as? BaseBlindActivity)?.activeCallPeerPhone = state.peerPhone
-            binding.tvSummary.text = getString(
-                R.string.blind_review_summary_format,
-                state.distanceMeters / 1000.0,
-                state.durationSeconds / 60,
-            )
             updateCardSelection(state.selectedRating)
         }
     }

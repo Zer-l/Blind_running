@@ -1,26 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/blindBackground"
-    android:fitsSystemWindows="true"
-    android:orientation="vertical">
+    android:fitsSystemWindows="true">
 
-    <!-- 页面顶部：标题 -->
     <com.guiderun.app.ui.blind.widget.BlindPageHeader
         android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:headerTitle="@string/blind_history_title" />
+        app:headerTitle="@string/blind_history_title"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- 筛选 chips -->
+    <View
+        android:id="@+id/divider_top"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintTop_toBottomOf="@id/header" />
+
+    <!-- 筛选 chips：固定不滚动 -->
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/chip_group_filter"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/blind_space_md"
         android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingVertical="@dimen/blind_space_sm"
+        app:layout_constraintTop_toBottomOf="@id/divider_top"
         app:selectionRequired="true"
         app:singleSelection="true">
 
@@ -50,193 +57,147 @@
             android:text="@string/blind_history_filter_aborted" />
     </com.google.android.material.chip.ChipGroup>
 
-    <!-- 统计卡片 -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/card_stats"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/blind_space_md"
-        android:layout_marginBottom="@dimen/blind_space_md"
-        app:cardBackgroundColor="?attr/blindSurface"
-        app:cardCornerRadius="@dimen/blind_radius_card"
-        app:cardElevation="0dp"
-        app:strokeColor="?attr/blindPrimary"
-        app:strokeWidth="@dimen/blind_stroke_card">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="@dimen/blind_space_md">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/blind_ui_history_stats_title"
-                android:textColor="?attr/blindPrimary"
-                android:textSize="@dimen/blind_text_label"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/blind_space_sm"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tv_stat_runs"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="?attr/blindOnSurface"
-                        android:textSize="@dimen/blind_text_title"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/blind_ui_history_stat_runs"
-                        android:textColor="?attr/blindOnSurface"
-                        android:textSize="@dimen/blind_text_hint" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tv_stat_distance"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0 km"
-                        android:textColor="?attr/blindOnSurface"
-                        android:textSize="@dimen/blind_text_title"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/blind_ui_history_stat_distance"
-                        android:textColor="?attr/blindOnSurface"
-                        android:textSize="@dimen/blind_text_hint" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tv_stat_duration"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0 h"
-                        android:textColor="?attr/blindOnSurface"
-                        android:textSize="@dimen/blind_text_title"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/blind_ui_history_stat_duration"
-                        android:textColor="?attr/blindOnSurface"
-                        android:textSize="@dimen/blind_text_hint" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tv_stat_aborted"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="?attr/blindOnSurface"
-                        android:textSize="@dimen/blind_text_title"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/blind_ui_history_stat_aborted"
-                        android:textColor="?attr/blindOnSurface"
-                        android:textSize="@dimen/blind_text_hint" />
-                </LinearLayout>
-            </LinearLayout>
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- 历史列表（下拉刷新 + 加载更多） -->
+    <!-- 滚动区：stats 卡 + 列表 / 空态 / 错误态 一起滚动 -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/refresh_layout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        app:layout_constraintTop_toBottomOf="@id/chip_group_filter"
+        app:layout_constraintBottom_toTopOf="@id/divider_bottom">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_history"
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/nested_scroll"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingHorizontal="@dimen/blind_space_md" />
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 统计卡：2x2 网格（4 个数字两行两列，大字号下不再横向挤压） -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_stats"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="@dimen/blind_space_md"
+                    android:layout_marginBottom="@dimen/blind_space_md"
+                    app:cardBackgroundColor="?attr/blindSurface"
+                    app:cardCornerRadius="@dimen/blind_radius_card"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/blindPrimary"
+                    app:strokeWidth="@dimen/blind_stroke_card">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="@dimen/blind_space_md">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="@dimen/blind_space_sm"
+                            android:text="@string/blind_ui_history_stats_title"
+                            android:textColor="?attr/blindPrimary"
+                            android:textSize="@dimen/blind_text_label"
+                            android:textStyle="bold" />
+
+                        <!-- 4 行单列：每行 "标签：值" -->
+                        <TextView
+                            android:id="@+id/tv_stat_runs"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/blind_space_xs"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+
+                        <TextView
+                            android:id="@+id/tv_stat_distance"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/blind_space_xs"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+
+                        <TextView
+                            android:id="@+id/tv_stat_duration"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/blind_space_xs"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+
+                        <TextView
+                            android:id="@+id/tv_stat_aborted"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/blind_space_xs"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- 列表本身在 NestedScrollView 内：禁用自身滚动，由 NestedScrollView 统一滚动 -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_history"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:nestedScrollingEnabled="false"
+                    android:paddingHorizontal="@dimen/blind_space_md" />
+
+                <TextView
+                    android:id="@+id/tv_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:minHeight="@dimen/blind_touch_primary"
+                    android:paddingHorizontal="@dimen/blind_space_md"
+                    android:paddingVertical="@dimen/blind_space_lg"
+                    android:text="@string/blind_history_empty"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/layout_error"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:minHeight="@dimen/blind_touch_primary"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="@dimen/blind_space_md"
+                    android:paddingVertical="@dimen/blind_space_lg"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tv_error"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/blind_space_md"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_retry"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="120dp"
+                        android:minHeight="@dimen/blind_touch_min"
+                        android:text="@string/blind_history_retry"
+                        android:textSize="@dimen/blind_text_label" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <!-- 空状态 -->
-    <TextView
-        android:id="@+id/tv_empty"
+    <View
+        android:id="@+id/divider_bottom"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:paddingHorizontal="@dimen/blind_space_md"
-        android:text="@string/blind_history_empty"
-        android:textColor="?attr/blindOnSurface"
-        android:textSize="@dimen/blind_text_body"
-        android:visibility="gone" />
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintBottom_toBottomOf="parent" />
 
-    <!-- 错误状态 -->
-    <LinearLayout
-        android:id="@+id/layout_error"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:paddingHorizontal="@dimen/blind_space_md"
-        android:visibility="gone">
-
-        <TextView
-            android:id="@+id/tv_error"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            android:textColor="?attr/blindOnSurface"
-            android:textSize="@dimen/blind_text_body" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_retry"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="120dp"
-            android:minHeight="@dimen/blind_touch_min"
-            android:text="@string/blind_history_retry"
-            android:textSize="@dimen/blind_text_label" />
-    </LinearLayout>
-
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

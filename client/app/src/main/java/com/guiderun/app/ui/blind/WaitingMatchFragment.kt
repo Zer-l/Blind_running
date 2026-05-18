@@ -110,7 +110,6 @@ class WaitingMatchFragment : Fragment() {
             val minutes = state.elapsedSeconds / 60
             val seconds = state.elapsedSeconds % 60
             binding.tvElapsed.text = getString(R.string.waiting_match_elapsed, minutes, seconds)
-            binding.tvWaitingMessage.text = state.waitingMessage
 
             binding.tvCancelStatus.text = if (state.isCancelling) getString(R.string.loading) else ""
 

@@ -1,63 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/blindBackground"
     android:fitsSystemWindows="true">
 
-    <LinearLayout
+    <com.guiderun.app.ui.blind.widget.BlindPageHeader
+        android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="wrap_content"
+        app:headerTitle="@string/blind_ui_emergency_contact_list_title"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- 页面顶部 -->
-        <com.guiderun.app.ui.blind.widget.BlindPageHeader
-            android:id="@+id/header"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:headerTitle="@string/blind_ui_emergency_contact_list_title" />
+    <View
+        android:id="@+id/divider_top"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintTop_toBottomOf="@id/header" />
 
-        <ProgressBar
-            android:id="@+id/progressBar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:indeterminate="true"
-            android:indeterminateTint="?attr/blindPrimary"
-            android:visibility="gone" />
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:indeterminateTint="?attr/blindPrimary"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/divider_top" />
 
-        <TextView
-            android:id="@+id/emptyState"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:padding="@dimen/blind_space_md"
-            android:text="@string/blind_ui_emergency_contact_list_empty"
-            android:textColor="?attr/blindOnSurface"
-            android:textSize="@dimen/blind_text_body"
-            android:visibility="gone" />
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:padding="@dimen/blind_space_md"
+        android:paddingBottom="@dimen/blind_space_xxl"
+        app:layout_constraintTop_toBottomOf="@id/divider_top"
+        app:layout_constraintBottom_toTopOf="@id/divider_bottom" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerView"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipToPadding="false"
-            android:padding="@dimen/blind_space_md"
-            android:paddingBottom="@dimen/blind_space_xxl" />
-    </LinearLayout>
+    <TextView
+        android:id="@+id/emptyState"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:gravity="center"
+        android:padding="@dimen/blind_space_md"
+        android:text="@string/blind_ui_emergency_contact_list_empty"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_body"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/divider_top"
+        app:layout_constraintBottom_toTopOf="@id/divider_bottom" />
+
+    <View
+        android:id="@+id/divider_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintBottom_toBottomOf="parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/blind_space_md"
         android:contentDescription="@string/blind_ui_emergency_contact_fab_add"
         android:src="@android:drawable/ic_input_add"
         app:backgroundTint="?attr/blindPrimary"
+        app:layout_constraintBottom_toTopOf="@id/divider_bottom"
+        app:layout_constraintEnd_toEndOf="parent"
         app:tint="?attr/blindOnPrimary" />
 
-</FrameLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

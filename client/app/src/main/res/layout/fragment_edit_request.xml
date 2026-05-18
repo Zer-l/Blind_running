@@ -1,162 +1,210 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/blindBackground"
-    android:fillViewport="true"
     android:fitsSystemWindows="true">
 
+    <!-- 顶部独立标题区 -->
+    <com.guiderun.app.ui.blind.widget.BlindPageHeader
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:headerTitle="@string/edit_request_title"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 滚动区上分割线 -->
+    <View
+        android:id="@+id/divider_top"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintTop_toBottomOf="@id/header" />
+
+    <ScrollView
+        android:id="@+id/scroll_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/divider_top"
+        app:layout_constraintBottom_toTopOf="@id/divider_bottom">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/blind_space_md">
+
+            <!-- 集合地点 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/blind_space_sm"
+                android:text="@string/edit_request_location_label"
+                android:textColor="?attr/blindOnSurface"
+                android:textSize="@dimen/blind_text_label"
+                android:textStyle="bold" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_location_description"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/blind_space_md"
+                android:hint="@string/edit_request_location_hint"
+                app:boxStrokeColor="?attr/blindOnSurface"
+                app:hintTextColor="?attr/blindOnSurface">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_location_description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- 预计时长 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/blind_space_sm"
+                android:text="@string/create_request_duration_label"
+                android:textColor="?attr/blindOnSurface"
+                android:textSize="@dimen/blind_text_label"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggle_duration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/blind_space_md"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_edit_30min"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:contentDescription="@string/create_request_duration_30"
+                    android:text="@string/create_request_duration_30"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_edit_60min"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:contentDescription="@string/create_request_duration_60"
+                    android:text="@string/create_request_duration_60"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_edit_90min"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:contentDescription="@string/create_request_duration_90"
+                    android:text="@string/create_request_duration_90"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_edit_120min"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:contentDescription="@string/create_request_duration_120"
+                    android:text="@string/create_request_duration_120"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body"
+                    app:strokeColor="?attr/blindOnSurface" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <!-- 备注 -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_notes"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/create_request_notes_hint"
+                app:boxStrokeColor="?attr/blindOnSurface"
+                app:endIconContentDescription="@string/voice_input_content_description"
+                app:endIconDrawable="@drawable/ic_mic"
+                app:endIconMode="custom"
+                app:hintTextColor="?attr/blindOnSurface">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_notes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:maxLines="2"
+                    android:textColor="?attr/blindOnSurface"
+                    android:textSize="@dimen/blind_text_body" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 滚动区下分割线 -->
+    <View
+        android:id="@+id/divider_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintBottom_toTopOf="@id/footer_actions" />
+
+    <!-- 吸底按钮组：取消（次）在上，保存修改（主）在下 -->
     <LinearLayout
+        android:id="@+id/footer_actions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/blind_space_lg">
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingTop="@dimen/blind_space_sm"
+        android:paddingBottom="@dimen/blind_space_lg"
+        app:layout_constraintBottom_toBottomOf="parent">
 
-        <!-- 页面顶部 -->
-        <com.guiderun.app.ui.blind.widget.BlindPageHeader
-            android:id="@+id/header"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            app:headerTitle="@string/edit_request_title" />
-
-        <!-- 集合地点 -->
-        <TextView
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_cancel"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/blind_space_sm"
-            android:text="@string/edit_request_location_label"
+            android:minHeight="@dimen/blind_touch_min"
+            android:paddingVertical="@dimen/blind_space_sm"
+            android:text="@string/edit_request_btn_cancel"
             android:textColor="?attr/blindOnSurface"
-            android:textSize="@dimen/blind_text_label"
-            android:textStyle="bold" />
+            android:textSize="@dimen/blind_text_body"
+            app:cornerRadius="@dimen/blind_radius_button"
+            app:strokeColor="?attr/blindOnSurface" />
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/til_location_description"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            android:hint="@string/edit_request_location_hint"
-            app:boxStrokeColor="?attr/blindOnSurface"
-            app:hintTextColor="?attr/blindOnSurface">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_location_description"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="text"
-                android:maxLines="1"
-                android:textColor="?attr/blindOnSurface"
-                android:textSize="@dimen/blind_text_body" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <!-- 预计时长 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_sm"
-            android:text="@string/create_request_duration_label"
-            android:textColor="?attr/blindOnSurface"
-            android:textSize="@dimen/blind_text_label"
-            android:textStyle="bold" />
-
-        <com.google.android.material.button.MaterialButtonToggleGroup
-            android:id="@+id/toggle_duration"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            app:selectionRequired="true"
-            app:singleSelection="true">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_edit_30min"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:minHeight="@dimen/blind_touch_min"
-                android:paddingVertical="@dimen/blind_space_sm"
-                android:contentDescription="@string/create_request_duration_30"
-                android:text="@string/create_request_duration_30"
-                android:textColor="?attr/blindOnSurface"
-                android:textSize="@dimen/blind_text_body"
-                app:strokeColor="?attr/blindOnSurface" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_edit_60min"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:minHeight="@dimen/blind_touch_min"
-                android:paddingVertical="@dimen/blind_space_sm"
-                android:contentDescription="@string/create_request_duration_60"
-                android:text="@string/create_request_duration_60"
-                android:textColor="?attr/blindOnSurface"
-                android:textSize="@dimen/blind_text_body"
-                app:strokeColor="?attr/blindOnSurface" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_edit_90min"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:minHeight="@dimen/blind_touch_min"
-                android:paddingVertical="@dimen/blind_space_sm"
-                android:contentDescription="@string/create_request_duration_90"
-                android:text="@string/create_request_duration_90"
-                android:textColor="?attr/blindOnSurface"
-                android:textSize="@dimen/blind_text_body"
-                app:strokeColor="?attr/blindOnSurface" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_edit_120min"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:minHeight="@dimen/blind_touch_min"
-                android:paddingVertical="@dimen/blind_space_sm"
-                android:contentDescription="@string/create_request_duration_120"
-                android:text="@string/create_request_duration_120"
-                android:textColor="?attr/blindOnSurface"
-                android:textSize="@dimen/blind_text_body"
-                app:strokeColor="?attr/blindOnSurface" />
-
-        </com.google.android.material.button.MaterialButtonToggleGroup>
-
-        <!-- 备注 -->
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/til_notes"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_lg"
-            android:hint="@string/create_request_notes_hint"
-            app:boxStrokeColor="?attr/blindOnSurface"
-            app:endIconContentDescription="@string/voice_input_content_description"
-            app:endIconDrawable="@drawable/ic_mic"
-            app:endIconMode="custom"
-            app:hintTextColor="?attr/blindOnSurface">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_notes"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="text"
-                android:maxLines="2"
-                android:textColor="?attr/blindOnSurface"
-                android:textSize="@dimen/blind_text_body" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <!-- 主操作：保存 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_save"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_sm"
             android:minHeight="@dimen/blind_touch_primary"
             android:paddingVertical="@dimen/blind_space_md"
             android:text="@string/edit_request_btn_save"
@@ -166,19 +214,6 @@
             app:backgroundTint="?attr/blindPrimary"
             app:cornerRadius="@dimen/blind_radius_button" />
 
-        <!-- 次操作：取消 -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_cancel"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="@dimen/blind_touch_min"
-            android:paddingVertical="@dimen/blind_space_md"
-            android:text="@string/edit_request_btn_cancel"
-            android:textColor="?attr/blindOnSurface"
-            android:textSize="@dimen/blind_text_body"
-            app:cornerRadius="@dimen/blind_radius_button"
-            app:strokeColor="?attr/blindOnSurface" />
-
     </LinearLayout>
-</ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

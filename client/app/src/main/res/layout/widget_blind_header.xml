@@ -6,18 +6,21 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:paddingBottom="@dimen/blind_space_sm"
+        android:includeFontPadding="false"
         android:textColor="?attr/blindOnSurface"
         android:textSize="@dimen/blind_text_title"
         android:textStyle="bold" />
 
+    <!-- 状态行默认 GONE，只在 setter / app:headerStatus 设置非空文本时才可见 -->
     <TextView
         android:id="@+id/tv_header_status"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:accessibilityLiveRegion="polite"
         android:gravity="center"
+        android:includeFontPadding="false"
         android:textColor="?attr/blindOnSurface"
-        android:textSize="@dimen/blind_text_body" />
+        android:textSize="@dimen/blind_text_body"
+        android:visibility="gone" />
 
 </merge>

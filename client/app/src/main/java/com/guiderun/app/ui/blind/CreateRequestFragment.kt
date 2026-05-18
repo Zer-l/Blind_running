@@ -84,8 +84,6 @@ class CreateRequestFragment : Fragment() {
         setupBackPressInterception()
         setupVoiceCommands()
 
-        // 字号缩放由 BaseBlindActivity 通过 FragmentLifecycleCallbacks 自动应用
-
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { collectUiState() }
@@ -246,12 +244,6 @@ class CreateRequestFragment : Fragment() {
             val currentNotes = binding.etNotes.text?.toString() ?: ""
             if (currentNotes != state.notes) {
                 binding.etNotes.setText(state.notes)
-            }
-
-            binding.header.status = when (state.locationStatus) {
-                LocationStatus.Loading -> getString(R.string.create_request_location_loading)
-                is LocationStatus.Located -> getString(R.string.create_request_location_found)
-                LocationStatus.Failed -> getString(R.string.create_request_location_failed)
             }
 
             if (state.errorMessage != null) {

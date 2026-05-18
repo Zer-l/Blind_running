@@ -87,7 +87,6 @@
     <string name="create_request_permission_required">需要位置权限才能发起跑步请求</string>
 
     <!-- 等待匹配（UI-4） -->
-    <string name="waiting_match_gesture_hint">长按2秒取消请求</string>
     <string name="waiting_match_title">等待志愿者接单</string>
     <string name="waiting_match_elapsed">已等待 %1$d 分 %2$d 秒</string>
     <string name="waiting_match_btn_cancel">取消请求</string>
@@ -102,8 +101,7 @@
     <string name="matched_volunteer_rating">评分 %1$.1f 分·共陪跑 %2$d 次</string>
     <string name="matched_status_accepted">志愿者正在准备，即将出发</string>
     <string name="matched_status_en_route">志愿者正在赶往汇合点</string>
-    <string name="matched_status_met">志愿者已到达汇合点，请长按屏幕确认汇合</string>
-    <string name="matched_gesture_hint">按住2秒确认汇合，5秒倒计时内可撤销</string>
+    <string name="matched_status_met">志愿者已到达汇合点，请长按确认按钮 2 秒汇合</string>
 
     <!-- 首页志愿者端入口 -->
     <string name="home_btn_enter_volunteer">开始接单（志愿者端）</string>
@@ -197,18 +195,16 @@
     <string name="blind_running_distance_label">距离（公里）</string>
     <string name="blind_running_duration_label">时长</string>
     <string name="blind_running_pace_label">配速</string>
-    <string name="blind_running_gesture_hint">长按3秒结束跑步</string>
     <string name="blind_running_end_confirm">5秒后结束跑步，再按一次可撤销</string>
     <string name="blind_running_ended">跑步已结束</string>
     <string name="blind_running_status_running">跑步进行中</string>
-    <string name="blind_running_end_requested_by_volunteer">志愿者申请结束跑步，长按屏幕3秒确认结束</string>
+    <string name="blind_running_end_requested_by_volunteer">志愿者申请结束跑步，长按结束按钮 2 秒确认</string>
     <string name="blind_running_status_finished">跑步已完成，正在跳转评价页面</string>
     <string name="running_paused_label">已暂停</string>
 
     <!-- 视障端评价 -->
     <string name="blind_review_title">评价志愿者</string>
     <string name="blind_review_summary_format">本次跑步 %1$.1f 公里，用时 %2$d 分钟</string>
-    <string name="blind_review_gesture_hint">单击卡片选择，按住2秒提交，按返回键跳过</string>
     <string name="blind_review_rating_1_label">非常不满意（1星）</string>
     <string name="blind_review_rating_2_label">不满意（2星）</string>
     <string name="blind_review_rating_3_label">一般（3星）</string>
@@ -219,7 +215,7 @@
     <string name="blind_review_rating_3_desc">3星，一般</string>
     <string name="blind_review_rating_4_desc">4星，满意</string>
     <string name="blind_review_rating_5_desc">5星，非常满意</string>
-    <string name="blind_review_intro_format">本次跑步 %1$.1f 公里，用时 %2$d 分钟。请评价志愿者：单击卡片选择，按住2秒提交，按返回键跳过</string>
+    <string name="blind_review_intro_format">本次跑步 %1$.1f 公里，用时 %2$d 分钟。请评价志愿者：单击卡片选择评分，长按提交按钮 2 秒提交，单击跳过按钮跳过评价</string>
     <string name="blind_review_selected_format">已选择 %1$s</string>
     <string name="blind_review_submit_success">评价已提交，感谢您的反馈</string>
     <string name="blind_review_skipped">已跳过评价</string>
@@ -380,10 +376,10 @@
 
     <!-- ==================== TTS 操作指引 ==================== -->
     <string name="tts_hint_create_request">正在获取定位，请稍候。可选择时长，30分钟、60分钟、90分钟、120分钟，可填写备注</string>
-    <string name="tts_hint_waiting_match">短按屏幕查询等待时长，长按2秒取消请求</string>
+    <string name="tts_hint_waiting_match">长按取消按钮 2 秒取消订单，5 秒倒计时内松开撤销。可说\"状态\"查询等待时长</string>
     <string name="tts_hint_matched">按住2秒确认汇合，5秒倒计时内可撤销</string>
     <string name="tts_hint_blind_running">按住2秒结束跑步，5秒倒计时内可撤销</string>
-    <string name="tts_hint_blind_review">单击卡片选择，双击屏幕提交，按返回键跳过</string>
+    <string name="tts_hint_blind_review">单击卡片选择评分，长按提交按钮 2 秒提交，单击跳过按钮跳过评价</string>
     <string name="tts_hint_blind_history">可筛选记录，点击条目查看轨迹回放</string>
     <string name="tts_hint_edit_request">可修改时长、集合地点和备注</string>
     <string name="tts_hint_track_playback">点击播放按钮开始回放，可调节回放速度</string>
@@ -430,7 +426,7 @@
     <string name="tts_running_resumed">继续跑步</string>
     <string name="tts_running_progress">已跑步%1$d分钟，距离%2$.1f公里</string>
     <string name="tts_running_km">已跑%1$d公里，用时%2$d分%3$d秒，%4$s</string>
-    <string name="tts_peer_end_request">志愿者申请结束跑步，长按屏幕3秒确认结束</string>
+    <string name="tts_peer_end_request">志愿者申请结束跑步，长按结束按钮 2 秒确认</string>
     <string name="tts_history_loaded">已完成%1$d次，总距离%2$s公里，总时长%3$s小时</string>
     <string name="tts_history_filter_all">显示全部，共%1$d条</string>
     <string name="tts_history_filter_closed">已完成，共%1$d条</string>
@@ -523,6 +519,10 @@
     <string name="blind_ui_history_stat_distance">总距离</string>
     <string name="blind_ui_history_stat_duration">总时长</string>
     <string name="blind_ui_history_stat_aborted">已取消</string>
+    <string name="blind_ui_history_stat_runs_format">完成次数：%1$d</string>
+    <string name="blind_ui_history_stat_distance_format">总距离：%1$.1f km</string>
+    <string name="blind_ui_history_stat_duration_format">总时长：%1$.1f h</string>
+    <string name="blind_ui_history_stat_aborted_format">已取消：%1$d</string>
 
     <!-- EmergencyContactList -->
     <string name="blind_ui_emergency_contact_list_title">紧急联系人</string>

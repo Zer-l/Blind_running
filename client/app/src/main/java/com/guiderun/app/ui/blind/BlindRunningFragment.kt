@@ -54,7 +54,6 @@ class BlindRunningFragment : Fragment() {
         setupBackPressInterception()
         setupVoiceCommands()
 
-        // 字号缩放由 BaseBlindActivity 通过 FragmentLifecycleCallbacks 自动应用
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -176,16 +175,12 @@ class BlindRunningFragment : Fragment() {
 
             binding.tvPausedBadge.visibility = if (state.isPaused) View.VISIBLE else View.GONE
 
-            binding.tvStatus.text = when {
-                state.endRequestedByVolunteer ->
-                    getString(R.string.blind_running_end_requested_by_volunteer)
-                else -> getString(R.string.blind_running_status_running)
-            }
-
-            binding.header.status = if (state.isPaused) {
-                getString(R.string.running_paused_label)
+            // tv_status 仅在志愿者申请结束等关键 assertive 事件显示，常态 GONE 避免与页面标题"跑步进行中"重复
+            if (state.endRequestedByVolunteer) {
+                binding.tvStatus.text = getString(R.string.blind_running_end_requested_by_volunteer)
+                binding.tvStatus.visibility = View.VISIBLE
             } else {
-                getString(R.string.blind_running_status_running)
+                binding.tvStatus.visibility = View.GONE
             }
         }
     }

@@ -48,8 +48,6 @@ class AccessibilitySettingsFragment : Fragment() {
         EdgeToEdgeHelper.applyInsets(view)
         ttsManager.acquire()
 
-        // 字号缩放由 BaseBlindActivity 通过 FragmentLifecycleCallbacks 自动应用
-
         setupFontScaleToggle()
         setupContrastToggle()
         setupHapticToggle()

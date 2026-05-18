@@ -5,7 +5,6 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.annotation.StringRes
 import com.google.android.material.button.MaterialButton
 import com.guiderun.app.R
@@ -13,11 +12,12 @@ import com.guiderun.app.R
 /**
  * 视障端页面底部操作区，统一结构：
  *
- * - **主按钮**：LongPressGestureView（长按 2s + 5s 倒计时双段确认），高度 96dp
- * - **次按钮**：MaterialButton OutlinedButton，默认 GONE，高度 64dp
- * - **提示文字**：hint 14sp，告诉用户"长按 2 秒 X，5 秒后 X"
+ * - **次按钮**：MaterialButton OutlinedButton，默认 GONE，位于 footer 上方，高度 64dp
+ * - **主按钮**：LongPressGestureView（长按 2s + 5s 倒计时双段确认），位于 footer 最底部，高度 96dp
  *
- * Fragment 通过 [primaryGesture] 调用 bind() 注册回调；通过 [secondaryButton] 设置次操作。
+ * 手势提示文字（"长按 2 秒..."）由页面级别的 `tv_action_hint` 独立 TextView 承担，
+ * 放在 ScrollView 与 footer 之间，避免提示文本挤占热区底部按钮的视觉位置。
+ * `primaryHint` 属性仍保留，用于设置主按钮的 contentDescription（TalkBack 朗读）。
  */
 class BlindActionFooter @JvmOverloads constructor(
     context: Context,
@@ -27,14 +27,12 @@ class BlindActionFooter @JvmOverloads constructor(
 
     val primaryGesture: LongPressGestureView
     val secondaryButton: MaterialButton
-    val hintText: TextView
 
     init {
         orientation = VERTICAL
         LayoutInflater.from(context).inflate(R.layout.widget_blind_footer, this, true)
         primaryGesture = findViewById(R.id.btn_footer_primary)
         secondaryButton = findViewById(R.id.btn_footer_secondary)
-        hintText = findViewById(R.id.tv_footer_hint)
 
         context.theme.obtainStyledAttributes(
             attrs,
@@ -47,7 +45,6 @@ class BlindActionFooter @JvmOverloads constructor(
                     primaryGesture.text = it
                 }
                 getString(R.styleable.BlindActionFooter_primaryHint)?.let {
-                    hintText.text = it
                     primaryGesture.contentDescription = it
                 }
                 getString(R.styleable.BlindActionFooter_secondaryLabel)?.let {
@@ -70,7 +67,6 @@ class BlindActionFooter @JvmOverloads constructor(
         @StringRes secondaryLabelRes: Int = 0,
     ) {
         primaryGesture.setText(primaryLabelRes)
-        hintText.setText(primaryHintRes)
         primaryGesture.contentDescription = context.getString(primaryHintRes)
         if (secondaryLabelRes != 0) {
             secondaryButton.setText(secondaryLabelRes)

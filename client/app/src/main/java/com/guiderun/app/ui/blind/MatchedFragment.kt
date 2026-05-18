@@ -129,19 +129,21 @@ class MatchedFragment : Fragment() {
                 getString(R.string.matched_volunteer_rating, state.volunteerRating, state.volunteerTotalRuns)
             else ""
 
-            binding.tvStatus.text = state.statusText
+            // tv_status 仅在有内容时显示（assertive 关键事件），空文本时 GONE 避免占用空间
+            if (state.statusText.isNotBlank()) {
+                binding.tvStatus.text = state.statusText
+                binding.tvStatus.visibility = View.VISIBLE
+            } else {
+                binding.tvStatus.visibility = View.GONE
+            }
 
             // ★ footer 主按钮：仅 MET 状态可用；hint 文案动态切换
             val isMet = state.currentStatus == RunRequestStatus.MET
             binding.footer.primaryGesture.isEnabled = isMet
-            binding.footer.hintText.text = getString(
-                if (isMet) R.string.blind_hint_matched_confirm
-                else R.string.blind_hint_matched_waiting
-            )
-            binding.footer.primaryGesture.contentDescription = getString(
-                if (isMet) R.string.blind_hint_matched_confirm
-                else R.string.blind_hint_matched_waiting
-            )
+            val hintRes = if (isMet) R.string.blind_hint_matched_confirm
+            else R.string.blind_hint_matched_waiting
+            binding.tvActionHint.setText(hintRes)
+            binding.footer.primaryGesture.contentDescription = getString(hintRes)
         }
     }
 

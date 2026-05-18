@@ -1,8 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Footer 内部仅保留两个按钮：
+    - secondary 在上（默认 GONE，存在时显示）
+    - primary 在下（LongPressGestureView，热区最底部，单手最易触达）
+
+    手势提示文字 (tv_action_hint) 移出 footer，作为独立 TextView 放在每个页面的
+    ScrollView 与 footer 之间，避免提示文本挤占热区底部按钮的视觉位置。
+-->
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <!-- minHeight 而非固定高度：大字号 (150%/200%) 时按钮自动撑高，避免文字截断 -->
+    <!-- 次按钮：默认 GONE；显示时位于主按钮上方 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_footer_secondary"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/blind_space_sm"
+        android:minHeight="@dimen/blind_touch_min"
+        android:paddingVertical="@dimen/blind_space_sm"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_body"
+        android:visibility="gone"
+        app:cornerRadius="@dimen/blind_radius_button"
+        app:strokeColor="?attr/blindOnSurface" />
+
+    <!-- 主按钮：始终在 footer 最底部，单手最易触达的位置 -->
     <com.guiderun.app.ui.blind.widget.LongPressGestureView
         android:id="@+id/btn_footer_primary"
         android:layout_width="match_parent"
@@ -14,29 +37,5 @@
         android:textStyle="bold"
         app:backgroundTint="?attr/blindPrimary"
         app:cornerRadius="@dimen/blind_radius_button" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_footer_secondary"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/blind_space_sm"
-        android:minHeight="@dimen/blind_touch_min"
-        android:paddingVertical="@dimen/blind_space_sm"
-        android:textColor="?attr/blindOnSurface"
-        android:textSize="@dimen/blind_text_body"
-        android:visibility="gone"
-        app:cornerRadius="@dimen/blind_radius_button"
-        app:strokeColor="?attr/blindOnSurface" />
-
-    <TextView
-        android:id="@+id/tv_footer_hint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/blind_space_sm"
-        android:gravity="center"
-        android:importantForAccessibility="no"
-        android:textColor="?attr/blindOnSurface"
-        android:textSize="@dimen/blind_text_hint" />
 
 </merge>

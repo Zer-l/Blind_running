@@ -1,96 +1,122 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/blindBackground"
-    android:fillViewport="true"
     android:fitsSystemWindows="true">
 
-    <LinearLayout
+    <com.guiderun.app.ui.blind.widget.BlindPageHeader
+        android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="@dimen/blind_space_lg">
+        app:headerTitle="@string/blind_review_title"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- 页面顶部：标题 -->
-        <com.guiderun.app.ui.blind.widget.BlindPageHeader
-            android:id="@+id/header"
+    <View
+        android:id="@+id/divider_top"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintTop_toBottomOf="@id/header" />
+
+    <ScrollView
+        android:id="@+id/scroll_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/divider_top"
+        app:layout_constraintBottom_toTopOf="@id/divider_bottom">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            app:headerTitle="@string/blind_review_title" />
+            android:orientation="vertical"
+            android:padding="@dimen/blind_space_md">
 
-        <!-- 本次跑步摘要 -->
-        <TextView
-            android:id="@+id/tv_summary"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_md"
-            android:gravity="center"
-            android:textColor="?attr/blindOnSurface"
-            android:textSize="@dimen/blind_text_body" />
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_rating_1"
+                style="@style/BlindReview.Card"
+                android:contentDescription="@string/blind_review_rating_1_desc">
 
-        <!-- 5 张评分卡（垂直） -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_rating_1"
-            style="@style/BlindReview.Card"
-            android:contentDescription="@string/blind_review_rating_1_desc">
+                <TextView
+                    style="@style/BlindReview.CardLabel"
+                    android:text="@string/blind_review_rating_1_label" />
+            </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                style="@style/BlindReview.CardLabel"
-                android:text="@string/blind_review_rating_1_label" />
-        </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_rating_2"
+                style="@style/BlindReview.Card"
+                android:contentDescription="@string/blind_review_rating_2_desc">
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_rating_2"
-            style="@style/BlindReview.Card"
-            android:contentDescription="@string/blind_review_rating_2_desc">
+                <TextView
+                    style="@style/BlindReview.CardLabel"
+                    android:text="@string/blind_review_rating_2_label" />
+            </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                style="@style/BlindReview.CardLabel"
-                android:text="@string/blind_review_rating_2_label" />
-        </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_rating_3"
+                style="@style/BlindReview.Card"
+                android:contentDescription="@string/blind_review_rating_3_desc">
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_rating_3"
-            style="@style/BlindReview.Card"
-            android:contentDescription="@string/blind_review_rating_3_desc">
+                <TextView
+                    style="@style/BlindReview.CardLabel"
+                    android:text="@string/blind_review_rating_3_label" />
+            </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                style="@style/BlindReview.CardLabel"
-                android:text="@string/blind_review_rating_3_label" />
-        </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_rating_4"
+                style="@style/BlindReview.Card"
+                android:contentDescription="@string/blind_review_rating_4_desc">
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_rating_4"
-            style="@style/BlindReview.Card"
-            android:contentDescription="@string/blind_review_rating_4_desc">
+                <TextView
+                    style="@style/BlindReview.CardLabel"
+                    android:text="@string/blind_review_rating_4_label" />
+            </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                style="@style/BlindReview.CardLabel"
-                android:text="@string/blind_review_rating_4_label" />
-        </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_rating_5"
+                style="@style/BlindReview.Card"
+                android:contentDescription="@string/blind_review_rating_5_desc">
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_rating_5"
-            style="@style/BlindReview.Card"
-            android:contentDescription="@string/blind_review_rating_5_desc">
+                <TextView
+                    style="@style/BlindReview.CardLabel"
+                    android:text="@string/blind_review_rating_5_label" />
+            </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                style="@style/BlindReview.CardLabel"
-                android:text="@string/blind_review_rating_5_label" />
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
 
-        <!-- 操作底部：主按钮提交（长按 2s+5s），次按钮跳过 -->
-        <com.guiderun.app.ui.blind.widget.BlindActionFooter
-            android:id="@+id/footer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/blind_space_md"
-            app:primaryLabel="@string/blind_ui_blind_review_btn_submit"
-            app:primaryHint="@string/blind_hint_blind_review_submit"
-            app:secondaryLabel="@string/blind_ui_blind_review_btn_skip" />
+    <View
+        android:id="@+id/divider_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintBottom_toTopOf="@id/tv_action_hint" />
 
-    </LinearLayout>
-</ScrollView>
+    <TextView
+        android:id="@+id/tv_action_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:importantForAccessibility="no"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingVertical="@dimen/blind_space_sm"
+        android:text="@string/blind_hint_blind_review_submit"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_hint"
+        app:layout_constraintBottom_toTopOf="@id/footer" />
+
+    <com.guiderun.app.ui.blind.widget.BlindActionFooter
+        android:id="@+id/footer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingTop="0dp"
+        android:paddingBottom="@dimen/blind_space_lg"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:primaryLabel="@string/blind_ui_blind_review_btn_submit"
+        app:primaryHint="@string/blind_hint_blind_review_submit"
+        app:secondaryLabel="@string/blind_ui_blind_review_btn_skip" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
