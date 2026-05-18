@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
@@ -39,10 +40,21 @@ class EmergencyContactListFragment : Fragment() {
     @Inject
     lateinit var ttsManager: TtsManager
 
-    private val adapter = EmergencyContactAdapter(
-        onEdit = { index -> navigateToEdit(index) },
-        onDelete = { index -> viewModel.deleteContact(index) },
-    )
+    @Inject
+    lateinit var hapticFeedback: HapticFeedback
+
+    private val adapter by lazy {
+        EmergencyContactAdapter(
+            onEdit = { index ->
+                hapticFeedback.tick()
+                navigateToEdit(index)
+            },
+            onDelete = { index ->
+                hapticFeedback.warning()
+                viewModel.deleteContact(index)
+            },
+        )
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -62,14 +74,13 @@ class EmergencyContactListFragment : Fragment() {
         setupFab()
         setupVoiceCommands()
         observeUiState()
-
-        ttsManager.speak(getString(R.string.tts_page_emergency_contact_list), TtsManager.Priority.HIGH)
-        ttsManager.speak(getString(R.string.tts_hint_emergency_contact_list), TtsManager.Priority.HIGH)
     }
 
     override fun onResume() {
         super.onResume()
         viewModel.loadContacts()
+        ttsManager.speak(getString(R.string.tts_page_emergency_contact_list), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_hint_emergency_contact_list), TtsManager.Priority.HIGH)
     }
 
     override fun onDestroyView() {
@@ -85,6 +96,7 @@ class EmergencyContactListFragment : Fragment() {
 
     private fun setupFab() {
         binding.fabAdd.setOnClickListener {
+            hapticFeedback.tick()
             navigateToEdit(-1)
         }
     }

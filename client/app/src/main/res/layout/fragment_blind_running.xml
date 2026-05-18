@@ -60,28 +60,19 @@
                 app:metricLabel="@string/blind_ui_running_distance_label"
                 app:metricUnit="@string/blind_ui_running_distance_unit" />
 
-            <LinearLayout
+            <com.guiderun.app.ui.blind.widget.BlindMetricCard
+                android:id="@+id/card_duration"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="@dimen/blind_space_md"
-                android:orientation="horizontal">
+                app:metricLabel="@string/blind_ui_running_duration_label" />
 
-                <com.guiderun.app.ui.blind.widget.BlindMetricCard
-                    android:id="@+id/card_duration"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/blind_space_xs"
-                    android:layout_weight="1"
-                    app:metricLabel="@string/blind_ui_running_duration_label" />
-
-                <com.guiderun.app.ui.blind.widget.BlindMetricCard
-                    android:id="@+id/card_pace"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/blind_space_xs"
-                    android:layout_weight="1"
-                    app:metricLabel="@string/blind_ui_running_pace_label" />
-            </LinearLayout>
+            <com.guiderun.app.ui.blind.widget.BlindMetricCard
+                android:id="@+id/card_pace"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/blind_space_md"
+                app:metricLabel="@string/blind_ui_running_pace_label" />
 
             <!-- 关键状态文字：默认 GONE，仅"志愿者申请结束"等 assertive 事件显示 -->
             <TextView

@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -18,7 +19,7 @@ import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentMatchedBinding
 import com.guiderun.app.domain.model.RunRequestStatus
-import com.guiderun.app.ui.common.showInterruptDialog
+import com.guiderun.app.ui.blind.widget.BlindConfirmDialogFragment
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -89,29 +90,42 @@ class MatchedFragment : Fragment() {
         }
     }
 
+    /**
+     * 返回键分支：
+     * - MET 状态（已汇合）：服务端禁止 cancel，直接返回首页 + TTS 提示后台继续；
+     * - 非 MET 状态：弹全屏长按确认页取消订单；短按"继续等待"留在此页。
+     * 最小化/返回首页可通过语音指令"返回首页"实现。
+     */
     private fun setupBackPressInterception() {
+        setFragmentResultListener(REQ_KEY_CANCEL) { _, bundle ->
+            if (bundle.getBoolean(BlindConfirmDialogFragment.KEY_CONFIRMED)) {
+                viewModel.cancelByUser()
+            }
+        }
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    val status = viewModel.uiState.value.currentStatus
-                    val isMet = status == RunRequestStatus.MET
-                    showInterruptDialog(
-                        activity = requireActivity(),
-                        title = getString(
-                            if (isMet) R.string.interrupt_title_leave_met
-                            else R.string.interrupt_title_leave_matched
-                        ),
-                        message = getString(
-                            if (isMet) R.string.interrupt_message_leave_met
-                            else R.string.interrupt_message_leave_matched
-                        ) + "\n" + getString(R.string.interrupt_hint_resume),
-                        cancelLabel = if (isMet) null else getString(R.string.interrupt_btn_cancel_order),
-                        onCancel = if (isMet) null else ({ viewModel.cancelByUser() }),
-                        stayLabel = getString(R.string.interrupt_btn_stay),
-                        homeLabel = getString(R.string.interrupt_btn_back_home),
-                        onHome = { (activity as? BlindActivity)?.navigateToHome() },
-                    )
+                    val isMet = viewModel.uiState.value.currentStatus == RunRequestStatus.MET
+                    if (isMet) {
+                        ttsManager.speak(
+                            getString(R.string.blind_tts_minimized_to_home),
+                            TtsManager.Priority.HIGH,
+                        )
+                        (activity as? BlindActivity)?.navigateToHome()
+                    } else {
+                        BlindConfirmDialogFragment.newInstance(
+                            requestKey = REQ_KEY_CANCEL,
+                            titleRes = R.string.interrupt_title_leave_matched,
+                            messageRes = R.string.interrupt_message_leave_matched,
+                            primaryLabelRes = R.string.interrupt_btn_cancel_order,
+                            primaryHintRes = R.string.blind_hint_cancel_order_long_press,
+                            thresholdLabelRes = R.string.blind_tts_cancel_order_threshold,
+                            cancelledLabelRes = R.string.blind_tts_long_press_cancelled,
+                            secondaryLabelRes = R.string.interrupt_btn_stay,
+                            hostPageTitleRes = R.string.matched_title,
+                        ).show(parentFragmentManager, REQ_KEY_CANCEL)
+                    }
                 }
             },
         )
@@ -182,5 +196,9 @@ class MatchedFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private companion object {
+        const val REQ_KEY_CANCEL = "matched_cancel_confirm"
     }
 }

@@ -174,6 +174,20 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="?attr/blindPrimary"
+        app:layout_constraintBottom_toTopOf="@id/tv_action_hint" />
+
+    <!-- 主按钮长按手势提示（视觉双通道，与 contentDescription/短按 TTS 一致） -->
+    <TextView
+        android:id="@+id/tv_action_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:importantForAccessibility="no"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingVertical="@dimen/blind_space_sm"
+        android:text="@string/blind_hint_save_edit_request_long_press"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_hint"
         app:layout_constraintBottom_toTopOf="@id/footer_actions" />
 
     <!-- 吸底按钮组：取消（次）在上，保存修改（主）在下 -->
@@ -201,7 +215,7 @@
             app:cornerRadius="@dimen/blind_radius_button"
             app:strokeColor="?attr/blindOnSurface" />
 
-        <com.google.android.material.button.MaterialButton
+        <com.guiderun.app.ui.blind.widget.LongPressGestureView
             android:id="@+id/btn_save"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -18,7 +18,6 @@ import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentBlindReviewBinding
-import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.resolveThemeColor
 import dagger.hilt.android.AndroidEntryPoint
@@ -152,20 +151,20 @@ class BlindReviewFragment : Fragment() {
         (activity as? BaseBlindActivity)?.activeCallPeerPhone = null
     }
 
-    /** 返回键：弹「确定离开（不评价）/继续评价」对话框。 */
+    /**
+     * 返回键：评价为可选操作（评价丢失也可在历史页补评），非破坏性。
+     * 直接走 skip 路径 + TTS 反馈，无需弹窗二次确认。
+     */
     private fun setupBackPressInterception() {
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    showInterruptDialog(
-                        activity = requireActivity(),
-                        title = getString(R.string.interrupt_title_leave_review),
-                        message = getString(R.string.interrupt_message_leave_review),
-                        cancelLabel = getString(R.string.interrupt_btn_leave),
-                        onCancel = { viewModel.skip() },
-                        stayLabel = getString(R.string.interrupt_btn_continue_review),
+                    ttsManager.speak(
+                        getString(R.string.blind_tts_review_skipped_by_back),
+                        TtsManager.Priority.HIGH,
                     )
+                    viewModel.skip()
                 }
             },
         )

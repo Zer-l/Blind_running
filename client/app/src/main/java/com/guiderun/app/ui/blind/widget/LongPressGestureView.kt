@@ -220,7 +220,13 @@ class LongPressGestureView @JvmOverloads constructor(
         activeJob?.cancel()
         when (prev) {
             State.PRESSING -> {
-                // 阈值前松开：静默重置，不打扰
+                // 阈值前松开 = 视障用户误以为是普通点击按钮，播报长按提示纠正交互模型。
+                // 复用 contentDescription（页面已设为"长按 2 秒...5 秒倒计时内松开撤销"），无需新增 string。
+                if (tickHapticEnabled) haptic?.tick()
+                val hint = contentDescription ?: text
+                if (!hint.isNullOrBlank()) {
+                    tts?.speak(hint.toString(), TtsManager.Priority.HIGH)
+                }
             }
             State.COUNTDOWN -> {
                 haptic?.warning()

@@ -71,7 +71,11 @@ class BlindActivity : BaseBlindActivity() {
     private var navController: NavController? = null
     private var isStartDestination = true
 
-    /** 统一返回首页：清空 Fragment 栈并 finish Activity，回到 MainActivity 的 HomeScreen */
+    /**
+     * 统一返回首页：清空 Fragment 栈并 finish Activity，回到 MainActivity 的 HomeScreen。
+     * 不在此处 TTS 播报：调用方 Fragment 已播报 WHY（如"跑步后台继续"），
+     * HomeViewModel.onResume 会播报 WHERE（"首页，<昵称>，<角色>"），双层覆盖足够。
+     */
     fun navigateToHome() {
         navController?.popBackStack(R.id.blind_nav_graph, true)
         finish()

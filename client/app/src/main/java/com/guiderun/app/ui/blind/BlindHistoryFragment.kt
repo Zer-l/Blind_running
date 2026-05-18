@@ -17,8 +17,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
+import javax.inject.Inject
 import com.guiderun.app.databinding.FragmentBlindHistoryBinding
 import com.guiderun.app.databinding.ItemBlindHistoryBinding
 import com.guiderun.app.domain.model.RunRequest
@@ -34,16 +36,22 @@ class BlindHistoryFragment : Fragment() {
     private var _binding: FragmentBlindHistoryBinding? = null
     private val binding get() = _binding!!
 
-    private val adapter = HistoryAdapter(
-        onItemClick = { requestId ->
-            val bundle = Bundle().apply { putString("requestId", requestId) }
-            findNavController().navigate(R.id.action_history_to_trackPlayback, bundle)
-        },
-        onReviewClick = { requestId ->
-            val bundle = Bundle().apply { putString("requestId", requestId) }
-            findNavController().navigate(R.id.action_history_to_review, bundle)
-        },
-    )
+    @Inject lateinit var hapticFeedback: HapticFeedback
+
+    private val adapter by lazy {
+        HistoryAdapter(
+            onItemClick = { requestId ->
+                hapticFeedback.tick()
+                val bundle = Bundle().apply { putString("requestId", requestId) }
+                findNavController().navigate(R.id.action_history_to_trackPlayback, bundle)
+            },
+            onReviewClick = { requestId ->
+                hapticFeedback.tick()
+                val bundle = Bundle().apply { putString("requestId", requestId) }
+                findNavController().navigate(R.id.action_history_to_review, bundle)
+            },
+        )
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -65,6 +73,7 @@ class BlindHistoryFragment : Fragment() {
         binding.refreshLayout.setOnRefreshListener { viewModel.loadHistory() }
 
         binding.chipGroupFilter.setOnCheckedStateChangeListener { _, checkedIds ->
+            hapticFeedback.tick()
             val filter = when (checkedIds.firstOrNull()) {
                 R.id.chip_closed -> HistoryFilter.CLOSED
                 R.id.chip_aborted -> HistoryFilter.ABORTED

@@ -12,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
@@ -33,6 +34,9 @@ class ProfileEditFragment : Fragment() {
     @Inject
     lateinit var ttsManager: TtsManager
 
+    @Inject
+    lateinit var hapticFeedback: HapticFeedback
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -52,9 +56,17 @@ class ProfileEditFragment : Fragment() {
         setupVoiceCommands()
         observeUiState()
         observeEvents()
+    }
 
+    override fun onResume() {
+        super.onResume()
         ttsManager.speak(getString(R.string.tts_page_profile_edit), TtsManager.Priority.HIGH)
         ttsManager.speak(getString(R.string.tts_hint_profile_edit), TtsManager.Priority.HIGH)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        binding.btnSave.reset()
     }
 
     override fun onDestroyView() {
@@ -97,10 +109,17 @@ class ProfileEditFragment : Fragment() {
         }
     }
 
+    /** 主按钮长按 2s + 5s 倒计时确认保存，与其他视障端 Primary 一致 */
     private fun setupSaveButton() {
-        binding.btnSave.setOnClickListener {
-            viewModel.save()
-        }
+        binding.btnSave.bind(
+            scope = viewLifecycleOwner.lifecycleScope,
+            ttsManager = ttsManager,
+            hapticFeedback = hapticFeedback,
+            thresholdLabelRes = R.string.blind_tts_save_profile_threshold,
+            countdownLabelRes = R.string.blind_tts_long_press_cancelled,
+            onCountdownCommitted = { viewModel.save() },
+        )
+        binding.btnSave.contentDescription = getString(R.string.blind_hint_save_profile_long_press)
     }
 
     private fun setupVoiceCommands() = bindVoiceCommands { cmd ->

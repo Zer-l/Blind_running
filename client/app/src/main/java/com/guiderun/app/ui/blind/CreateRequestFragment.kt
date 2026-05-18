@@ -24,7 +24,7 @@ import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentCreateRequestBinding
-import com.guiderun.app.ui.common.showInterruptDialog
+import com.guiderun.app.ui.blind.widget.BlindConfirmDialogFragment
 import com.guiderun.app.util.AppPermissions
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PermissionHelper
@@ -135,18 +135,27 @@ class CreateRequestFragment : Fragment() {
     }
 
     private fun setupBackPressInterception() {
+        // 返回结果监听器：长按确认 → finish；短按继续 → 不处理
+        setFragmentResultListener(REQ_KEY_DISCARD) { _, bundle ->
+            if (bundle.getBoolean(BlindConfirmDialogFragment.KEY_CONFIRMED)) {
+                requireActivity().finish()
+            }
+        }
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    showInterruptDialog(
-                        activity = requireActivity(),
-                        title = getString(R.string.interrupt_title_leave_create),
-                        message = getString(R.string.interrupt_message_leave_create),
-                        cancelLabel = getString(R.string.interrupt_btn_discard),
-                        onCancel = { requireActivity().finish() },
-                        stayLabel = getString(R.string.interrupt_btn_stay),
-                    )
+                    BlindConfirmDialogFragment.newInstance(
+                        requestKey = REQ_KEY_DISCARD,
+                        titleRes = R.string.interrupt_title_leave_create,
+                        messageRes = R.string.interrupt_message_leave_create,
+                        primaryLabelRes = R.string.interrupt_btn_discard,
+                        primaryHintRes = R.string.blind_hint_discard_long_press,
+                        thresholdLabelRes = R.string.blind_tts_discard_threshold,
+                        cancelledLabelRes = R.string.blind_tts_long_press_cancelled,
+                        secondaryLabelRes = R.string.interrupt_btn_stay,
+                        hostPageTitleRes = R.string.create_request_title,
+                    ).show(parentFragmentManager, REQ_KEY_DISCARD)
                 }
             },
         )
@@ -307,5 +316,9 @@ class CreateRequestFragment : Fragment() {
         voiceInputManager?.destroy()
         voiceInputManager = null
         _binding = null
+    }
+
+    private companion object {
+        const val REQ_KEY_DISCARD = "create_discard_confirm"
     }
 }

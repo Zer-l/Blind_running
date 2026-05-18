@@ -86,10 +86,13 @@ class HomeViewModel @Inject constructor(
                             isLoading = false,
                         )
                     }
-                    // ★ 仅首次加载时播报欢迎语
+                    // 首次加载播报完整欢迎语，后续 resume（如从 BlindActivity 返回）播报简短"首页"提示，
+                    // 确保视障用户每次回到首页都能听到自己在哪。
                     if (isInitialLoad) {
                         isInitialLoad = false
                         speakWelcome(user.nickname, roleDisplay)
+                    } else {
+                        speakHomeShort(user.nickname, roleDisplay)
                     }
                 }
                 .onFailure {
@@ -107,6 +110,15 @@ class HomeViewModel @Inject constructor(
                 context.getString(R.string.tts_welcome_no_role, nickname)
             }
             ttsManager.speak(greeting, TtsManager.Priority.HIGH)
+        }
+    }
+
+    /** 后续 resume（从 BlindActivity 返回 / 切后台再回前台）的简短首页播报。 */
+    private fun speakHomeShort(nickname: String, role: String) {
+        viewModelScope.launch {
+            ttsManager.state.first { it is TtsManager.TtsState.Ready }
+            val msg = context.getString(R.string.blind_tts_home_short, nickname, role.ifEmpty { "" })
+            ttsManager.speak(msg, TtsManager.Priority.HIGH)
         }
     }
 

@@ -77,4 +77,19 @@
         <item name="android:textColor">@android:color/holo_red_dark</item>
     </style>
 
+    <!--
+        视障端全屏确认对话框：用于破坏性操作（放弃创建 / 取消订单）。
+        ThemeOverlay 合并到 Activity 当前主题（保留 3 套对比度主题的 ?attr/blindXxx 解析）；
+        windowIsFloating=false → 占满屏幕；不显示遮罩。
+    -->
+    <style name="ThemeOverlay.GuideRun.BlindFullScreenDialog" parent="">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+    </style>
+
 </resources>

@@ -531,6 +531,48 @@
     <string name="blind_ui_emergency_contact_btn_delete">删除</string>
     <string name="blind_ui_emergency_contact_fab_add">添加紧急联系人</string>
 
+    <!-- 视障端返回 / 留在页面播报 -->
+    <string name="blind_tts_back_to_home">已返回首页</string>
+    <string name="blind_tts_home_short">首页，%1$s，%2$s</string>
+    <string name="blind_tts_stay_on_page">已留在%1$s</string>
+
+    <!-- 保存类长按确认（编辑参数 / 编辑资料 / 编辑联系人） -->
+    <string name="blind_hint_save_edit_request_long_press">长按 2 秒保存修改，5 秒倒计时内松开撤销</string>
+    <string name="blind_hint_save_profile_long_press">长按 2 秒保存资料，5 秒倒计时内松开撤销</string>
+    <string name="blind_hint_save_contact_long_press">长按 2 秒保存联系人，5 秒倒计时内松开撤销</string>
+    <string name="blind_tts_save_edit_request_threshold">5 秒后保存修改，松开按钮撤销</string>
+    <string name="blind_tts_save_profile_threshold">5 秒后保存资料，松开按钮撤销</string>
+    <string name="blind_tts_save_contact_threshold">5 秒后保存联系人，松开按钮撤销</string>
+
+    <!-- 视障端破坏性操作长按确认（替代旧 3 按钮中断对话框） -->
+    <string name="blind_hint_discard_long_press">长按 2 秒放弃创建，5 秒倒计时内松开撤销</string>
+    <string name="blind_hint_cancel_order_long_press">长按 2 秒取消订单，5 秒倒计时内松开撤销</string>
+    <string name="blind_tts_discard_threshold">5 秒后放弃创建，松开按钮撤销</string>
+    <string name="blind_tts_cancel_order_threshold">5 秒后取消订单，松开按钮撤销</string>
+    <string name="blind_tts_minimized_to_home">已返回首页，订单后台继续，可从首页横幅恢复</string>
+    <string name="blind_tts_running_minimized_to_home">已返回首页，跑步后台继续，可从首页横幅恢复</string>
+    <string name="blind_tts_review_skipped_by_back">已跳过评价</string>
+
+    <!-- ProfileEdit / EmergencyContactEdit -->
+    <string name="blind_ui_profile_edit_title">编辑资料</string>
+    <string name="blind_ui_profile_edit_label_nickname">昵称</string>
+    <string name="blind_ui_profile_edit_label_gender">性别</string>
+    <string name="blind_ui_profile_edit_gender_male">男</string>
+    <string name="blind_ui_profile_edit_gender_female">女</string>
+    <string name="blind_ui_profile_edit_label_vision">视障级别（如：全盲、低视力）</string>
+    <string name="blind_ui_profile_edit_label_pace">期望配速（秒/公里）</string>
+    <string name="blind_ui_profile_edit_label_duration">期望跑步时长（分钟）</string>
+    <string name="blind_ui_profile_edit_label_medical">医疗备注</string>
+    <string name="blind_ui_profile_edit_label_visual">外观描述</string>
+    <string name="blind_ui_profile_edit_btn_save">保存</string>
+    <string name="blind_ui_emergency_contact_edit_title">紧急联系人</string>
+    <string name="blind_ui_emergency_contact_edit_status_add">添加</string>
+    <string name="blind_ui_emergency_contact_edit_status_edit">编辑</string>
+    <string name="blind_ui_emergency_contact_edit_label_name">姓名</string>
+    <string name="blind_ui_emergency_contact_edit_label_phone">手机号</string>
+    <string name="blind_ui_emergency_contact_edit_label_relationship">关系（如：家人、朋友）</string>
+    <string name="blind_ui_emergency_contact_edit_btn_save">保存</string>
+
     <!-- BlindReview -->
     <string name="blind_ui_blind_review_btn_submit">提交评价</string>
     <string name="blind_ui_blind_review_btn_skip">跳过评价</string>

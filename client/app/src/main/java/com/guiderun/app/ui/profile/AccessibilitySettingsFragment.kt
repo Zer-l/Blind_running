@@ -56,10 +56,13 @@ class AccessibilitySettingsFragment : Fragment() {
         setupVoiceCommands()
         observeUiState()
         observeEvents()
+    }
 
-        binding.header.announceOnEnter(
-            tts = ttsManager,
-            fullText = getString(R.string.tts_page_accessibility_settings),
+    override fun onResume() {
+        super.onResume()
+        ttsManager.speak(
+            getString(R.string.tts_page_accessibility_settings),
+            TtsManager.Priority.HIGH,
         )
         ttsManager.speak(
             getString(R.string.tts_hint_accessibility_settings),
@@ -126,7 +129,8 @@ class AccessibilitySettingsFragment : Fragment() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                ttsManager.speak(getString(R.string.tts_speed_adjusted), TtsManager.Priority.NORMAL)
+                hapticFeedback.tick()
+                ttsManager.speak(getString(R.string.tts_speed_adjusted), TtsManager.Priority.HIGH)
             }
         })
     }
@@ -143,7 +147,9 @@ class AccessibilitySettingsFragment : Fragment() {
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                hapticFeedback.tick()
+            }
         })
     }
 

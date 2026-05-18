@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
+import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
@@ -24,6 +25,9 @@ class SettingsFragment : Fragment() {
     @Inject
     lateinit var ttsManager: TtsManager
 
+    @Inject
+    lateinit var hapticFeedback: HapticFeedback
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -40,6 +44,11 @@ class SettingsFragment : Fragment() {
 
         setupMenuItems()
         setupVoiceCommands()
+    }
+
+    /** 每次页面进入或从子页返回时复播，确保视障用户始终能听到自己在哪。 */
+    override fun onResume() {
+        super.onResume()
         ttsManager.speak(getString(R.string.tts_page_settings), TtsManager.Priority.HIGH)
         ttsManager.speak(getString(R.string.tts_hint_settings), TtsManager.Priority.HIGH)
     }
@@ -74,23 +83,28 @@ class SettingsFragment : Fragment() {
 
     private fun setupMenuItems() {
         binding.itemProfile.setOnClickListener {
+            hapticFeedback.tick()
             findNavController().navigate(R.id.action_settings_to_profileEdit)
         }
 
         binding.itemEmergencyContacts.setOnClickListener {
+            hapticFeedback.tick()
             findNavController().navigate(R.id.action_settings_to_emergencyContacts)
         }
 
         binding.itemBlindStats.setOnClickListener {
+            hapticFeedback.tick()
             findNavController().navigate(R.id.action_settings_to_blindStats)
         }
 
         binding.itemAccessibility.setOnClickListener {
+            hapticFeedback.tick()
             findNavController().navigate(R.id.action_settings_to_accessibilitySettings)
         }
 
         binding.itemAbout.setOnClickListener {
-            ttsManager.speak(getString(R.string.tts_about), TtsManager.Priority.NORMAL)
+            hapticFeedback.tick()
+            ttsManager.speak(getString(R.string.tts_about), TtsManager.Priority.HIGH)
         }
     }
 }

@@ -18,7 +18,6 @@ import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentBlindRunningBinding
-import com.guiderun.app.ui.common.showInterruptDialog
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PaceCalculator
 import dagger.hilt.android.AndroidEntryPoint
@@ -89,8 +88,8 @@ class BlindRunningFragment : Fragment() {
     }
 
     /**
-     * 返回键：跑步中不允许直接退出（服务端状态机限制 RUNNING 不接受 cancel）。
-     * 弹「最小化/留在此页」对话框 + TTS 提示长按结束。
+     * 返回键：服务端状态机禁止 RUNNING 状态 cancel，非破坏性最小化即可。
+     * 直接返回首页，跑步在后台继续；TTS 提示从首页横幅可恢复。
      */
     private fun setupBackPressInterception() {
         requireActivity().onBackPressedDispatcher.addCallback(
@@ -98,18 +97,10 @@ class BlindRunningFragment : Fragment() {
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
                     ttsManager.speak(
-                        getString(R.string.interrupt_message_leave_running),
+                        getString(R.string.blind_tts_running_minimized_to_home),
                         TtsManager.Priority.HIGH,
                     )
-                    showInterruptDialog(
-                        activity = requireActivity(),
-                        title = getString(R.string.interrupt_title_leave_running),
-                        message = getString(R.string.interrupt_message_leave_running)
-                            + "\n" + getString(R.string.interrupt_hint_resume),
-                        stayLabel = getString(R.string.interrupt_btn_stay),
-                        homeLabel = getString(R.string.interrupt_btn_back_home),
-                        onHome = { (activity as? BlindActivity)?.navigateToHome() },
-                    )
+                    (activity as? BlindActivity)?.navigateToHome()
                 }
             },
         )

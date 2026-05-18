@@ -16,8 +16,9 @@ import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
+import androidx.fragment.app.setFragmentResultListener
 import com.guiderun.app.databinding.FragmentWaitingMatchBinding
-import com.guiderun.app.ui.common.showInterruptDialog
+import com.guiderun.app.ui.blind.widget.BlindConfirmDialogFragment
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -81,25 +82,30 @@ class WaitingMatchFragment : Fragment() {
     }
 
     /**
-     * 返回键：弹「取消订单/留在此页/最小化」对话框。
-     * 「取消订单」直接调用 executeCancel（明确意图，跳过手势 2s+5s）。
+     * 返回键：弹全屏长按确认页（长按 2 秒取消订单）。
+     * 短按"继续等待"则关闭对话框留在此页。最小化/返回首页改走语音指令"返回首页"。
      */
     private fun setupBackPressInterception() {
+        setFragmentResultListener(REQ_KEY_CANCEL) { _, bundle ->
+            if (bundle.getBoolean(BlindConfirmDialogFragment.KEY_CONFIRMED)) {
+                viewModel.executeCancel()
+            }
+        }
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    showInterruptDialog(
-                        activity = requireActivity(),
-                        title = getString(R.string.interrupt_title_leave_waiting),
-                        message = getString(R.string.interrupt_message_leave_waiting)
-                            + "\n" + getString(R.string.interrupt_hint_resume),
-                        cancelLabel = getString(R.string.interrupt_btn_cancel_order),
-                        onCancel = { viewModel.executeCancel() },
-                        stayLabel = getString(R.string.interrupt_btn_stay),
-                        homeLabel = getString(R.string.interrupt_btn_back_home),
-                        onHome = { (activity as? BlindActivity)?.navigateToHome() },
-                    )
+                    BlindConfirmDialogFragment.newInstance(
+                        requestKey = REQ_KEY_CANCEL,
+                        titleRes = R.string.interrupt_title_leave_waiting,
+                        messageRes = R.string.interrupt_message_leave_waiting,
+                        primaryLabelRes = R.string.interrupt_btn_cancel_order,
+                        primaryHintRes = R.string.blind_hint_cancel_order_long_press,
+                        thresholdLabelRes = R.string.blind_tts_cancel_order_threshold,
+                        cancelledLabelRes = R.string.blind_tts_long_press_cancelled,
+                        secondaryLabelRes = R.string.interrupt_btn_stay,
+                        hostPageTitleRes = R.string.waiting_match_title,
+                    ).show(parentFragmentManager, REQ_KEY_CANCEL)
                 }
             },
         )
@@ -150,5 +156,9 @@ class WaitingMatchFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private companion object {
+        const val REQ_KEY_CANCEL = "waiting_cancel_confirm"
     }
 }

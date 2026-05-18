@@ -28,91 +28,113 @@
         app:layout_constraintTop_toBottomOf="@id/divider_top"
         app:layout_constraintBottom_toTopOf="@id/divider_bottom">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="@dimen/blind_space_md">
-
-        <ProgressBar
-            android:id="@+id/progressBar"
-            style="?android:attr/progressBarStyleHorizontal"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_sm"
-            android:indeterminate="true"
-            android:indeterminateTint="?attr/blindPrimary"
-            android:visibility="invisible" />
+            android:orientation="vertical"
+            android:padding="@dimen/blind_space_md">
 
-        <!-- 统计卡片 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="?attr/blindSurface"
-            app:cardCornerRadius="@dimen/blind_radius_card"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/blindPrimary"
-            app:strokeWidth="@dimen/blind_stroke_card">
-
-            <LinearLayout
+            <ProgressBar
+                android:id="@+id/progressBar"
+                style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/blind_space_md">
+                android:layout_marginBottom="@dimen/blind_space_sm"
+                android:indeterminate="true"
+                android:indeterminateTint="?attr/blindPrimary"
+                android:visibility="gone" />
 
-                <!-- 完成次数 -->
-                <TextView
-                    android:id="@+id/tvTotalRuns"
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="?attr/blindSurface"
+                app:cardCornerRadius="@dimen/blind_radius_card"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/blindPrimary"
+                app:strokeWidth="@dimen/blind_stroke_card">
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="@dimen/blind_space_md"
-                    android:minHeight="@dimen/blind_touch_min"
-                    android:textColor="?attr/blindOnSurface"
-                    android:textSize="@dimen/blind_text_body" />
+                    android:orientation="vertical">
 
-                <!-- 总距离 -->
-                <TextView
-                    android:id="@+id/tvTotalDistance"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="@dimen/blind_space_md"
-                    android:minHeight="@dimen/blind_touch_min"
-                    android:textColor="?attr/blindOnSurface"
-                    android:textSize="@dimen/blind_text_body" />
+                    <TextView
+                        android:id="@+id/tvTotalRuns"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="@dimen/blind_space_md"
+                        android:paddingVertical="@dimen/blind_space_sm"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body" />
 
-                <!-- 总时长 -->
-                <TextView
-                    android:id="@+id/tvTotalDuration"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="@dimen/blind_space_md"
-                    android:minHeight="@dimen/blind_touch_min"
-                    android:textColor="?attr/blindOnSurface"
-                    android:textSize="@dimen/blind_text_body" />
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/blindOnSurface" />
 
-                <!-- 本月跑步 -->
-                <TextView
-                    android:id="@+id/tvCurrentMonthRuns"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="@dimen/blind_touch_min"
-                    android:textColor="?attr/blindOnSurface"
-                    android:textSize="@dimen/blind_text_body" />
+                    <TextView
+                        android:id="@+id/tvTotalDistance"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="@dimen/blind_space_md"
+                        android:paddingVertical="@dimen/blind_space_sm"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body" />
 
-                <!-- 平均时长（可选） -->
-                <TextView
-                    android:id="@+id/tvAverageDuration"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/blind_space_md"
-                    android:minHeight="@dimen/blind_touch_min"
-                    android:textColor="?attr/blindOnSurface"
-                    android:textSize="@dimen/blind_text_body"
-                    android:visibility="gone" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/blindOnSurface" />
 
-    </LinearLayout>
+                    <TextView
+                        android:id="@+id/tvTotalDuration"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="@dimen/blind_space_md"
+                        android:paddingVertical="@dimen/blind_space_sm"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/blindOnSurface" />
+
+                    <TextView
+                        android:id="@+id/tvCurrentMonthRuns"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="@dimen/blind_space_md"
+                        android:paddingVertical="@dimen/blind_space_sm"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body" />
+
+                    <View
+                        android:id="@+id/divider_avg"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/blindOnSurface"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvAverageDuration"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="@dimen/blind_space_md"
+                        android:paddingVertical="@dimen/blind_space_sm"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
     </ScrollView>
 
     <View

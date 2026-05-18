@@ -43,6 +43,10 @@ class BlindStatsFragment : Fragment() {
         ttsManager.acquire()
 
         observeUiState()
+    }
+
+    override fun onResume() {
+        super.onResume()
         ttsManager.speak(getString(R.string.tts_page_blind_stats), TtsManager.Priority.HIGH)
         ttsManager.speak(getString(R.string.tts_hint_blind_stats), TtsManager.Priority.HIGH)
     }
@@ -59,7 +63,7 @@ class BlindStatsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
-                    binding.progressBar.visibility = if (state.isLoading) View.VISIBLE else View.INVISIBLE
+                    binding.progressBar.visibility = if (state.isLoading) View.VISIBLE else View.GONE
 
                     if (!state.isLoading) {
                         binding.tvTotalRuns.text = getString(R.string.stats_total_runs, state.totalRuns)
@@ -70,8 +74,10 @@ class BlindStatsFragment : Fragment() {
                         state.averageRunDurationMinutes?.let { avg ->
                             binding.tvAverageDuration.text = getString(R.string.stats_average_duration, avg)
                             binding.tvAverageDuration.visibility = View.VISIBLE
+                            binding.dividerAvg.visibility = View.VISIBLE
                         } ?: run {
                             binding.tvAverageDuration.visibility = View.GONE
+                            binding.dividerAvg.visibility = View.GONE
                         }
 
                         // 只在状态变化时播报

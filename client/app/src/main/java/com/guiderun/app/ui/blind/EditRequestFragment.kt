@@ -19,7 +19,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.BlindFeedback
+import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.SpeechRecognizerManager
+import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentEditRequestBinding
@@ -36,6 +38,8 @@ class EditRequestFragment : Fragment() {
     private val binding get() = _binding!!
 
     @Inject lateinit var blindFeedback: BlindFeedback
+    @Inject lateinit var ttsManager: TtsManager
+    @Inject lateinit var hapticFeedback: HapticFeedback
 
     private var voiceInputManager: SpeechRecognizerManager? = null
     private val micPermissionLauncher = registerForActivityResult(
@@ -59,6 +63,7 @@ class EditRequestFragment : Fragment() {
         EdgeToEdgeHelper.applyInsets(view)
         setupDurationToggle()
         setupListeners()
+        setupSaveLongPress()
         setupVoiceCommands()
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -104,9 +109,21 @@ class EditRequestFragment : Fragment() {
         binding.etNotes.doAfterTextChanged { text ->
             viewModel.onNotesChanged(text?.toString() ?: "")
         }
-        binding.btnSave.setOnClickListener { viewModel.onSavePressed() }
         binding.btnCancel.setOnClickListener { findNavController().popBackStack() }
         binding.tilNotes.setEndIconOnClickListener { onMicClicked() }
+    }
+
+    /** 主按钮长按 2s + 5s 倒计时确认保存，与其他视障端 Primary 一致 */
+    private fun setupSaveLongPress() {
+        binding.btnSave.bind(
+            scope = viewLifecycleOwner.lifecycleScope,
+            ttsManager = ttsManager,
+            hapticFeedback = hapticFeedback,
+            thresholdLabelRes = R.string.blind_tts_save_edit_request_threshold,
+            countdownLabelRes = R.string.blind_tts_long_press_cancelled,
+            onCountdownCommitted = { viewModel.onSavePressed() },
+        )
+        binding.btnSave.contentDescription = getString(R.string.blind_hint_save_edit_request_long_press)
     }
 
     private fun onMicClicked() {
@@ -198,6 +215,7 @@ class EditRequestFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         viewModel.onScreenPaused()
+        binding.btnSave.reset()
     }
 
     override fun onDestroyView() {

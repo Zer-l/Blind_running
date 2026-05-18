@@ -1,222 +1,271 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/blind_background"
+    android:background="?attr/blindBackground"
     android:fitsSystemWindows="true">
 
+    <com.guiderun.app.ui.blind.widget.BlindPageHeader
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:headerTitle="@string/blind_ui_profile_edit_title"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/divider_top"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintTop_toBottomOf="@id/header" />
+
+    <ScrollView
+        android:id="@+id/scroll_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/divider_top"
+        app:layout_constraintBottom_toTopOf="@id/divider_bottom">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/blind_space_md">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="?attr/blindSurface"
+                app:cardCornerRadius="@dimen/blind_radius_card"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/blindPrimary"
+                app:strokeWidth="@dimen/blind_stroke_card">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/blind_space_md">
+
+                    <ProgressBar
+                        android:id="@+id/progressBar"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:indeterminate="true"
+                        android:indeterminateTint="?attr/blindPrimary"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvError"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/blind_space_md"
+                        android:textColor="?attr/blindWarning"
+                        android:textSize="@dimen/blind_text_label"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/blind_space_md"
+                        android:hint="@string/blind_ui_profile_edit_label_nickname"
+                        app:boxStrokeColor="?attr/blindOnSurface"
+                        app:hintTextColor="?attr/blindOnSurface">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etNickname"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPersonName"
+                            android:minHeight="@dimen/blind_touch_min"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/blind_space_sm"
+                        android:text="@string/blind_ui_profile_edit_label_gender"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_label"
+                        android:textStyle="bold" />
+
+                    <RadioGroup
+                        android:id="@+id/rgGender"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/blind_space_md"
+                        android:orientation="horizontal">
+
+                        <RadioButton
+                            android:id="@+id/rbMale"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:minHeight="@dimen/blind_touch_min"
+                            android:text="@string/blind_ui_profile_edit_gender_male"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+
+                        <RadioButton
+                            android:id="@+id/rbFemale"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:minHeight="@dimen/blind_touch_min"
+                            android:text="@string/blind_ui_profile_edit_gender_female"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+                    </RadioGroup>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/blind_space_md"
+                        android:hint="@string/blind_ui_profile_edit_label_vision"
+                        app:boxStrokeColor="?attr/blindOnSurface"
+                        app:hintTextColor="?attr/blindOnSurface">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etVisionLevel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:minHeight="@dimen/blind_touch_min"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/blind_space_md"
+                        android:hint="@string/blind_ui_profile_edit_label_pace"
+                        app:boxStrokeColor="?attr/blindOnSurface"
+                        app:hintTextColor="?attr/blindOnSurface">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etPace"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:minHeight="@dimen/blind_touch_min"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/blind_space_md"
+                        android:hint="@string/blind_ui_profile_edit_label_duration"
+                        app:boxStrokeColor="?attr/blindOnSurface"
+                        app:hintTextColor="?attr/blindOnSurface">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etDuration"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:minHeight="@dimen/blind_touch_min"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/blind_space_md"
+                        android:hint="@string/blind_ui_profile_edit_label_medical"
+                        app:boxStrokeColor="?attr/blindOnSurface"
+                        app:hintTextColor="?attr/blindOnSurface">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etMedicalNotes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textMultiLine"
+                            android:minLines="3"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/blind_ui_profile_edit_label_visual"
+                        app:boxStrokeColor="?attr/blindOnSurface"
+                        app:hintTextColor="?attr/blindOnSurface">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etVisualDescription"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textMultiLine"
+                            android:minLines="3"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <View
+        android:id="@+id/divider_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintBottom_toTopOf="@id/tv_action_hint" />
+
+    <TextView
+        android:id="@+id/tv_action_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:importantForAccessibility="no"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingVertical="@dimen/blind_space_sm"
+        android:text="@string/blind_hint_save_profile_long_press"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_hint"
+        app:layout_constraintBottom_toTopOf="@id/footer_actions" />
+
     <LinearLayout
+        android:id="@+id/footer_actions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingTop="@dimen/blind_space_sm"
+        android:paddingBottom="@dimen/blind_space_lg"
+        app:layout_constraintBottom_toBottomOf="parent">
 
-        <!-- 标题 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:paddingBottom="16dp"
-            android:text="编辑资料"
-            android:textColor="@color/blind_primary"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <!-- 表单卡片 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="@color/blind_surface"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/blind_primary"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <ProgressBar
-                    android:id="@+id/progressBar"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:indeterminate="true"
-                    android:visibility="gone" />
-
-                <TextView
-                    android:id="@+id/tvError"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:text="@string/blind_warning"
-                    android:textColor="@color/blind_warning"
-                    android:textSize="16sp"
-                    android:visibility="gone" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:hint="昵称"
-                    app:boxStrokeColor="@color/blind_primary"
-                    app:hintTextColor="@color/blind_primary"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etNickname"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textPersonName"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp"
-                        android:minHeight="56dp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:text="性别"
-                    android:textColor="@color/blind_on_surface"
-                    android:textSize="16sp" />
-
-                <RadioGroup
-                    android:id="@+id/rgGender"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:orientation="horizontal">
-
-                    <RadioButton
-                        android:id="@+id/rbMale"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="男"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp" />
-
-                    <RadioButton
-                        android:id="@+id/rbFemale"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="女"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp" />
-                </RadioGroup>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:hint="视障级别（如：全盲、低视力）"
-                    app:boxStrokeColor="@color/blind_primary"
-                    app:hintTextColor="@color/blind_primary"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etVisionLevel"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="text"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp"
-                        android:minHeight="56dp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:hint="期望配速（秒/公里）"
-                    app:boxStrokeColor="@color/blind_primary"
-                    app:hintTextColor="@color/blind_primary"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etPace"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp"
-                        android:minHeight="56dp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:hint="期望跑步时长（分钟）"
-                    app:boxStrokeColor="@color/blind_primary"
-                    app:hintTextColor="@color/blind_primary"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etDuration"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp"
-                        android:minHeight="56dp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:hint="医疗备注"
-                    app:boxStrokeColor="@color/blind_primary"
-                    app:hintTextColor="@color/blind_primary"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etMedicalNotes"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textMultiLine"
-                        android:minLines="3"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="外观描述"
-                    app:boxStrokeColor="@color/blind_primary"
-                    app:hintTextColor="@color/blind_primary"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etVisualDescription"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textMultiLine"
-                        android:minLines="3"
-                        android:textColor="@color/blind_on_surface"
-                        android:textSize="18sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 保存按钮 -->
-        <com.google.android.material.button.MaterialButton
+        <com.guiderun.app.ui.blind.widget.LongPressGestureView
             android:id="@+id/btnSave"
             android:layout_width="match_parent"
-            android:layout_height="72dp"
-            android:text="保存"
-            android:textSize="20sp"
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/blind_touch_primary"
+            android:paddingVertical="@dimen/blind_space_md"
+            android:text="@string/blind_ui_profile_edit_btn_save"
+            android:textColor="?attr/blindOnPrimary"
+            android:textSize="@dimen/blind_text_headline"
             android:textStyle="bold"
-            app:backgroundTint="@color/blind_primary"
-            app:cornerRadius="16dp" />
+            app:backgroundTint="?attr/blindPrimary"
+            app:cornerRadius="@dimen/blind_radius_button" />
 
     </LinearLayout>
-</ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
