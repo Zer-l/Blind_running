@@ -13,7 +13,7 @@ package com.guiderun.app.accessibility.voice
  * 线程安全：纯函数，无状态。
  */
 class CommandParser(
-    private val maxEditDistance: Int = 1,
+    private val maxEditDistance: Int = 2,
 ) {
     /** 返回最匹配的指令；未命中返回 null。 */
     fun parse(rawText: String): VoiceCommand? {
@@ -37,12 +37,14 @@ class CommandParser(
         if (bestExact != null) return bestExact.first
 
         // 2) 编辑距离兜底
+        // 容差策略：短词（≤3 字）固定容差 1，覆盖「确认/取消/保存」等高频 2 字指令的同音误识；
+        // 长词按 length/3 + 全局 maxEditDistance 上限，避免对长 phrase 放过太多误匹配。
         var bestFuzzy: Pair<VoiceCommand, Int>? = null  // command -> distance
         for (cmd in VoiceCommand.entries) {
             for (phrase in cmd.phrases) {
                 val normPhrase = normalize(phrase)
                 if (normPhrase.isEmpty()) continue
-                val tolerance = minOf(maxEditDistance, normPhrase.length / 3)
+                val tolerance = toleranceFor(normPhrase.length)
                 if (tolerance <= 0) continue
                 val distance = levenshtein(normalized, normPhrase, threshold = tolerance)
                 if (distance in 1..tolerance) {
@@ -54,6 +56,12 @@ class CommandParser(
             }
         }
         return bestFuzzy?.first
+    }
+
+    private fun toleranceFor(phraseLength: Int): Int {
+        if (phraseLength <= 1) return 0   // 单字指令禁止模糊（误触率太高）
+        if (phraseLength <= 3) return 1
+        return minOf(maxEditDistance, phraseLength / 3)
     }
 
     private fun normalize(text: String): String {

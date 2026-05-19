@@ -89,6 +89,7 @@ class CommandExecutor @Inject constructor(
             VoiceCommand.CONFIRM,
             VoiceCommand.CANCEL,
             VoiceCommand.PAUSE_RUN,
+            VoiceCommand.RESUME_RUN,
             VoiceCommand.END_RUN,
             VoiceCommand.SAVE,
             VoiceCommand.MODIFY_REQUEST,

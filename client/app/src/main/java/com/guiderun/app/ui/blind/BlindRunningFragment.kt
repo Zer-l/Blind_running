@@ -1,11 +1,16 @@
 package com.guiderun.app.ui.blind
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -35,6 +40,24 @@ class BlindRunningFragment : Fragment() {
     @Inject lateinit var hapticFeedback: HapticFeedback
 
     private var savedBrightness: Float = -1f
+
+    private var backgroundLocationRequested = false
+
+    /**
+     * Android 11+ 必须等前台定位授予后再单独申请后台定位。
+     * 拒绝不致命（前台跑步页可用），只 TTS 提醒。授予后无需重启服务，FusedLocationProvider 自动接管后台事件。
+     */
+    private val backgroundLocationLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val msgRes = if (granted) {
+            R.string.blind_permission_background_location_granted
+        } else {
+            R.string.blind_permission_background_location_denied
+        }
+        ttsManager.speak(getString(msgRes), TtsManager.Priority.HIGH)
+        if (granted) hapticFeedback.confirm() else hapticFeedback.warning()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -114,6 +137,26 @@ class BlindRunningFragment : Fragment() {
             activeRequestId = viewModel.requestId
             activeCallPeerPhone = viewModel.uiState.value.peerPhone
         }
+        ensureBackgroundLocationIfNeeded()
+    }
+
+    private fun ensureBackgroundLocationIfNeeded() {
+        if (backgroundLocationRequested) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val ctx = context ?: return
+        val foregroundGranted = ContextCompat.checkSelfPermission(
+            ctx, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val backgroundGranted = ContextCompat.checkSelfPermission(
+            ctx, Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!foregroundGranted || backgroundGranted) return
+        backgroundLocationRequested = true
+        ttsManager.speak(
+            getString(R.string.blind_permission_background_location_rationale),
+            TtsManager.Priority.HIGH,
+        )
+        backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
     }
 
     override fun onPause() {

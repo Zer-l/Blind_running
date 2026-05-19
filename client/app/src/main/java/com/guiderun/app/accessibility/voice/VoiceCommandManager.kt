@@ -62,7 +62,12 @@ class VoiceCommandManager @Inject constructor(
     /** 入口：长按音量+触发 / 备注框麦克风按钮等场景。 */
     fun startListening() {
         if (_state.value != State.Idle) {
-            Timber.d("voice command already in progress, ignore")
+            Timber.w("voice command already in progress, state=${_state.value}, ignore")
+            ttsManager.speak(
+                context.getString(R.string.voice_command_tts_busy),
+                TtsManager.Priority.HIGH,
+            )
+            hapticFeedback.warning()
             return
         }
         if (!asrEngine.isAvailable) {

@@ -95,8 +95,11 @@ fun VolunteerOrderListScreen(
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
-        val allGranted = results.values.all { it }
-        if (allGranted) {
+        // 仅以定位权限是否授予判定是否上线；POST_NOTIFICATIONS 是前台服务通知必需但不影响接单可见性，
+        // 拒绝时不阻塞业务流程
+        val fineOrCoarseGranted = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            results[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (fineOrCoarseGranted) {
             viewModel.onToggleOnline(true)
         } else {
             viewModel.onLocationPermissionDenied()
@@ -104,21 +107,26 @@ fun VolunteerOrderListScreen(
     }
 
     fun checkPermissionAndGoOnline() {
-        val hasFine = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        val hasCoarse = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        if (hasFine || hasCoarse) {
+        val missing = buildList {
+            val hasFine = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            val hasCoarse = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasFine) add(Manifest.permission.ACCESS_FINE_LOCATION)
+            if (!hasCoarse) add(Manifest.permission.ACCESS_COARSE_LOCATION)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                val hasNotif = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+                if (!hasNotif) add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        if (missing.isEmpty()) {
             viewModel.onToggleOnline(true)
         } else {
-            locationPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                )
-            )
+            locationPermissionLauncher.launch(missing.toTypedArray())
         }
     }
 

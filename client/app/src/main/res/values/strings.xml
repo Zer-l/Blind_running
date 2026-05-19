@@ -308,9 +308,20 @@
     <string name="voice_input_error_generic">语音识别失败，请重试</string>
     <string name="voice_input_init_failed">语音识别引擎初始化失败，请检查网络</string>
 
+    <!-- ==================== 权限申请（视障端） ==================== -->
+    <string name="blind_permission_rationale">正在请求位置、麦克风、通知权限，请在弹窗中点击允许</string>
+    <string name="blind_permission_all_granted">权限已就绪</string>
+    <string name="blind_permission_some_denied">部分权限未授予，可能影响功能，请到系统设置中开启</string>
+    <string name="blind_permission_record_audio_requesting">请允许使用麦克风以启用语音指令</string>
+    <string name="blind_permission_record_audio_blocked">麦克风权限已被禁止，请到系统设置中开启</string>
+    <string name="blind_permission_background_location_rationale">建议授予后台定位，确保跑步切后台时轨迹不中断</string>
+    <string name="blind_permission_background_location_granted">后台定位已授予，轨迹将持续记录</string>
+    <string name="blind_permission_background_location_denied">后台定位未授予，跑步时请保持应用前台</string>
+
     <!-- ==================== 语音指令（视障端全局） ==================== -->
     <!-- 触发反馈 -->
     <string name="voice_command_tts_prompt">请说指令</string>
+    <string name="voice_command_tts_busy">语音正在工作中，请稍候</string>
     <string name="voice_command_tts_not_understood">没听懂，请重新说，或者说\"帮助\"获取指令列表</string>
     <string name="voice_command_tts_help">您可以说：发起跑步请求、查看历史、个人中心、打电话、紧急求助、暂停跑步、申请结束、当前状态、取消</string>
     <string name="voice_command_tts_engine_not_ready">语音引擎未就绪，请稍后再试</string>
@@ -325,6 +336,7 @@
     <string name="voice_command_label_call_peer">拨打对方电话</string>
     <string name="voice_command_label_sos">触发紧急求助</string>
     <string name="voice_command_label_pause_run">暂停跑步</string>
+    <string name="voice_command_label_resume_run">继续跑步</string>
     <string name="voice_command_label_end_run">申请结束跑步</string>
     <string name="voice_command_label_status">朗读当前状态</string>
     <string name="voice_command_label_help">朗读指令列表</string>
