@@ -76,12 +76,12 @@ class CommandExecutor @Inject constructor(
             VoiceCommand.HELP -> {
                 ttsManager.speak(
                     context.getString(R.string.voice_command_tts_help),
-                    TtsManager.Priority.HIGH,
+                    TtsManager.Priority.INTERACTION,
                 )
                 Result.Handled
             }
             VoiceCommand.STATUS -> {
-                ttsManager.speak(host.voiceDescribeStatus(), TtsManager.Priority.HIGH)
+                ttsManager.speak(host.voiceDescribeStatus(), TtsManager.Priority.INTERACTION)
                 Result.Handled
             }
             // 以下指令均需要当前 Fragment 注册的 contextHandler 处理；

@@ -110,7 +110,7 @@ class MatchedFragment : Fragment() {
                     if (isMet) {
                         ttsManager.speak(
                             getString(R.string.blind_tts_minimized_to_home),
-                            TtsManager.Priority.HIGH,
+                            TtsManager.Priority.INTERACTION,
                         )
                         (activity as? BlindActivity)?.navigateToHome()
                     } else {

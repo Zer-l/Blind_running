@@ -69,14 +69,14 @@
 
     <!-- 发起跑步请求（UI-3） -->
     <string name="create_request_title">发起跑步请求</string>
-    <string name="create_request_duration_30">30 分钟</string>
+    <string name="create_request_duration_30">30分钟</string>
     <string name="create_request_location_loading">正在获取位置…</string>
     <string name="create_request_location_found">定位成功</string>
     <string name="create_request_location_failed">位置获取失败，请检查权限后重试</string>
     <string name="create_request_duration_label">预计时长</string>
-    <string name="create_request_duration_60">60 分钟</string>
-    <string name="create_request_duration_90">90 分钟</string>
-    <string name="create_request_duration_120">120 分钟</string>
+    <string name="create_request_duration_60">60分钟</string>
+    <string name="create_request_duration_90">90分钟</string>
+    <string name="create_request_duration_120">120分钟</string>
     <string name="create_request_notes_hint">备注（选填，例如"我在北门"）</string>
     <string name="create_request_btn_confirm">确认</string>
     <string name="create_request_btn_confirm_countdown">确认（%1$d 秒）</string>
@@ -101,7 +101,7 @@
     <string name="matched_volunteer_rating">评分 %1$.1f 分·共陪跑 %2$d 次</string>
     <string name="matched_status_accepted">志愿者正在准备，即将出发</string>
     <string name="matched_status_en_route">志愿者正在赶往汇合点</string>
-    <string name="matched_status_met">志愿者已到达汇合点，请长按确认按钮 2 秒汇合</string>
+    <string name="matched_status_met">志愿者已到达汇合点，请长按确认按钮2秒汇合</string>
 
     <!-- 首页志愿者端入口 -->
     <string name="home_btn_enter_volunteer">开始接单（志愿者端）</string>
@@ -198,7 +198,7 @@
     <string name="blind_running_end_confirm">5秒后结束跑步，再按一次可撤销</string>
     <string name="blind_running_ended">跑步已结束</string>
     <string name="blind_running_status_running">跑步进行中</string>
-    <string name="blind_running_end_requested_by_volunteer">志愿者申请结束跑步，长按结束按钮 2 秒确认</string>
+    <string name="blind_running_end_requested_by_volunteer">志愿者申请结束跑步，长按结束按钮2秒确认</string>
     <string name="blind_running_status_finished">跑步已完成，正在跳转评价页面</string>
     <string name="running_paused_label">已暂停</string>
 
@@ -215,7 +215,7 @@
     <string name="blind_review_rating_3_desc">3星，一般</string>
     <string name="blind_review_rating_4_desc">4星，满意</string>
     <string name="blind_review_rating_5_desc">5星，非常满意</string>
-    <string name="blind_review_intro_format">本次跑步 %1$.1f 公里，用时 %2$d 分钟。请评价志愿者：单击卡片选择评分，长按提交按钮 2 秒提交，单击跳过按钮跳过评价</string>
+    <string name="blind_review_intro_format">本次跑步 %1$.1f 公里，用时 %2$d 分钟。请评价志愿者：单击卡片选择评分，长按提交按钮2秒提交，单击跳过按钮跳过评价</string>
     <string name="blind_review_selected_format">已选择 %1$s</string>
     <string name="blind_review_submit_success">评价已提交，感谢您的反馈</string>
     <string name="blind_review_skipped">已跳过评价</string>
@@ -308,6 +308,39 @@
     <string name="voice_input_error_generic">语音识别失败，请重试</string>
     <string name="voice_input_init_failed">语音识别引擎初始化失败，请检查网络</string>
 
+    <!-- ==================== 视障端首页（BlindHomeFragment） ==================== -->
+    <string name="blind_ui_home_title">首页</string>
+    <string name="blind_ui_home_welcome">欢迎，%1$s</string>
+    <string name="blind_ui_home_welcome_anonymous">欢迎</string>
+    <string name="blind_ui_home_active_role">当前角色：%1$s</string>
+    <string name="blind_ui_home_role_unknown">视障跑者</string>
+    <string name="blind_ui_home_active_order_title">您有进行中的订单</string>
+    <string name="blind_ui_home_active_order_status">%1$s · 点击恢复</string>
+    <string name="blind_ui_home_active_order_cd">您有进行中的订单，%1$s，双击恢复</string>
+    <string name="blind_ui_home_status_matching">等待匹配中</string>
+    <string name="blind_ui_home_status_accepted">已匹配志愿者</string>
+    <string name="blind_ui_home_status_en_route">志愿者前往中</string>
+    <string name="blind_ui_home_status_met">已汇合</string>
+    <string name="blind_ui_home_status_running">跑步中</string>
+    <string name="blind_ui_home_status_review">等待评价</string>
+    <string name="blind_ui_home_status_in_progress">进行中</string>
+    <string name="blind_ui_home_history_title">历史记录</string>
+    <string name="blind_ui_home_history_desc">查看跑步历史与轨迹回放</string>
+    <string name="blind_ui_home_settings_title">设置</string>
+    <string name="blind_ui_home_settings_desc">个人资料、紧急联系人、无障碍设置</string>
+    <string name="blind_ui_home_btn_create">发起跑步请求</string>
+    <string name="blind_ui_home_btn_quick_start">一键发起（用上次设置）</string>
+    <string name="blind_ui_home_btn_logout">退出登录</string>
+    <string name="blind_ui_countdown_default">5秒倒计时内松开撤销</string>
+    <string name="blind_hint_home_create_long_press">长按主按钮2秒发起跑步请求，5秒倒计时内松开撤销</string>
+    <string name="blind_hint_home_quick_start_long_press">长按一键发起2秒，使用上次设置直接发起，5秒倒计时内松开撤销</string>
+    <string name="blind_hint_home_logout_long_press">长按退出登录2秒，5秒倒计时内松开撤销</string>
+    <string name="blind_tts_home_create_threshold">5秒后进入发起跑步请求，松开撤销</string>
+    <string name="blind_tts_home_quick_start_threshold">5秒后用上次设置直接发起，松开撤销</string>
+    <string name="blind_tts_home_logout_threshold">5秒后退出登录，松开撤销</string>
+    <string name="blind_tts_home_logout_done">已退出登录</string>
+    <string name="tts_page_blind_home">首页</string>
+
     <!-- ==================== 权限申请（视障端） ==================== -->
     <string name="blind_permission_rationale">正在请求位置、麦克风、通知权限，请在弹窗中点击允许</string>
     <string name="blind_permission_all_granted">权限已就绪</string>
@@ -388,10 +421,10 @@
 
     <!-- ==================== TTS 操作指引 ==================== -->
     <string name="tts_hint_create_request">正在获取定位，请稍候。可选择时长，30分钟、60分钟、90分钟、120分钟，可填写备注</string>
-    <string name="tts_hint_waiting_match">长按取消按钮 2 秒取消订单，5 秒倒计时内松开撤销。可说\"状态\"查询等待时长</string>
+    <string name="tts_hint_waiting_match">长按取消按钮2秒取消订单，5秒倒计时内松开撤销。可说\"状态\"查询等待时长</string>
     <string name="tts_hint_matched">按住2秒确认汇合，5秒倒计时内可撤销</string>
     <string name="tts_hint_blind_running">按住2秒结束跑步，5秒倒计时内可撤销</string>
-    <string name="tts_hint_blind_review">单击卡片选择评分，长按提交按钮 2 秒提交，单击跳过按钮跳过评价</string>
+    <string name="tts_hint_blind_review">单击卡片选择评分，长按提交按钮2秒提交，单击跳过按钮跳过评价</string>
     <string name="tts_hint_blind_history">可筛选记录，点击条目查看轨迹回放</string>
     <string name="tts_hint_edit_request">可修改时长、集合地点和备注</string>
     <string name="tts_hint_track_playback">点击播放按钮开始回放，可调节回放速度</string>
@@ -438,7 +471,7 @@
     <string name="tts_running_resumed">继续跑步</string>
     <string name="tts_running_progress">已跑步%1$d分钟，距离%2$.1f公里</string>
     <string name="tts_running_km">已跑%1$d公里，用时%2$d分%3$d秒，%4$s</string>
-    <string name="tts_peer_end_request">志愿者申请结束跑步，长按结束按钮 2 秒确认</string>
+    <string name="tts_peer_end_request">志愿者申请结束跑步，长按结束按钮2秒确认</string>
     <string name="tts_history_loaded">已完成%1$d次，总距离%2$s公里，总时长%3$s小时</string>
     <string name="tts_history_filter_all">显示全部，共%1$d条</string>
     <string name="tts_history_filter_closed">已完成，共%1$d条</string>
@@ -462,25 +495,25 @@
 
     <!-- ====== 视障端 UI 重构（通用） ====== -->
     <!-- LongPressGestureView 通用文案：进入倒计时阈值播报 / 撤销播报 / 屏幕提示 -->
-    <string name="blind_tts_long_press_into_countdown">5 秒后执行，松开按钮可撤销</string>
+    <string name="blind_tts_long_press_into_countdown">5秒后执行，松开按钮可撤销</string>
     <string name="blind_tts_long_press_cancelled">已撤销</string>
-    <string name="blind_hint_long_press_2s_5s">长按 2 秒，5 秒倒计时内松开可撤销</string>
+    <string name="blind_hint_long_press_2s_5s">长按2秒，5秒倒计时内松开可撤销</string>
 
     <!-- CreateRequest 试点 -->
     <string name="blind_ui_create_request_btn_primary">确认发起</string>
     <string name="blind_ui_create_request_btn_secondary">修改参数</string>
-    <string name="blind_hint_create_request_primary">长按 2 秒，5 秒倒计时内松开撤销</string>
-    <string name="blind_tts_create_request_threshold">5 秒后发起请求，松开按钮可撤销</string>
+    <string name="blind_hint_create_request_primary">长按2秒，5秒倒计时内松开撤销</string>
+    <string name="blind_tts_create_request_threshold">5秒后发起请求，松开按钮可撤销</string>
     <string name="blind_tts_quick_start_no_prefs">还没有保存的偏好，请先正常发起一次</string>
-    <string name="home_btn_blind_long_press_hint">轻触正常发起，长按 2 秒用上次偏好快速发起</string>
+    <string name="home_btn_blind_long_press_hint">轻触正常发起，长按2秒用上次偏好快速发起</string>
 
     <!-- ====== AccessibilitySettings 改造 ====== -->
     <string name="blind_ui_a11y_title">无障碍设置</string>
     <string name="blind_ui_a11y_font_scale_label">字号缩放</string>
-    <string name="blind_ui_a11y_font_scale_100">标准 100%</string>
-    <string name="blind_ui_a11y_font_scale_125">较大 125%</string>
-    <string name="blind_ui_a11y_font_scale_150">大 150%</string>
-    <string name="blind_ui_a11y_font_scale_200">超大 200%</string>
+    <string name="blind_ui_a11y_font_scale_100">标准100%</string>
+    <string name="blind_ui_a11y_font_scale_125">较大125%</string>
+    <string name="blind_ui_a11y_font_scale_150">大150%</string>
+    <string name="blind_ui_a11y_font_scale_200">超大200%</string>
     <string name="blind_ui_a11y_contrast_label">对比度主题</string>
     <string name="blind_ui_a11y_contrast_black">黑底白字</string>
     <string name="blind_ui_a11y_contrast_white">白底黑字</string>
@@ -502,8 +535,8 @@
     <string name="blind_ui_running_pace_unit"></string>
     <string name="blind_ui_running_status_label">状态</string>
     <string name="blind_ui_running_btn_end">申请结束</string>
-    <string name="blind_hint_running_end">长按 2 秒申请结束，5 秒倒计时内松开撤销</string>
-    <string name="blind_tts_running_end_threshold">5 秒后申请结束跑步，松开按钮可撤销</string>
+    <string name="blind_hint_running_end">长按2秒申请结束，5秒倒计时内松开撤销</string>
+    <string name="blind_tts_running_end_threshold">5秒后申请结束跑步，松开按钮可撤销</string>
     <string name="blind_tts_running_milestone_distance">已跑 %1$s 公里</string>
     <string name="blind_tts_running_milestone_duration">已跑 %1$d 分钟</string>
     <string name="blind_tts_running_pace_change">当前配速 %1$s 每公里</string>
@@ -515,14 +548,14 @@
     <!-- WaitingMatch -->
     <string name="blind_ui_waiting_match_status">正在等待志愿者接单</string>
     <string name="blind_ui_waiting_match_btn_cancel">取消订单</string>
-    <string name="blind_hint_waiting_match_cancel">长按 2 秒取消订单，5 秒倒计时内松开撤销</string>
-    <string name="blind_tts_waiting_match_cancel_threshold">5 秒后取消订单，松开按钮可撤销</string>
+    <string name="blind_hint_waiting_match_cancel">长按2秒取消订单，5秒倒计时内松开撤销</string>
+    <string name="blind_tts_waiting_match_cancel_threshold">5秒后取消订单，松开按钮可撤销</string>
 
     <!-- Matched -->
     <string name="blind_ui_matched_btn_confirm">确认汇合</string>
-    <string name="blind_hint_matched_confirm">长按 2 秒确认汇合，5 秒倒计时内松开撤销</string>
+    <string name="blind_hint_matched_confirm">长按2秒确认汇合，5秒倒计时内松开撤销</string>
     <string name="blind_hint_matched_waiting">志愿者尚未到达，请耐心等待</string>
-    <string name="blind_tts_matched_confirm_threshold">5 秒后开始跑步，松开按钮可撤销</string>
+    <string name="blind_tts_matched_confirm_threshold">5秒后开始跑步，松开按钮可撤销</string>
 
     <!-- ====== 视障端推广重构第三波：EditRequest / BlindHistory / EmergencyContactList ====== -->
     <!-- BlindHistory 统计卡片 -->
@@ -546,21 +579,23 @@
     <!-- 视障端返回 / 留在页面播报 -->
     <string name="blind_tts_back_to_home">已返回首页</string>
     <string name="blind_tts_home_short">首页，%1$s，%2$s</string>
+    <string name="blind_tts_home_nickname_only">首页，%1$s</string>
+    <string name="blind_tts_home_title_only">首页</string>
     <string name="blind_tts_stay_on_page">已留在%1$s</string>
 
     <!-- 保存类长按确认（编辑参数 / 编辑资料 / 编辑联系人） -->
-    <string name="blind_hint_save_edit_request_long_press">长按 2 秒保存修改，5 秒倒计时内松开撤销</string>
-    <string name="blind_hint_save_profile_long_press">长按 2 秒保存资料，5 秒倒计时内松开撤销</string>
-    <string name="blind_hint_save_contact_long_press">长按 2 秒保存联系人，5 秒倒计时内松开撤销</string>
-    <string name="blind_tts_save_edit_request_threshold">5 秒后保存修改，松开按钮撤销</string>
-    <string name="blind_tts_save_profile_threshold">5 秒后保存资料，松开按钮撤销</string>
-    <string name="blind_tts_save_contact_threshold">5 秒后保存联系人，松开按钮撤销</string>
+    <string name="blind_hint_save_edit_request_long_press">长按2秒保存修改，5秒倒计时内松开撤销</string>
+    <string name="blind_hint_save_profile_long_press">长按2秒保存资料，5秒倒计时内松开撤销</string>
+    <string name="blind_hint_save_contact_long_press">长按2秒保存联系人，5秒倒计时内松开撤销</string>
+    <string name="blind_tts_save_edit_request_threshold">5秒后保存修改，松开按钮撤销</string>
+    <string name="blind_tts_save_profile_threshold">5秒后保存资料，松开按钮撤销</string>
+    <string name="blind_tts_save_contact_threshold">5秒后保存联系人，松开按钮撤销</string>
 
-    <!-- 视障端破坏性操作长按确认（替代旧 3 按钮中断对话框） -->
-    <string name="blind_hint_discard_long_press">长按 2 秒放弃创建，5 秒倒计时内松开撤销</string>
-    <string name="blind_hint_cancel_order_long_press">长按 2 秒取消订单，5 秒倒计时内松开撤销</string>
-    <string name="blind_tts_discard_threshold">5 秒后放弃创建，松开按钮撤销</string>
-    <string name="blind_tts_cancel_order_threshold">5 秒后取消订单，松开按钮撤销</string>
+    <!-- 视障端破坏性操作长按确认（替代旧3按钮中断对话框） -->
+    <string name="blind_hint_discard_long_press">长按2秒放弃创建，5秒倒计时内松开撤销</string>
+    <string name="blind_hint_cancel_order_long_press">长按2秒取消订单，5秒倒计时内松开撤销</string>
+    <string name="blind_tts_discard_threshold">5秒后放弃创建，松开按钮撤销</string>
+    <string name="blind_tts_cancel_order_threshold">5秒后取消订单，松开按钮撤销</string>
     <string name="blind_tts_minimized_to_home">已返回首页，订单后台继续，可从首页横幅恢复</string>
     <string name="blind_tts_running_minimized_to_home">已返回首页，跑步后台继续，可从首页横幅恢复</string>
     <string name="blind_tts_review_skipped_by_back">已跳过评价</string>
@@ -588,6 +623,6 @@
     <!-- BlindReview -->
     <string name="blind_ui_blind_review_btn_submit">提交评价</string>
     <string name="blind_ui_blind_review_btn_skip">跳过评价</string>
-    <string name="blind_hint_blind_review_submit">单击卡片选择，长按 2 秒提交评价，5 秒倒计时内松开撤销</string>
-    <string name="blind_tts_blind_review_submit_threshold">5 秒后提交评价，松开按钮可撤销</string>
+    <string name="blind_hint_blind_review_submit">单击卡片选择，长按2秒提交评价，5秒倒计时内松开撤销</string>
+    <string name="blind_tts_blind_review_submit_threshold">5秒后提交评价，松开按钮可撤销</string>
 </resources>

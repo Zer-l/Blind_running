@@ -2,8 +2,6 @@ package com.guiderun.app.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.guiderun.app.R
-import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.data.local.RequestPreferences
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.domain.model.RunRequest
@@ -12,7 +10,6 @@ import com.guiderun.app.domain.repository.AuthRepository
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,9 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import android.content.Context
 import javax.inject.Inject
-import kotlinx.coroutines.flow.first
 
 data class HomeUiState(
     val nickname: String = "",
@@ -34,11 +29,9 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val userPreferences: UserPreferences,
-    private val ttsManager: TtsManager,
     private val requestPreferences: RequestPreferences,
     runRequestRepository: RunRequestRepository,
 ) : ViewModel() {
@@ -68,8 +61,11 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private var isInitialLoad = true
-
+    /**
+     * 加载用户资料。TTS 入场播报由 UI 层（BlindHomeFragment.onResume）显式控制，
+     * 此处仅刷新数据：避免 ViewModel 在 init / refreshUser / 旋屏重建时被动播报"首页+昵称+角色"，
+     * 与 Fragment 自身的 onResume 播报叠加。
+     */
     private fun loadUser() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -86,39 +82,10 @@ class HomeViewModel @Inject constructor(
                             isLoading = false,
                         )
                     }
-                    // 首次加载播报完整欢迎语，后续 resume（如从 BlindActivity 返回）播报简短"首页"提示，
-                    // 确保视障用户每次回到首页都能听到自己在哪。
-                    if (isInitialLoad) {
-                        isInitialLoad = false
-                        speakWelcome(user.nickname, roleDisplay)
-                    } else {
-                        speakHomeShort(user.nickname, roleDisplay)
-                    }
                 }
                 .onFailure {
                     _uiState.update { it.copy(isLoading = false) }
                 }
-        }
-    }
-
-    private fun speakWelcome(nickname: String, role: String) {
-        viewModelScope.launch {
-            ttsManager.state.first { it is TtsManager.TtsState.Ready }
-            val greeting = if (role.isNotEmpty()) {
-                context.getString(R.string.tts_welcome, nickname, role)
-            } else {
-                context.getString(R.string.tts_welcome_no_role, nickname)
-            }
-            ttsManager.speak(greeting, TtsManager.Priority.HIGH)
-        }
-    }
-
-    /** 后续 resume（从 BlindActivity 返回 / 切后台再回前台）的简短首页播报。 */
-    private fun speakHomeShort(nickname: String, role: String) {
-        viewModelScope.launch {
-            ttsManager.state.first { it is TtsManager.TtsState.Ready }
-            val msg = context.getString(R.string.blind_tts_home_short, nickname, role.ifEmpty { "" })
-            ttsManager.speak(msg, TtsManager.Priority.HIGH)
         }
     }
 

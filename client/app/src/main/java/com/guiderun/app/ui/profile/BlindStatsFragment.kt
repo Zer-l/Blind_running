@@ -47,8 +47,8 @@ class BlindStatsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        ttsManager.speak(getString(R.string.tts_page_blind_stats), TtsManager.Priority.HIGH)
-        ttsManager.speak(getString(R.string.tts_hint_blind_stats), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_page_blind_stats), TtsManager.Priority.INTERACTION)
+        ttsManager.speak(getString(R.string.tts_hint_blind_stats), TtsManager.Priority.INTERACTION)
     }
 
     override fun onDestroyView() {
@@ -93,7 +93,7 @@ class BlindStatsFragment : Fragment() {
                     }
 
                     state.error?.let { error ->
-                        ttsManager.speak(error, TtsManager.Priority.HIGH)
+                        ttsManager.speak(error, TtsManager.Priority.INTERACTION)
                     }
                 }
             }

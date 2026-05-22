@@ -26,6 +26,7 @@ import com.guiderun.app.ui.volunteer.VolunteerRunningScreen
 fun AppNavGraph(
     navController: NavHostController,
     startDestination: String,
+    onEnterBlindHome: () -> Unit,
     onEnterBlindFlow: () -> Unit,
     onEnterBlindSettings: () -> Unit = {},
     onEnterBlindHistory: () -> Unit = {},
@@ -66,6 +67,7 @@ fun AppNavGraph(
                         popUpTo(0) { inclusive = true }
                     }
                 },
+                onEnterBlindHome = onEnterBlindHome,
                 onEnterBlindFlow = onEnterBlindFlow,
                 onEnterBlindSettings = onEnterBlindSettings,
                 onEnterBlindHistory = onEnterBlindHistory,
@@ -199,11 +201,20 @@ fun AppNavGraph(
             route = Screen.VolunteerReview.route,
             arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
         ) {
+            // 评价完成后的返回策略：从历史页补评 → popBackStack 回历史；正常跑步结束 → 清栈回首页。
+            // VolunteerRunning → VolunteerReview 用了 popUpTo VolunteerRunning inclusive=true，
+            // 所以正常流程的 previousBackStackEntry 不会是 VolunteerHistory。
+            val cameFromHistory = navController.previousBackStackEntry?.destination?.route ==
+                Screen.VolunteerHistory.route
             VolunteerReviewScreen(
                 requestId = it.arguments?.getString("requestId") ?: "",
                 onNavigateToHome = {
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                    if (cameFromHistory) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                        }
                     }
                 },
             )

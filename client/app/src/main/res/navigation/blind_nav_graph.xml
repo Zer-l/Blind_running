@@ -2,7 +2,23 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/blind_nav_graph"
-    app:startDestination="@id/blindCreateRequestFragment">
+    app:startDestination="@id/blindHomeFragment">
+
+    <!-- UI-2.5：视障端首页（与视障端 13 个 XML 页面统一设计系统的入口枢纽） -->
+    <fragment
+        android:id="@+id/blindHomeFragment"
+        android:name="com.guiderun.app.ui.blind.BlindHomeFragment"
+        android:label="首页">
+        <action
+            android:id="@+id/action_home_to_createRequest"
+            app:destination="@id/blindCreateRequestFragment" />
+        <action
+            android:id="@+id/action_home_to_history"
+            app:destination="@id/blindHistoryFragment" />
+        <action
+            android:id="@+id/action_home_to_settings"
+            app:destination="@id/settingsFragment" />
+    </fragment>
 
     <!-- UI-3：发起请求 -->
     <fragment

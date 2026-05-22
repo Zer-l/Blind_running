@@ -55,7 +55,7 @@ class BlindRunningFragment : Fragment() {
         } else {
             R.string.blind_permission_background_location_denied
         }
-        ttsManager.speak(getString(msgRes), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(msgRes), TtsManager.Priority.INTERACTION)
         if (granted) hapticFeedback.confirm() else hapticFeedback.warning()
     }
 
@@ -121,7 +121,7 @@ class BlindRunningFragment : Fragment() {
                 override fun handleOnBackPressed() {
                     ttsManager.speak(
                         getString(R.string.blind_tts_running_minimized_to_home),
-                        TtsManager.Priority.HIGH,
+                        TtsManager.Priority.INTERACTION,
                     )
                     (activity as? BlindActivity)?.navigateToHome()
                 }
@@ -154,7 +154,7 @@ class BlindRunningFragment : Fragment() {
         backgroundLocationRequested = true
         ttsManager.speak(
             getString(R.string.blind_permission_background_location_rationale),
-            TtsManager.Priority.HIGH,
+            TtsManager.Priority.INTERACTION,
         )
         backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
     }

@@ -11,12 +11,11 @@ import javax.inject.Singleton
  *
  * 视障用户看不到 Toast；本类用 TTS 朗读 + 震动两个维度反馈，根据严重程度选择不同优先级与震动模式。
  *
- * 使用约定：
- * - [info]：进度/状态信息，NORMAL 优先级排队，避免打断；轻触震动。
- * - [success]：操作成功，HIGH 优先级立刻播报；确认震动。
- * - [warning]：危险或撤销提示，HIGH + 双脉冲震动。
- * - [error]：失败或异常，HIGH + 三脉冲震动。
- * - [permissionDenied]：权限拒绝场景，等同 warning，但语义更明确。
+ * 使用约定（与 TtsManager.Priority 锁机制对齐）：
+ * - [info]：被动状态进度信息（如刷新中、加载中），NORMAL 排队，可被操作反馈推迟。
+ * - [success]：用户操作刚完成的反馈，INTERACTION 持锁防止被低优消息打断。
+ * - [warning]/[error]：业务错误或异常，HIGH（INTERACTION 锁内自动入队等待）。
+ * - [permissionDenied]：用户拒绝权限申请的反馈，INTERACTION（属于操作链路的延续）。
  */
 @Singleton
 class BlindFeedback @Inject constructor(
@@ -37,12 +36,12 @@ class BlindFeedback @Inject constructor(
 
     fun success(@StringRes res: Int, vararg formatArgs: Any) {
         haptic.confirm()
-        tts.speak(appContext.getString(res, *formatArgs), TtsManager.Priority.HIGH)
+        tts.speak(appContext.getString(res, *formatArgs), TtsManager.Priority.INTERACTION)
     }
 
     fun success(message: CharSequence) {
         haptic.confirm()
-        tts.speak(message.toString(), TtsManager.Priority.HIGH)
+        tts.speak(message.toString(), TtsManager.Priority.INTERACTION)
     }
 
     fun warning(@StringRes res: Int, vararg formatArgs: Any) {
@@ -67,6 +66,6 @@ class BlindFeedback @Inject constructor(
 
     fun permissionDenied(@StringRes reasonRes: Int, vararg formatArgs: Any) {
         haptic.warning()
-        tts.speak(appContext.getString(reasonRes, *formatArgs), TtsManager.Priority.HIGH)
+        tts.speak(appContext.getString(reasonRes, *formatArgs), TtsManager.Priority.INTERACTION)
     }
 }

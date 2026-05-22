@@ -79,8 +79,8 @@ class EmergencyContactListFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         viewModel.loadContacts()
-        ttsManager.speak(getString(R.string.tts_page_emergency_contact_list), TtsManager.Priority.HIGH)
-        ttsManager.speak(getString(R.string.tts_hint_emergency_contact_list), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_page_emergency_contact_list), TtsManager.Priority.INTERACTION)
+        ttsManager.speak(getString(R.string.tts_hint_emergency_contact_list), TtsManager.Priority.INTERACTION)
     }
 
     override fun onDestroyView() {
@@ -163,7 +163,7 @@ class EmergencyContactListFragment : Fragment() {
                                 "紧急联系人数量已达上限，最多${maxContacts}位"
                             else -> error
                         }
-                        ttsManager.speak(friendlyMessage, TtsManager.Priority.HIGH)
+                        ttsManager.speak(friendlyMessage, TtsManager.Priority.INTERACTION)
                     }
                 }
             }

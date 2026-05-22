@@ -65,7 +65,7 @@ class VoiceCommandManager @Inject constructor(
             Timber.w("voice command already in progress, state=${_state.value}, ignore")
             ttsManager.speak(
                 context.getString(R.string.voice_command_tts_busy),
-                TtsManager.Priority.HIGH,
+                TtsManager.Priority.INTERACTION,
             )
             hapticFeedback.warning()
             return
@@ -73,7 +73,7 @@ class VoiceCommandManager @Inject constructor(
         if (!asrEngine.isAvailable) {
             ttsManager.speak(
                 context.getString(R.string.voice_command_tts_engine_not_ready),
-                TtsManager.Priority.HIGH,
+                TtsManager.Priority.INTERACTION,
             )
             hapticFeedback.warning()
             return
@@ -84,7 +84,7 @@ class VoiceCommandManager @Inject constructor(
             // 先等 prompt 朗读完成，避免 prompt 和录音同时进行
             ttsManager.speakAndWait(
                 context.getString(R.string.voice_command_tts_prompt),
-                TtsManager.Priority.HIGH,
+                TtsManager.Priority.INTERACTION,
                 timeoutMs = 3_000L,
             )
             asrEngine.start(::onAsrResult)
@@ -107,7 +107,7 @@ class VoiceCommandManager @Inject constructor(
             }
             is AsrResult.Error -> {
                 Timber.w("ASR error: ${result.code} ${result.message}")
-                ttsManager.speak(result.message, TtsManager.Priority.HIGH)
+                ttsManager.speak(result.message, TtsManager.Priority.INTERACTION)
                 hapticFeedback.error()
             }
             AsrResult.Idle -> {
@@ -121,7 +121,7 @@ class VoiceCommandManager @Inject constructor(
         if (text.isBlank()) {
             ttsManager.speak(
                 context.getString(R.string.voice_command_tts_not_understood),
-                TtsManager.Priority.HIGH,
+                TtsManager.Priority.INTERACTION,
             )
             hapticFeedback.warning()
             return
@@ -131,7 +131,7 @@ class VoiceCommandManager @Inject constructor(
             Timber.d("unrecognized voice text: '$text'")
             ttsManager.speak(
                 context.getString(R.string.voice_command_tts_not_understood),
-                TtsManager.Priority.HIGH,
+                TtsManager.Priority.INTERACTION,
             )
             hapticFeedback.warning()
             return
@@ -151,7 +151,7 @@ class VoiceCommandManager @Inject constructor(
             CommandExecutor.Result.NoActivity -> {
                 ttsManager.speak(
                     context.getString(R.string.voice_command_tts_engine_not_ready),
-                    TtsManager.Priority.HIGH,
+                    TtsManager.Priority.INTERACTION,
                 )
                 hapticFeedback.warning()
             }
@@ -161,7 +161,7 @@ class VoiceCommandManager @Inject constructor(
                         R.string.voice_command_tts_unavailable_here,
                         context.getString(command.labelRes),
                     ),
-                    TtsManager.Priority.HIGH,
+                    TtsManager.Priority.INTERACTION,
                 )
                 hapticFeedback.warning()
             }
@@ -176,7 +176,7 @@ class VoiceCommandManager @Inject constructor(
                 R.string.voice_command_tts_executing,
                 context.getString(command.labelRes),
             ),
-            TtsManager.Priority.HIGH,
+            TtsManager.Priority.INTERACTION,
         )
         hapticFeedback.confirm()
     }

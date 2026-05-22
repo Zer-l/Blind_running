@@ -5,7 +5,6 @@ import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.data.remote.WebSocketManager
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus
@@ -40,7 +39,6 @@ sealed interface MetNavEvent {
 class MetViewModel @Inject constructor(
     application: Application,
     savedStateHandle: SavedStateHandle,
-    private val ttsManager: TtsManager,
     private val runRequestRepository: RunRequestRepository,
     private val locationProvider: LocationProvider,
     private val wsManager: WebSocketManager,
@@ -55,7 +53,6 @@ class MetViewModel @Inject constructor(
     val navEvent: SharedFlow<MetNavEvent> = _navEvent.asSharedFlow()
 
     init {
-        ttsManager.acquire()
         loadRequest()
         startLocationService(intervalSeconds = 15)
         observeWs()
@@ -110,9 +107,6 @@ class MetViewModel @Inject constructor(
                     RunRequestStatus.RUNNING.name -> _navEvent.emit(MetNavEvent.ToRunning(requestId))
                     RunRequestStatus.ABORTED.name -> {
                         stopLocationService()
-                        val ttsText = if (msg.triggeredRole == "BLIND") "视障用户已取消请求，返回主页"
-                        else "已放弃接单，返回主页"
-                        ttsManager.speakAndWait(ttsText, TtsManager.Priority.HIGH)
                         _navEvent.emit(MetNavEvent.ToHome)
                     }
                     else -> {
@@ -149,6 +143,5 @@ class MetViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         stopLocationService()
-        ttsManager.release()
     }
 }

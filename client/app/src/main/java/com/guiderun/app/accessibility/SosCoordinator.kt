@@ -25,7 +25,7 @@ class SosCoordinator @Inject constructor(
 
     fun trigger(requestId: String?) {
         hapticFeedback.emergency()
-        ttsManager.speak(context.getString(R.string.tts_sos_triggering), TtsManager.Priority.HIGH)
+        ttsManager.speak(context.getString(R.string.tts_sos_triggering), TtsManager.Priority.CRITICAL)
         if (requestId != null) {
             scope.launch {
                 runRequestRepository.emergency(requestId)
@@ -41,17 +41,17 @@ class SosCoordinator @Inject constructor(
             userRepository.getEmergencyContacts()
                 .onSuccess { contacts ->
                     if (contacts.isEmpty()) {
-                        ttsManager.speak(context.getString(R.string.tts_sos_no_contacts), TtsManager.Priority.HIGH)
+                        ttsManager.speak(context.getString(R.string.tts_sos_no_contacts), TtsManager.Priority.CRITICAL)
                         return@onSuccess
                     }
                     contacts.forEach { contact ->
                         // TODO: 实际发送通知给紧急联系人
                     }
-                    ttsManager.speak(context.getString(R.string.tts_sos_notified, contacts.size), TtsManager.Priority.HIGH)
+                    ttsManager.speak(context.getString(R.string.tts_sos_notified, contacts.size), TtsManager.Priority.CRITICAL)
                 }
                 .onFailure { e ->
                     Timber.w(e, "SOS: Failed to load emergency contacts")
-                    ttsManager.speak(context.getString(R.string.tts_sos_load_failed), TtsManager.Priority.HIGH)
+                    ttsManager.speak(context.getString(R.string.tts_sos_load_failed), TtsManager.Priority.CRITICAL)
                 }
         }
     }

@@ -49,8 +49,8 @@ class SettingsFragment : Fragment() {
     /** 每次页面进入或从子页返回时复播，确保视障用户始终能听到自己在哪。 */
     override fun onResume() {
         super.onResume()
-        ttsManager.speak(getString(R.string.tts_page_settings), TtsManager.Priority.HIGH)
-        ttsManager.speak(getString(R.string.tts_hint_settings), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_page_settings), TtsManager.Priority.INTERACTION)
+        ttsManager.speak(getString(R.string.tts_hint_settings), TtsManager.Priority.INTERACTION)
     }
 
     /** 设置页：把"OPEN_xxx"指令翻译成子页导航 */
@@ -104,7 +104,7 @@ class SettingsFragment : Fragment() {
 
         binding.itemAbout.setOnClickListener {
             hapticFeedback.tick()
-            ttsManager.speak(getString(R.string.tts_about), TtsManager.Priority.HIGH)
+            ttsManager.speak(getString(R.string.tts_about), TtsManager.Priority.INTERACTION)
         }
     }
 }

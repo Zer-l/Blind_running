@@ -46,6 +46,15 @@ class CreateRequestFragment : Fragment() {
     private lateinit var permissionHelper: PermissionHelper
     private var permissionChecked = false
 
+    /**
+     * 一键发起标志：onViewCreated 检测到 EXTRA_QUICK_START 即设 true，
+     * 跳过 onResume 的页面 TTS 播报与 startLocationUpdates，避免：
+     * ① 用户已被路由到 WaitingMatch 仍听到"发起跑步请求...长按2秒..."误导提示
+     * ② 真实重新定位浪费电 + 播报"定位成功，xxx"扰乱听感
+     * ③ startLocationUpdates 与 submitWithLastPrefs 竞态覆盖 uiState.locationStatus
+     */
+    private var isQuickStart = false
+
     private var voiceInputManager: SpeechRecognizerManager? = null
     private val micPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -91,9 +100,11 @@ class CreateRequestFragment : Fragment() {
             }
         }
 
-        // 一键发起入口：HomeScreen 长按 2s 触发，跳过手势确认直接用上次偏好提交
+        // 一键发起入口：BlindHome 长按 2s 触发，跳过手势确认直接用上次偏好提交
         if (arguments?.getBoolean(BlindActivity.EXTRA_QUICK_START) == true) {
             arguments?.remove(BlindActivity.EXTRA_QUICK_START)
+            isQuickStart = true
+            permissionChecked = true  // 跳过 onResume 内的权限再申请路径
             viewModel.submitWithLastPrefs()
         }
     }
@@ -291,6 +302,7 @@ class CreateRequestFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        if (isQuickStart) return  // 一键发起：已直接提交，等待 navEvent 跳 WaitingMatch
         viewModel.onScreenResumed()
 
         if (!permissionChecked) {

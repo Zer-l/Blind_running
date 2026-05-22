@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/blindBackground"
+    android:fitsSystemWindows="true">
+
+    <!-- 顶部独立标题区 -->
+    <com.guiderun.app.ui.blind.widget.BlindPageHeader
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:headerTitle="@string/blind_ui_home_title"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 滚动区上分割线 -->
+    <View
+        android:id="@+id/divider_top"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintTop_toBottomOf="@id/header" />
+
+    <ScrollView
+        android:id="@+id/scroll_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/divider_top"
+        app:layout_constraintBottom_toTopOf="@id/divider_bottom">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/blind_space_md">
+
+            <!-- 用户信息卡 -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_user_info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/blind_space_md"
+                app:cardBackgroundColor="?attr/blindSurface"
+                app:cardCornerRadius="@dimen/blind_radius_card"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/blindPrimary"
+                app:strokeWidth="@dimen/blind_stroke_card">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/blind_space_md">
+
+                    <TextView
+                        android:id="@+id/tv_welcome"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_headline"
+                        android:textStyle="bold"
+                        tools:text="欢迎，张三" />
+
+                    <TextView
+                        android:id="@+id/tv_active_role"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/blind_space_xs"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body"
+                        tools:text="当前角色：视障跑者" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 进行中订单横幅（visibility=gone 默认；ViewModel.activeRequest != null 时显示） -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_active_order"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/blind_space_md"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"
+                app:cardBackgroundColor="?attr/blindPrimary"
+                app:cardCornerRadius="@dimen/blind_radius_card"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/blindPrimary"
+                app:strokeWidth="@dimen/blind_stroke_card"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/blind_space_md">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/blind_ui_home_active_order_title"
+                        android:textColor="?attr/blindOnPrimary"
+                        android:textSize="@dimen/blind_text_headline"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_active_order_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/blind_space_xs"
+                        android:textColor="?attr/blindOnPrimary"
+                        android:textSize="@dimen/blind_text_body"
+                        tools:text="跑步中 · 点击恢复" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 历史记录入口（次操作） -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/item_history"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/blind_space_sm"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:minHeight="@dimen/blind_touch_min"
+                app:cardBackgroundColor="?attr/blindSurface"
+                app:cardCornerRadius="@dimen/blind_radius_card"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/blindPrimary"
+                app:strokeWidth="@dimen/blind_stroke_card">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="@dimen/blind_space_md"
+                    android:paddingVertical="@dimen/blind_space_sm">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/blind_ui_home_history_title"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/blind_space_xs"
+                            android:text="@string/blind_ui_home_history_desc"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_label" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:importantForAccessibility="no"
+                        android:text="→"
+                        android:textColor="?attr/blindPrimary"
+                        android:textSize="@dimen/blind_text_headline" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 设置入口（次操作） -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/item_settings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:minHeight="@dimen/blind_touch_min"
+                app:cardBackgroundColor="?attr/blindSurface"
+                app:cardCornerRadius="@dimen/blind_radius_card"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/blindPrimary"
+                app:strokeWidth="@dimen/blind_stroke_card">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="@dimen/blind_space_md"
+                    android:paddingVertical="@dimen/blind_space_sm">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/blind_ui_home_settings_title"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_body"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/blind_space_xs"
+                            android:text="@string/blind_ui_home_settings_desc"
+                            android:textColor="?attr/blindOnSurface"
+                            android:textSize="@dimen/blind_text_label" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:importantForAccessibility="no"
+                        android:text="→"
+                        android:textColor="?attr/blindPrimary"
+                        android:textSize="@dimen/blind_text_headline" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 滚动区下分割线 -->
+    <View
+        android:id="@+id/divider_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/blindPrimary"
+        app:layout_constraintBottom_toTopOf="@id/tv_action_hint" />
+
+    <!-- 主操作手势提示（视觉双通道；contentDescription / 短按 TTS 三通道一致） -->
+    <TextView
+        android:id="@+id/tv_action_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:importantForAccessibility="no"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingVertical="@dimen/blind_space_sm"
+        android:text="@string/blind_hint_home_create_long_press"
+        android:textColor="?attr/blindOnSurface"
+        android:textSize="@dimen/blind_text_hint"
+        app:layout_constraintBottom_toTopOf="@id/footer_actions" />
+
+    <!-- 吸底操作区：发起跑步请求（主） + 一键发起（主，仅 prefs 时显示） + 退出登录（次） -->
+    <LinearLayout
+        android:id="@+id/footer_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingTop="@dimen/blind_space_sm"
+        android:paddingBottom="@dimen/blind_space_lg"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <!-- 最上：退出登录（破坏性次操作，与其他页面"次按钮在上、主按钮在下"对齐） -->
+        <com.guiderun.app.ui.blind.widget.LongPressGestureView
+            android:id="@+id/btn_logout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/blind_touch_primary"
+            android:paddingVertical="@dimen/blind_space_md"
+            android:text="@string/blind_ui_home_btn_logout"
+            android:textColor="?attr/blindOnPrimary"
+            android:textSize="@dimen/blind_text_headline"
+            android:textStyle="bold"
+            app:backgroundTint="?attr/blindWarning"
+            app:cornerRadius="@dimen/blind_radius_button" />
+
+        <!-- 中间：一键发起（仅 prefs 时显示） -->
+        <com.guiderun.app.ui.blind.widget.LongPressGestureView
+            android:id="@+id/btn_quick_start"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/blind_space_sm"
+            android:minHeight="@dimen/blind_touch_primary"
+            android:paddingVertical="@dimen/blind_space_md"
+            android:text="@string/blind_ui_home_btn_quick_start"
+            android:textColor="?attr/blindOnPrimary"
+            android:textSize="@dimen/blind_text_headline"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:backgroundTint="?attr/blindPrimary"
+            app:cornerRadius="@dimen/blind_radius_button"
+            tools:visibility="visible" />
+
+        <!-- 最底：发起跑步请求（主按钮，与其他视障端页面"主按钮在最底"一致） -->
+        <com.guiderun.app.ui.blind.widget.LongPressGestureView
+            android:id="@+id/btn_start"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/blind_space_sm"
+            android:minHeight="@dimen/blind_touch_primary"
+            android:paddingVertical="@dimen/blind_space_md"
+            android:text="@string/blind_ui_home_btn_create"
+            android:textColor="?attr/blindOnPrimary"
+            android:textSize="@dimen/blind_text_headline"
+            android:textStyle="bold"
+            app:backgroundTint="?attr/blindPrimary"
+            app:cornerRadius="@dimen/blind_radius_button" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

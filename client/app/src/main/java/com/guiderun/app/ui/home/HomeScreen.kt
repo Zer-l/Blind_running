@@ -48,6 +48,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 @Composable
 fun HomeScreen(
     onLoggedOut: () -> Unit,
+    onEnterBlindHome: () -> Unit,
     onEnterBlindFlow: () -> Unit,
     onEnterBlindSettings: () -> Unit = {},
     onEnterBlindHistory: () -> Unit = {},
@@ -69,16 +70,25 @@ fun HomeScreen(
         }
     }
 
-    // 首次进入首页（登录后第一个用户屏幕）一次性申请视障端 + 志愿者端共需的核心权限。
-    // 视障端 BaseBlindActivity.onCreate 保留兜底（如首页拒绝则进入 BlindActivity 再申请）。
-    // 拒绝不阻塞业务流程；后续单点入口（CreateRequest/VolunteerOrderList）仍会按需申请。
+    // 视障端用户的设计系统统一在 XML（BlindActivity + BlindHomeFragment）。
+    // 加载完成后检测到 BLIND_RUNNER 即跳走，不渲染 Compose HomeScreen 的视障端入口。
+    LaunchedEffect(uiState.activeRoleEnum, uiState.isLoading) {
+        if (uiState.isLoading) return@LaunchedEffect
+        if (uiState.activeRoleEnum == UserRole.BLIND_RUNNER) {
+            onEnterBlindHome()
+        }
+    }
+
+    // 志愿者端首次进入首页一次性申请核心权限。
+    // 视障端用户不会走到这（上面 LaunchedEffect 已跳走），权限由 BaseBlindActivity.onCreate 批量申请。
     val context = LocalContext.current
     val basePermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { /* 静默处理；细粒度反馈由后续单点入口给出 */ }
     var basePermissionRequested by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(uiState.isLoading) {
+    LaunchedEffect(uiState.isLoading, uiState.activeRoleEnum) {
         if (uiState.isLoading || basePermissionRequested) return@LaunchedEffect
+        if (uiState.activeRoleEnum != UserRole.VOLUNTEER) return@LaunchedEffect
         val missing = buildList {
             if (ContextCompat.checkSelfPermission(
                     context, Manifest.permission.ACCESS_FINE_LOCATION
@@ -88,10 +98,6 @@ fun HomeScreen(
                     context, Manifest.permission.ACCESS_COARSE_LOCATION
                 ) != PackageManager.PERMISSION_GRANTED
             ) add(Manifest.permission.ACCESS_COARSE_LOCATION)
-            if (ContextCompat.checkSelfPermission(
-                    context, Manifest.permission.RECORD_AUDIO
-                ) != PackageManager.PERMISSION_GRANTED
-            ) add(Manifest.permission.RECORD_AUDIO)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(
                     context, Manifest.permission.POST_NOTIFICATIONS
@@ -114,7 +120,8 @@ fun HomeScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (uiState.isLoading) {
+        // 视障端用户已被 LaunchedEffect 路由到 BlindActivity，避免 Compose 一闪而过的视觉断裂
+        if (uiState.isLoading || uiState.activeRoleEnum == UserRole.BLIND_RUNNER) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         } else {
             Column(
@@ -178,40 +185,8 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(AppSpacing.SM),
                 ) {
-                    // 视障端入口：有进行中订单时禁用「开始跑步」，引导用户通过横幅恢复
-                    if (uiState.activeRoleEnum == UserRole.BLIND_RUNNER) {
-                        val subtitleText = when {
-                            activeRequest != null ->
-                                stringResource(R.string.home_btn_disabled_has_active)
-                            quickStartEnabled ->
-                                stringResource(R.string.home_btn_blind_long_press_hint)
-                            else -> stringResource(R.string.home_btn_start_running_desc)
-                        }
-                        HomeMenuItem(
-                            icon = Icons.AutoMirrored.Filled.DirectionsRun,
-                            title = stringResource(R.string.home_btn_enter_blind),
-                            subtitle = subtitleText,
-                            onClick = onEnterBlindFlow,
-                            isPrimary = true,
-                            enabled = activeRequest == null,
-                            onLongPress = if (quickStartEnabled && activeRequest == null)
-                                onQuickStartBlindFlow else null,
-                        )
-                        HomeMenuItem(
-                            icon = Icons.Default.Settings,
-                            title = stringResource(R.string.home_btn_settings),
-                            subtitle = stringResource(R.string.home_btn_settings_desc),
-                            onClick = onEnterBlindSettings,
-                        )
-                        HomeMenuItem(
-                            icon = Icons.Default.History,
-                            title = stringResource(R.string.home_btn_history),
-                            subtitle = stringResource(R.string.home_btn_history_desc),
-                            onClick = onEnterBlindHistory,
-                        )
-                    }
-
-                    // 志愿者端入口：有进行中订单时禁用「开始接单」，引导用户通过横幅恢复
+                    // 视障端用户在加载完成后已被 LaunchedEffect 路由到 BlindActivity，
+                    // 此处仅渲染志愿者入口（compact 双角色场景下，志愿者切到视障会通过 LaunchedEffect 自动跳转）
                     if (uiState.activeRoleEnum == UserRole.VOLUNTEER) {
                         HomeMenuItem(
                             icon = Icons.Default.VolunteerActivism,

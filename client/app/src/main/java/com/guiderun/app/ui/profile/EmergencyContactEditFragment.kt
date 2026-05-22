@@ -75,8 +75,8 @@ class EmergencyContactEditFragment : Fragment() {
         } else {
             R.string.tts_page_emergency_contact_edit_add
         }
-        ttsManager.speak(getString(pageRes), TtsManager.Priority.HIGH)
-        ttsManager.speak(getString(R.string.tts_hint_emergency_contact_edit), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(pageRes), TtsManager.Priority.INTERACTION)
+        ttsManager.speak(getString(R.string.tts_hint_emergency_contact_edit), TtsManager.Priority.INTERACTION)
     }
 
     override fun onPause() {
@@ -151,11 +151,11 @@ class EmergencyContactEditFragment : Fragment() {
                 viewModel.events.collect { event ->
                     when (event) {
                         is EmergencyContactEditEvent.Saved -> {
-                            ttsManager.speak(getString(R.string.tts_contact_save_success), TtsManager.Priority.HIGH)
+                            ttsManager.speak(getString(R.string.tts_contact_save_success), TtsManager.Priority.INTERACTION)
                             findNavController().popBackStack()
                         }
                         is EmergencyContactEditEvent.Error -> {
-                            ttsManager.speak(event.message, TtsManager.Priority.HIGH)
+                            ttsManager.speak(event.message, TtsManager.Priority.INTERACTION)
                         }
                     }
                 }

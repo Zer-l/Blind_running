@@ -24,6 +24,7 @@ class BlindActivity : BaseBlindActivity() {
     companion object {
         private const val EXTRA_DESTINATION = "destination"
 
+        const val DEST_HOME = "home"
         const val DEST_CREATE_REQUEST = "create_request"
         const val DEST_HISTORY = "history"
         const val DEST_SETTINGS = "settings"
@@ -41,7 +42,7 @@ class BlindActivity : BaseBlindActivity() {
          */
         const val EXTRA_QUICK_START = "quick_start"
 
-        fun start(context: Context, destination: String = DEST_CREATE_REQUEST) {
+        fun start(context: Context, destination: String = DEST_HOME) {
             val intent = Intent(context, BlindActivity::class.java).apply {
                 putExtra(EXTRA_DESTINATION, destination)
             }
@@ -72,13 +73,25 @@ class BlindActivity : BaseBlindActivity() {
     private var isStartDestination = true
 
     /**
-     * 统一返回首页：清空 Fragment 栈并 finish Activity，回到 MainActivity 的 HomeScreen。
-     * 不在此处 TTS 播报：调用方 Fragment 已播报 WHY（如"跑步后台继续"），
-     * HomeViewModel.onResume 会播报 WHERE（"首页，<昵称>，<角色>"），双层覆盖足够。
+     * 统一返回首页：popBackStack 到 BlindHome 节点，不 finish Activity。
+     *
+     * 之前的实现 popBackStack(navGraph) + finish() 会销毁 BlindActivity 让 MainActivity 恢复，
+     * 然后 Compose HomeScreen 一闪 → 自动 LaunchedEffect 跳回 BlindActivity 重建，
+     * 触发多次 HomeViewModel.init + 多次 TTS 播报"首页+昵称+角色"。
+     *
+     * 现在保留 Activity 实例，只回退到 BlindHome 节点，HomeViewModel 不重建，
+     * 入场 TTS 由 BlindHomeFragment.onResume 主动控制 1 次。
      */
     fun navigateToHome() {
-        navController?.popBackStack(R.id.blind_nav_graph, true)
-        finish()
+        val controller = navController ?: return
+        val homeId = R.id.blindHomeFragment
+        if (controller.currentDestination?.id == homeId) return
+        // popBackStack 到 home 节点；若图中无该节点（旧入口 DEST_CREATE_REQUEST 起始），fallback 到 finish
+        val popped = controller.popBackStack(homeId, /* inclusive = */ false)
+        if (!popped) {
+            controller.popBackStack(R.id.blind_nav_graph, /* inclusive = */ true)
+            finish()
+        }
     }
 
     // ===== VoiceCommandHost：导航相关由 BlindActivity 提供（持有 NavController） =====
@@ -102,6 +115,7 @@ class BlindActivity : BaseBlindActivity() {
     override fun voiceDescribeStatus(): String {
         val destId = navController?.currentDestination?.id
         val pageRes = when (destId) {
+            R.id.blindHomeFragment -> R.string.tts_page_blind_home
             R.id.blindCreateRequestFragment -> R.string.tts_page_create_request
             R.id.blindWaitingMatchFragment -> R.string.tts_page_waiting_match
             R.id.blindMatchedFragment -> R.string.tts_page_matched
@@ -146,7 +160,7 @@ class BlindActivity : BaseBlindActivity() {
                     recoveryDestId to bundleOf("requestId" to recoveryRequestId)
                 }
                 else -> {
-                    val destination = intent.getStringExtra(EXTRA_DESTINATION) ?: DEST_CREATE_REQUEST
+                    val destination = intent.getStringExtra(EXTRA_DESTINATION) ?: DEST_HOME
                     val destId = when (destination) {
                         DEST_HISTORY -> {
                             isStartDestination = false
@@ -156,7 +170,11 @@ class BlindActivity : BaseBlindActivity() {
                             isStartDestination = false
                             R.id.settingsFragment
                         }
-                        else -> R.id.blindCreateRequestFragment
+                        DEST_CREATE_REQUEST -> {
+                            isStartDestination = false
+                            R.id.blindCreateRequestFragment
+                        }
+                        else -> R.id.blindHomeFragment
                     }
                     destId to intent.extras
                 }

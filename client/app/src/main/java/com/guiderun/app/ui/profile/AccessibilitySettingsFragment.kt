@@ -62,11 +62,11 @@ class AccessibilitySettingsFragment : Fragment() {
         super.onResume()
         ttsManager.speak(
             getString(R.string.tts_page_accessibility_settings),
-            TtsManager.Priority.HIGH,
+            TtsManager.Priority.INTERACTION,
         )
         ttsManager.speak(
             getString(R.string.tts_hint_accessibility_settings),
-            TtsManager.Priority.HIGH,
+            TtsManager.Priority.INTERACTION,
         )
     }
 
@@ -130,7 +130,7 @@ class AccessibilitySettingsFragment : Fragment() {
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 hapticFeedback.tick()
-                ttsManager.speak(getString(R.string.tts_speed_adjusted), TtsManager.Priority.HIGH)
+                ttsManager.speak(getString(R.string.tts_speed_adjusted), TtsManager.Priority.INTERACTION)
             }
         })
     }
@@ -178,7 +178,7 @@ class AccessibilitySettingsFragment : Fragment() {
         val speed = 0.5f + next * 0.1f
         viewModel.updateTtsSpeed(speed)
         binding.tvTtsSpeedValue.text = String.format("%.1fx", speed)
-        ttsManager.speak(getString(R.string.tts_speed_adjusted), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_speed_adjusted), TtsManager.Priority.INTERACTION)
     }
 
     private fun observeUiState() {
@@ -242,7 +242,7 @@ class AccessibilitySettingsFragment : Fragment() {
                         viewModel.onEventHandled()
                         ttsManager.speak(
                             getString(R.string.blind_tts_a11y_setting_applied),
-                            TtsManager.Priority.HIGH,
+                            TtsManager.Priority.INTERACTION,
                         )
                         requireActivity().recreate()
                     }

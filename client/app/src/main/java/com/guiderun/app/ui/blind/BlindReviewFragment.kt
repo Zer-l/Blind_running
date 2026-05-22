@@ -11,6 +11,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.card.MaterialCardView
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
@@ -109,8 +110,27 @@ class BlindReviewFragment : Fragment() {
     private suspend fun collectNavEvents() {
         viewModel.navEvent.collect { event ->
             when (event) {
-                BlindReviewNavEvent.ToHome -> (activity as? BlindActivity)?.navigateToHome()
+                BlindReviewNavEvent.ToHome -> navigateAwayFromReview()
             }
+        }
+    }
+
+    /**
+     * 评价完成后的返回策略：
+     * - 从历史页进入补评：popBackStack 回历史页（保留浏览上下文）
+     * - 正常跑步结束流程：调 BlindActivity.navigateToHome 清栈回首页
+     *
+     * 通过 NavController.previousBackStackEntry 判断来源：从历史进入时上一个节点是 blindHistoryFragment；
+     * 正常流程通过 action_blindRunning_to_review popUpTo blindRunningFragment inclusive=true，
+     * 上一节点会是 blindCreateRequestFragment（栈中残留）或 blindHomeFragment。
+     */
+    private fun navigateAwayFromReview() {
+        val nav = findNavController()
+        val prevId = nav.previousBackStackEntry?.destination?.id
+        if (prevId == R.id.blindHistoryFragment) {
+            nav.popBackStack()
+        } else {
+            (activity as? BlindActivity)?.navigateToHome()
         }
     }
 
@@ -162,7 +182,7 @@ class BlindReviewFragment : Fragment() {
                 override fun handleOnBackPressed() {
                     ttsManager.speak(
                         getString(R.string.blind_tts_review_skipped_by_back),
-                        TtsManager.Priority.HIGH,
+                        TtsManager.Priority.INTERACTION,
                     )
                     viewModel.skip()
                 }

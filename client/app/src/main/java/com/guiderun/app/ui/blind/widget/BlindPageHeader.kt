@@ -65,11 +65,15 @@ class BlindPageHeader @JvmOverloads constructor(
             tvStatus.visibility = if (value.isBlank()) View.GONE else View.VISIBLE
         }
 
-    /** Fragment.onViewCreated/onResume 调用，让 TTS 播报完整页面摘要。 */
+    /**
+     * Fragment.onViewCreated/onResume 调用，让 TTS 播报完整页面摘要。
+     * 默认 NORMAL：页面入场播报属于"被动状态描述"，可被用户操作（INTERACTION）抢占，
+     * 避免页面进入瞬间用户已开始操作时听到无关的页面摘要。
+     */
     fun announceOnEnter(
         tts: TtsManager,
         fullText: String,
-        priority: TtsManager.Priority = TtsManager.Priority.HIGH,
+        priority: TtsManager.Priority = TtsManager.Priority.NORMAL,
     ) {
         tts.speak(fullText, priority)
     }

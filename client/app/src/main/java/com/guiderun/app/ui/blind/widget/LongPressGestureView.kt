@@ -188,9 +188,10 @@ class LongPressGestureView @JvmOverloads constructor(
             haptic?.confirm()
             onThresholdReached?.invoke()
             if (thresholdLabelRes != 0) {
+                // 阈值播报：INTERACTION FLUSH，打断之前任何播报，启动 INTERACTION 锁
                 tts?.speakAndWait(
                     context.getString(thresholdLabelRes),
-                    TtsManager.Priority.HIGH,
+                    TtsManager.Priority.INTERACTION,
                 )
             }
 
@@ -198,7 +199,9 @@ class LongPressGestureView @JvmOverloads constructor(
             for (i in totalSecs downTo 1) {
                 if (state != State.COUNTDOWN) return@launch
                 if (announceEverySecond) {
-                    tts?.speak(i.toString(), TtsManager.Priority.NORMAL)
+                    // 倒计时数字：INTERACTION + flush=false 接力排队，不打断阈值/上一秒数字，
+                    // 但仍持有 INTERACTION 锁让外部 HIGH/NORMAL 等待
+                    tts?.speak(i.toString(), TtsManager.Priority.INTERACTION, flush = false)
                 }
                 if (tickHapticEnabled) haptic?.tick()
                 delay(1000L)
@@ -221,19 +224,20 @@ class LongPressGestureView @JvmOverloads constructor(
         when (prev) {
             State.PRESSING -> {
                 // 阈值前松开 = 视障用户误以为是普通点击按钮，播报长按提示纠正交互模型。
-                // 复用 contentDescription（页面已设为"长按 2 秒...5 秒倒计时内松开撤销"），无需新增 string。
+                // INTERACTION 优先级：保证立即播且不被其他低优消息打断
                 if (tickHapticEnabled) haptic?.tick()
                 val hint = contentDescription ?: text
                 if (!hint.isNullOrBlank()) {
-                    tts?.speak(hint.toString(), TtsManager.Priority.HIGH)
+                    tts?.speak(hint.toString(), TtsManager.Priority.INTERACTION)
                 }
             }
             State.COUNTDOWN -> {
                 haptic?.warning()
                 if (countdownLabelRes != 0) {
+                    // 撤销反馈：INTERACTION FLUSH 打断正在播的倒计时数字
                     tts?.speak(
                         context.getString(countdownLabelRes),
-                        TtsManager.Priority.HIGH,
+                        TtsManager.Priority.INTERACTION,
                     )
                 }
                 onCancel?.invoke()

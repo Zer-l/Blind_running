@@ -60,8 +60,8 @@ class ProfileEditFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        ttsManager.speak(getString(R.string.tts_page_profile_edit), TtsManager.Priority.HIGH)
-        ttsManager.speak(getString(R.string.tts_hint_profile_edit), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_page_profile_edit), TtsManager.Priority.INTERACTION)
+        ttsManager.speak(getString(R.string.tts_hint_profile_edit), TtsManager.Priority.INTERACTION)
     }
 
     override fun onPause() {
@@ -180,7 +180,7 @@ class ProfileEditFragment : Fragment() {
                 viewModel.events.collect { event ->
                     when (event) {
                         is ProfileEditEvent.Saved -> {
-                            ttsManager.speak(getString(R.string.tts_profile_save_success), TtsManager.Priority.HIGH)
+                            ttsManager.speak(getString(R.string.tts_profile_save_success), TtsManager.Priority.INTERACTION)
                             findNavController().popBackStack()
                         }
                         is ProfileEditEvent.Error -> {

@@ -37,8 +37,8 @@ class TrackPlaybackFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         ttsManager.acquire()
-        ttsManager.speak(getString(R.string.tts_page_track_playback), TtsManager.Priority.HIGH)
-        ttsManager.speak(getString(R.string.tts_hint_track_playback), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.tts_page_track_playback), TtsManager.Priority.INTERACTION)
+        ttsManager.speak(getString(R.string.tts_hint_track_playback), TtsManager.Priority.INTERACTION)
     }
 
     override fun onPause() {

@@ -131,9 +131,9 @@ class BlindConfirmDialogFragment : DialogFragment() {
 
         // 进入即 TTS 播报标题 + 正文 + 长按提示；warning 震动提醒打断性操作
         hapticFeedback.warning()
-        ttsManager.speak(getString(titleRes), TtsManager.Priority.HIGH)
-        ttsManager.speak(getString(messageRes), TtsManager.Priority.HIGH)
-        ttsManager.speak(getString(primaryHintRes), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(titleRes), TtsManager.Priority.INTERACTION)
+        ttsManager.speak(getString(messageRes), TtsManager.Priority.INTERACTION)
+        ttsManager.speak(getString(primaryHintRes), TtsManager.Priority.INTERACTION)
     }
 
     private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
@@ -161,7 +161,7 @@ class BlindConfirmDialogFragment : DialogFragment() {
         if (hostTitleRes != 0) {
             ttsManager.speak(
                 getString(R.string.blind_tts_stay_on_page, getString(hostTitleRes)),
-                TtsManager.Priority.HIGH,
+                TtsManager.Priority.INTERACTION,
             )
         }
     }

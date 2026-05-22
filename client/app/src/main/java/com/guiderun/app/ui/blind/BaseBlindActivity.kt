@@ -100,7 +100,7 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
             } else {
                 R.string.blind_permission_record_audio_blocked
             }
-            ttsManager.speak(getString(msgRes), TtsManager.Priority.HIGH)
+            ttsManager.speak(getString(msgRes), TtsManager.Priority.INTERACTION)
             hapticFeedback.warning()
         }
     }
@@ -156,7 +156,7 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
             }
         }
         if (missing.isEmpty()) return
-        ttsManager.speak(getString(R.string.blind_permission_rationale), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(R.string.blind_permission_rationale), TtsManager.Priority.INTERACTION)
         basePermissionLauncher.launch(missing.toTypedArray())
     }
 
@@ -167,7 +167,7 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
         } else {
             R.string.blind_permission_some_denied
         }
-        ttsManager.speak(getString(msgRes), TtsManager.Priority.HIGH)
+        ttsManager.speak(getString(msgRes), TtsManager.Priority.INTERACTION)
         if (allGranted) hapticFeedback.confirm() else hapticFeedback.warning()
     }
 
@@ -188,7 +188,7 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
         timber.log.Timber.w("tryStartVoiceListening: RECORD_AUDIO not granted, requesting…")
         ttsManager.speak(
             getString(R.string.blind_permission_record_audio_requesting),
-            TtsManager.Priority.HIGH,
+            TtsManager.Priority.INTERACTION,
         )
         hapticFeedback.tick()
         recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
@@ -215,21 +215,21 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
     private fun triggerCallPeer() {
         val phone = activeCallPeerPhone
         if (phone.isNullOrBlank()) {
-            ttsManager.speak(getString(R.string.blind_call_no_phone), TtsManager.Priority.HIGH)
+            ttsManager.speak(getString(R.string.blind_call_no_phone), TtsManager.Priority.INTERACTION)
             hapticFeedback.warning()
             return
         }
         when (PhoneDialer.call(this, phone)) {
             PhoneDialer.Result.Calling,
             PhoneDialer.Result.OpenedDialer -> {
-                ttsManager.speak(getString(R.string.blind_call_calling), TtsManager.Priority.HIGH)
+                ttsManager.speak(getString(R.string.blind_call_calling), TtsManager.Priority.INTERACTION)
                 hapticFeedback.confirm()
             }
             PhoneDialer.Result.Failed -> {
                 blindFeedback.error(R.string.call_peer_failed)
             }
             PhoneDialer.Result.InvalidPhone -> {
-                ttsManager.speak(getString(R.string.blind_call_no_phone), TtsManager.Priority.HIGH)
+                ttsManager.speak(getString(R.string.blind_call_no_phone), TtsManager.Priority.INTERACTION)
                 hapticFeedback.warning()
             }
         }
