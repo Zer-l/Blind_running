@@ -122,7 +122,6 @@ class BlindActivity : BaseBlindActivity() {
             R.id.blindRunningFragment -> R.string.tts_page_blind_running
             R.id.blindReviewFragment -> R.string.tts_page_blind_review
             R.id.blindHistoryFragment -> R.string.tts_page_blind_history
-            R.id.blindEditRequestFragment -> R.string.tts_page_edit_request
             R.id.blindTrackPlaybackFragment -> R.string.tts_page_track_playback
             R.id.settingsFragment -> R.string.tts_page_settings
             else -> null

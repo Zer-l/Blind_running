@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.voice.ParsedRequest
 import com.guiderun.app.data.local.RequestPreferences
+import com.guiderun.app.data.location.ForwardGeocoder
 import com.guiderun.app.data.location.ReverseGeocoder
 import com.guiderun.app.domain.model.GeoPoint
 import com.guiderun.app.domain.repository.LocationProvider
@@ -53,6 +55,7 @@ class CreateRequestViewModel @Inject constructor(
     private val createRunRequest: CreateRunRequestUseCase,
     private val locationProvider: LocationProvider,
     private val reverseGeocoder: ReverseGeocoder,
+    private val forwardGeocoder: ForwardGeocoder,
     private val requestPreferences: RequestPreferences,
 ) : ViewModel() {
 
@@ -65,10 +68,17 @@ class CreateRequestViewModel @Inject constructor(
     private var isPageAnnounced = false
     private var hasAnnouncedPage = false
 
+    /**
+     * 系统定位完成后自动填入的地址（用于判断用户是否手改/语音改了集合点）。
+     * 若 [CreateRequestUiState.locationDescription] != 此值 → submit 时需触发正向地理编码。
+     */
+    private var autoLocationDescription: String? = null
+
     init {
         // 启动时预填上次成功提交的偏好（如果有）。
         viewModelScope.launch {
             requestPreferences.loadLast()?.let { prefs ->
+                autoLocationDescription = prefs.locationDesc
                 _uiState.update {
                     it.copy(
                         selectedDurationMinutes = prefs.durationMinutes,
@@ -138,6 +148,7 @@ class CreateRequestViewModel @Inject constructor(
         }
         val displayAddress = address.ifBlank { "当前位置" }
 
+        autoLocationDescription = displayAddress
         _uiState.update {
             it.copy(
                 locationStatus = LocationStatus.Located(point.lat, point.lng),
@@ -145,17 +156,20 @@ class CreateRequestViewModel @Inject constructor(
             )
         }
 
-        if (address.isNotBlank()) {
-            ttsManager.speak(
-                context.getString(R.string.tts_location_success, address),
-                TtsManager.Priority.HIGH,
-            )
-        } else {
-            ttsManager.speak(
-                context.getString(R.string.tts_location_success_no_address),
-                TtsManager.Priority.HIGH,
-            )
+        // 播报完整请求参数（地址 + 时长 + 备注），让用户一次性听清并准备长按确认。
+        // 文案片段复用语音批量回放的资源，确保两套入口（手动 / 语音）播报口径一致。
+        val state = _uiState.value
+        val message = buildString {
+            append(context.getString(R.string.tts_location_success_prefix))
+            if (address.isNotBlank()) {
+                append(context.getString(R.string.blind_tts_voice_input_readback_location, address))
+            }
+            append(context.getString(R.string.blind_tts_voice_input_readback_duration, state.selectedDurationMinutes))
+            if (state.notes.isNotBlank()) {
+                append(context.getString(R.string.blind_tts_voice_input_readback_notes, state.notes))
+            }
         }
+        ttsManager.speak(message, TtsManager.Priority.HIGH)
     }
 
     fun onScreenResumed() {
@@ -189,34 +203,31 @@ class CreateRequestViewModel @Inject constructor(
         _uiState.update { it.copy(notes = text) }
     }
 
+    /** 用户手动编辑（或语音批量更新）了集合地点描述。 */
+    fun onLocationDescriptionChanged(text: String) {
+        _uiState.update { it.copy(locationDescription = text) }
+    }
+
+    /**
+     * 语音批量录入回填：部分字段为空表示用户没说该项，保留当前值。
+     * 若 [ParsedRequest.location] 非空 → 视作用户改写集合点（submit 时会触发 geocode）。
+     */
+    fun onBatchVoiceParsed(parsed: ParsedRequest) {
+        _uiState.update { current ->
+            current.copy(
+                selectedDurationMinutes = parsed.durationMinutes ?: current.selectedDurationMinutes,
+                locationDescription = parsed.location ?: current.locationDescription,
+                notes = parsed.notes ?: current.notes,
+            )
+        }
+    }
+
     fun onLocationPermissionDenied() {
         _uiState.update { it.copy(locationStatus = LocationStatus.Failed) }
         ttsManager.speak(
             context.getString(R.string.tts_location_permission_denied),
             TtsManager.Priority.HIGH,
         )
-    }
-
-    fun onEditRequestResult(
-        durationMinutes: Int,
-        locationDescription: String,
-        notes: String,
-        newLat: Double?,
-        newLng: Double?,
-    ) {
-        _uiState.update {
-            val newStatus = if (newLat != null && newLng != null) {
-                LocationStatus.Located(newLat, newLng)
-            } else {
-                it.locationStatus
-            }
-            it.copy(
-                selectedDurationMinutes = durationMinutes,
-                locationDescription = locationDescription,
-                notes = notes,
-                locationStatus = newStatus,
-            )
-        }
     }
 
     fun onRetryLocation() {
@@ -256,7 +267,7 @@ class CreateRequestViewModel @Inject constructor(
 
     private suspend fun submitRequest() {
         val current = uiState.value
-        val (lat, lng) = when (val s = current.locationStatus) {
+        val (originalLat, originalLng) = when (val s = current.locationStatus) {
             is LocationStatus.Located -> s.lat to s.lng
             is LocationStatus.Failed -> 0.0 to 0.0
             is LocationStatus.Loading -> {
@@ -272,6 +283,26 @@ class CreateRequestViewModel @Inject constructor(
             context.getString(R.string.tts_submitting),
             TtsManager.Priority.HIGH,
         )
+
+        // 用户手改/语音改了地址 → 触发正向地理编码；失败则用旧 GPS 兜底
+        val (lat, lng) = if (
+            autoLocationDescription != null &&
+            current.locationDescription != autoLocationDescription &&
+            current.locationDescription.isNotBlank()
+        ) {
+            val geocoded = forwardGeocoder.geocode(current.locationDescription)
+            if (geocoded != null) {
+                geocoded.lat to geocoded.lng
+            } else {
+                ttsManager.speak(
+                    context.getString(R.string.tts_edit_save_fallback),
+                    TtsManager.Priority.HIGH,
+                )
+                originalLat to originalLng
+            }
+        } else {
+            originalLat to originalLng
+        }
 
         createRunRequest(
             durationMinutes = current.selectedDurationMinutes,

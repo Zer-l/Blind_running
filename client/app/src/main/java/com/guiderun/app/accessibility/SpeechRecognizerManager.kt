@@ -12,7 +12,7 @@ import timber.log.Timber
 
 /**
  * 兼容包装：保留旧的 `SpeechRecognizerManager` 类签名，内部已切换到讯飞 [AsrEngine]，
- * 调用方 (CreateRequestFragment / EditRequestFragment 的备注框麦克风按钮) 无需改动。
+ * 调用方 (CreateRequestFragment 的批量语音输入按钮 / 其他单字段录入入口) 无需改动。
  *
  * 与原系统 `android.speech.SpeechRecognizer` 版本相比：
  * - [isAvailable] 由讯飞 SDK 状态决定，不再因国产 ROM 缺识别服务而失败
@@ -31,20 +31,30 @@ class SpeechRecognizerManager(
     @InstallIn(SingletonComponent::class)
     interface AsrEngineEntryPoint {
         fun asrEngine(): AsrEngine
+        fun ttsManager(): TtsManager
     }
 
-    private val asrEngine: AsrEngine by lazy {
+    private val entryPoint by lazy {
         EntryPointAccessors.fromApplication(
             context.applicationContext,
             AsrEngineEntryPoint::class.java,
-        ).asrEngine()
+        )
     }
+    private val asrEngine: AsrEngine by lazy { entryPoint.asrEngine() }
+    private val ttsManager: TtsManager by lazy { entryPoint.ttsManager() }
 
     private var listening: Boolean = false
 
     val isAvailable: Boolean
         get() = asrEngine.isAvailable
 
+    /**
+     * 启动 ASR 听写。
+     *
+     * 调用前会先 [TtsManager.beginAsr] 关闭 TTS 输出，避免扬声器声音被麦克风录入污染识别结果。
+     * 监听结束（Final / Error / Idle）后再 [TtsManager.endAsr] 解锁，允许业务方在回调里
+     * 立即朗读"已识别 xxx"作为回放——此时 mute 已解除。
+     */
     fun start() {
         if (!isAvailable) {
             onError(context.getString(R.string.voice_input_unavailable))
@@ -52,17 +62,24 @@ class SpeechRecognizerManager(
         }
         if (listening) return
         listening = true
+        ttsManager.beginAsr()
         asrEngine.start { result ->
             when (result) {
                 AsrResult.Ready -> onStartListening()
                 is AsrResult.Final -> {
+                    // 先解锁 TTS，再回调；调用方可在 onResult 内立即朗读回放
+                    ttsManager.endAsr()
+                    listening = false
                     if (result.text.isNotBlank()) onResult(result.text)
                 }
                 is AsrResult.Error -> {
                     Timber.w("SpeechRecognizerManager error: ${result.code}")
+                    ttsManager.endAsr()
+                    listening = false
                     onError(result.message)
                 }
                 AsrResult.Idle -> {
+                    ttsManager.endAsr()
                     listening = false
                 }
                 else -> Unit  // partial / endOfSpeech 当前不暴露
@@ -72,10 +89,18 @@ class SpeechRecognizerManager(
 
     fun stop() {
         asrEngine.stop()
+        // ASR 引擎可能在 stop 后还会异步回调 Idle 才真正释放，这里立即解锁防止 UI 卡 mute
+        if (listening) {
+            ttsManager.endAsr()
+            listening = false
+        }
     }
 
     fun destroy() {
         asrEngine.cancel()
-        listening = false
+        if (listening) {
+            ttsManager.endAsr()
+            listening = false
+        }
     }
 }

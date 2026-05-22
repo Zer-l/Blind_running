@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.os.bundleOf
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
@@ -21,6 +20,7 @@ import com.guiderun.app.accessibility.BlindFeedback
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.SpeechRecognizerManager
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.voice.RequestVoiceParser
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentCreateRequestBinding
@@ -28,6 +28,7 @@ import com.guiderun.app.ui.blind.widget.BlindConfirmDialogFragment
 import com.guiderun.app.util.AppPermissions
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PermissionHelper
+import androidx.core.os.bundleOf
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -59,7 +60,7 @@ class CreateRequestFragment : Fragment() {
     private val micPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) startVoiceInputForNotes()
+        if (granted) startBatchVoiceInput()
         else blindFeedback.permissionDenied(R.string.voice_input_permission_denied)
     }
 
@@ -89,7 +90,6 @@ class CreateRequestFragment : Fragment() {
         setupDurationToggle()
         setupListeners()
         setupGestureFooter()
-        setupEditResultListener()
         setupBackPressInterception()
         setupVoiceCommands()
 
@@ -118,7 +118,6 @@ class CreateRequestFragment : Fragment() {
             countdownLabelRes = R.string.blind_tts_long_press_cancelled,
             onCountdownCommitted = { viewModel.submit() },
         )
-        binding.footer.secondaryButton.setOnClickListener { navigateToEditRequest() }
     }
 
     private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
@@ -131,10 +130,6 @@ class CreateRequestFragment : Fragment() {
             VoiceCommand.CANCEL -> {
                 binding.footer.primaryGesture.reset()
                 viewModel.onBackRequested()
-                true
-            }
-            VoiceCommand.MODIFY_REQUEST -> {
-                navigateToEditRequest()
                 true
             }
             VoiceCommand.DURATION_30 -> { viewModel.onDurationSelected(30); true }
@@ -188,64 +183,85 @@ class CreateRequestFragment : Fragment() {
         }
     }
 
-    private fun setupEditResultListener() {
-        setFragmentResultListener("edit_request_result") { _, bundle ->
-            val newLat = if (bundle.containsKey("lat")) bundle.getDouble("lat") else null
-            val newLng = if (bundle.containsKey("lng")) bundle.getDouble("lng") else null
-            viewModel.onEditRequestResult(
-                durationMinutes = bundle.getInt("durationMinutes", 60),
-                locationDescription = bundle.getString("locationDescription", "当前位置")
-                    ?: "当前位置",
-                notes = bundle.getString("notes", "") ?: "",
-                newLat = newLat,
-                newLng = newLng,
-            )
-        }
-    }
-
     private fun setupListeners() {
+        binding.etLocation.doAfterTextChanged { text ->
+            viewModel.onLocationDescriptionChanged(text?.toString() ?: "")
+        }
         binding.etNotes.doAfterTextChanged { text ->
             viewModel.onNotesChanged(text?.toString() ?: "")
         }
         binding.header.setOnClickListener { viewModel.onRetryLocation() }
-        binding.tilNotes.setEndIconOnClickListener { onMicClicked() }
+        binding.btnVoiceInput.setOnClickListener { onVoiceInputClicked() }
     }
 
-    private fun onMicClicked() {
+    private fun onVoiceInputClicked() {
         if (permissionHelper.isGranted(requireContext(), AppPermissions.RECORD_AUDIO)) {
-            startVoiceInputForNotes()
+            startBatchVoiceInput()
         } else {
             micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 
-    private fun startVoiceInputForNotes() {
+    /**
+     * 批量语音录入：用户一次说出 "地点 xxx 时长 60 备注 xxx"，
+     * 解析成功后回填字段并 TTS 回放，让用户在长按主按钮前确认。
+     *
+     * 与备注/地点输入框麦克风的单字段录入不同，此处使用 [RequestVoiceParser]。
+     * SpeechRecognizerManager.start() 内部已 beginAsr，期间 TTS 静音；
+     * onResult 回调时 mute 已解除，可立即播回放语句。
+     */
+    private fun startBatchVoiceInput() {
+        // 进入语音输入前先重置长按手势，避免用户左手在按按钮，右手点麦克风
+        binding.footer.primaryGesture.reset()
+
         val manager = voiceInputManager ?: SpeechRecognizerManager(
             context = requireContext(),
-            onResult = { text ->
-                val current = binding.etNotes.text?.toString().orEmpty()
-                val merged = if (current.isBlank()) text else "$current $text"
-                binding.etNotes.setText(merged)
-                binding.etNotes.setSelection(merged.length)
-            },
+            onResult = { text -> handleBatchVoiceResult(text) },
             onError = { msg -> blindFeedback.error(msg) },
             onStartListening = { blindFeedback.info(R.string.voice_input_listening) },
         ).also { voiceInputManager = it }
+
         if (!manager.isAvailable) {
             blindFeedback.warning(R.string.voice_input_unavailable)
             return
         }
-        manager.start()
+
+        // 提示用户格式，speakAndWait 等待播完才启动 ASR（SpeechRecognizerManager 内会 beginAsr）。
+        // 提示语保持精简（约 3 秒），timeoutMs 10s 给慢语速 / 字号缩放档充足缓冲，
+        // 避免超时后 beginAsr 打断提示。
+        viewLifecycleOwner.lifecycleScope.launch {
+            ttsManager.speakAndWait(
+                getString(R.string.blind_tts_voice_input_prompt),
+                TtsManager.Priority.INTERACTION,
+                timeoutMs = 10_000L,
+            )
+            manager.start()
+        }
     }
 
-    private fun navigateToEditRequest() {
-        val state = viewModel.uiState.value
-        val args = bundleOf(
-            "durationMinutes" to state.selectedDurationMinutes,
-            "locationDescription" to state.locationDescription,
-            "notes" to state.notes,
-        )
-        findNavController().navigate(R.id.action_createRequest_to_editRequest, args)
+    private fun handleBatchVoiceResult(text: String) {
+        val parsed = RequestVoiceParser.parse(text)
+        if (parsed == null) {
+            // 完全不匹配关键字 → 提示重说，不污染任何字段
+            ttsManager.speak(
+                getString(R.string.blind_tts_voice_input_not_recognized),
+                TtsManager.Priority.INTERACTION,
+            )
+            hapticFeedback.warning()
+            return
+        }
+        viewModel.onBatchVoiceParsed(parsed)
+        hapticFeedback.confirm()
+
+        // 回放识别结果，让用户确认或重说
+        val readback = buildString {
+            append(getString(R.string.blind_tts_voice_input_readback_prefix))
+            parsed.location?.let { append(getString(R.string.blind_tts_voice_input_readback_location, it)) }
+            parsed.durationMinutes?.let { append(getString(R.string.blind_tts_voice_input_readback_duration, it)) }
+            parsed.notes?.let { append(getString(R.string.blind_tts_voice_input_readback_notes, it)) }
+            append(getString(R.string.blind_tts_voice_input_readback_suffix))
+        }
+        ttsManager.speak(readback, TtsManager.Priority.INTERACTION)
     }
 
     private suspend fun collectUiState() {
@@ -259,6 +275,12 @@ class CreateRequestFragment : Fragment() {
             }
             if (binding.toggleDuration.checkedButtonId != expectedButtonId) {
                 binding.toggleDuration.check(expectedButtonId)
+            }
+
+            val currentLocation = binding.etLocation.text?.toString() ?: ""
+            if (currentLocation != state.locationDescription) {
+                binding.etLocation.setText(state.locationDescription)
+                binding.etLocation.setSelection(state.locationDescription.length)
             }
 
             val currentNotes = binding.etNotes.text?.toString() ?: ""

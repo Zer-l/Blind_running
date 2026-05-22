@@ -20,7 +20,7 @@
             app:destination="@id/settingsFragment" />
     </fragment>
 
-    <!-- UI-3：发起请求 -->
+    <!-- UI-3：发起请求（EditRequest 已并入本页） -->
     <fragment
         android:id="@+id/blindCreateRequestFragment"
         android:name="com.guiderun.app.ui.blind.CreateRequestFragment"
@@ -28,28 +28,6 @@
         <action
             android:id="@+id/action_createRequest_to_waitingMatch"
             app:destination="@id/blindWaitingMatchFragment" />
-        <action
-            android:id="@+id/action_createRequest_to_editRequest"
-            app:destination="@id/blindEditRequestFragment" />
-    </fragment>
-
-    <!-- UI-3b：修改请求参数 -->
-    <fragment
-        android:id="@+id/blindEditRequestFragment"
-        android:name="com.guiderun.app.ui.blind.EditRequestFragment"
-        android:label="修改请求参数">
-        <argument
-            android:name="durationMinutes"
-            app:argType="integer"
-            android:defaultValue="60" />
-        <argument
-            android:name="locationDescription"
-            app:argType="string"
-            android:defaultValue="当前位置" />
-        <argument
-            android:name="notes"
-            app:argType="string"
-            android:defaultValue="" />
     </fragment>
 
     <!-- UI-4：匹配等待 -->

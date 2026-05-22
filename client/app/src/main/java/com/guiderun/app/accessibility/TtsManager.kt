@@ -19,6 +19,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -81,6 +82,18 @@ class TtsManager @Inject constructor(
 
     /** utteranceId → 元信息：用于 onDone 时判断是否需要释放 INTERACTION 锁。 */
     private val pendingUtterances = ConcurrentHashMap<String, PendingUtterance>()
+
+    /**
+     * ASR 静音门：true 期间所有 [speak] / [speakAndWait] 直接 no-op。
+     *
+     * 设计意图：讯飞 IAT 听写时若 TTS 仍在播报，扬声器声音会被麦克风录入污染识别结果。
+     * 调用顺序：SpeechRecognizerManager.start() → [beginAsr] → ASR Final/Error/Idle → [endAsr]。
+     *
+     * 与 INTERACTION 锁正交：mute 不消费 pendingInteractionCount，避免静音期跳过的反馈在
+     * endAsr 之后还要补播（被静音的话本来就不需要播）。CRITICAL 也尊重 mute——SOS 与 ASR
+     * 都由用户主动触发，不会并行；如真冲突可由调用方先 endAsr 再 speak。
+     */
+    private val asrMuted = AtomicBoolean(false)
 
     fun init() {
         retryCount = 0
@@ -163,6 +176,7 @@ class TtsManager @Inject constructor(
      * - NORMAL：QUEUE_ADD
      */
     fun speak(text: String, priority: Priority = Priority.NORMAL, flush: Boolean = defaultFlush(priority)) {
+        if (asrMuted.get()) return
         enqueueSpeak(text, priority, flush, deferred = null)
     }
 
@@ -177,6 +191,7 @@ class TtsManager @Inject constructor(
         timeoutMs: Long = 10_000L,
     ) {
         if (_state.value !is TtsState.Ready) return
+        if (asrMuted.get()) return
         val deferred = CompletableDeferred<Unit>()
         val utteranceId = enqueueSpeak(text, priority, flush, deferred) ?: return
 
@@ -305,6 +320,26 @@ class TtsManager @Inject constructor(
     fun stop() {
         engine?.stop()
         clearAllPending()
+    }
+
+    /**
+     * 进入 ASR 静音态：清空当前 TTS 队列 + 关闭后续播报开关。
+     *
+     * 由 [SpeechRecognizerManager.start] 在真正调起讯飞 IAT 之前调用，避免：
+     * ① 仍在播报的"页面入场提示"被麦克风录入污染识别结果
+     * ② 异步触发的 NORMAL/HIGH 播报（如倒计时、状态更新）在 ASR 期间继续抢音频焦点
+     *
+     * 幂等：重复调用安全。与 INTERACTION 锁正交（不动 pendingInteractionCount）。
+     */
+    fun beginAsr() {
+        asrMuted.set(true)
+        engine?.stop()
+        clearAllPending()
+    }
+
+    /** 退出 ASR 静音态。仅恢复 mute gate，不补放被吞掉的播报。 */
+    fun endAsr() {
+        asrMuted.set(false)
     }
 
     /** 手动触发重新初始化 TTS 引擎。 */

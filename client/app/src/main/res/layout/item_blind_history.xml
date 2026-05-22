@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    跑步历史卡片（双端统一布局）：
+      [行1] 用户名（突出，大一号）           状态（右）
+      [行2] 时间
+      [行3] 地点
+      [底部] 补充评价按钮（仅已完成且未评时显示）
+
+    用户名相对时间/地点突出一号字：headline(22sp) vs body/hint。
+-->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -16,59 +25,60 @@
         android:orientation="vertical"
         android:padding="@dimen/blind_space_md">
 
-        <TextView
-            android:id="@+id/tv_location"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_xs"
-            android:textColor="?attr/blindOnSurface"
-            android:textSize="@dimen/blind_text_body"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tv_volunteer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/blind_space_xs"
-            android:textColor="?attr/blindOnSurface"
-            android:textSize="@dimen/blind_text_hint" />
-
+        <!-- 行1：用户名（大字突出） + 状态（右对齐） -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/tv_distance"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="@dimen/blind_space_sm"
-                android:textColor="?attr/blindPrimary"
-                android:textSize="@dimen/blind_text_hint" />
-
-            <TextView
-                android:id="@+id/tv_duration"
+                android:id="@+id/tv_volunteer"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="?attr/blindPrimary"
-                android:textSize="@dimen/blind_text_hint" />
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="?attr/blindOnSurface"
+                android:textSize="@dimen/blind_text_headline"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/blind_space_sm"
                 android:textColor="?attr/blindPrimary"
                 android:textSize="@dimen/blind_text_hint" />
         </LinearLayout>
 
-        <!-- 补评按钮：仅已完成且自己未评时显示 -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_review"
+        <!-- 行2：时间 -->
+        <TextView
+            android:id="@+id/tv_time"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/blind_space_xs"
+            android:textColor="?attr/blindOnSurface"
+            android:textSize="@dimen/blind_text_hint" />
+
+        <!-- 行3：地点 -->
+        <TextView
+            android:id="@+id/tv_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/blind_space_xs"
+            android:textColor="?attr/blindOnSurface"
+            android:textSize="@dimen/blind_text_hint" />
+
+        <!-- 补评按钮（右对齐，半宽） -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_review"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
             android:layout_marginTop="@dimen/blind_space_sm"
             android:minHeight="@dimen/blind_touch_min"
+            android:paddingHorizontal="@dimen/blind_space_lg"
             android:paddingVertical="@dimen/blind_space_sm"
             android:text="@string/blind_history_btn_review"
             android:textColor="?attr/blindOnPrimary"

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    视障端独立语音输入按钮背景：圆角填充 + focus ring。
+
+    用于 CreateRequestFragment 备注下方的批量语音录入大按钮。
+    背景色由主题 attr 控制（黑主题=黄底；白主题=蓝底；黄主题=黑底）。
+-->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="?attr/blindOnPrimary">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/blindPrimary" />
+            <corners android:radius="@dimen/blind_radius_button" />
+            <stroke android:width="2dp" android:color="?attr/blindFocusRing" />
+        </shape>
+    </item>
+</ripple>

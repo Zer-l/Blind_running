@@ -49,8 +49,19 @@ enum class VoiceCommand(
     ),
     STATUS(
         R.string.voice_command_label_status,
-        listOf("当前状态", "现在状态", "现在什么状态", "现在到哪了", "进度",
-            "到哪了", "还有多远", "距离", "位置", "现在多少", "汇报一下"),
+        listOf(
+            // 状态查询（与 hint 引导语严格对齐；单字"查"易误触不收）
+            "状态", "状态查询", "查询状态", "查询", "查一下",
+            // 通用进度/位置
+            "当前状态", "现在状态", "现在什么状态", "现在到哪了", "进度",
+            "到哪了", "还有多远", "距离", "位置", "现在多少", "汇报一下",
+            // 等待时长查询（WaitingMatch 命中率提升）
+            "等多久", "等了多久", "还要等多久", "还有多久", "等待时长",
+            "等多长", "等多长时间", "还要等多长", "还要等多长时间", "等了多长时间",
+            "等了多少", "剩余时间", "还要多长时间", "已经等了多久",
+            // 运动数据
+            "时长", "跑了多久", "跑了多远",
+        ),
     ),
     HELP(
         R.string.voice_command_label_help,
@@ -72,10 +83,6 @@ enum class VoiceCommand(
     SAVE(
         R.string.voice_command_label_save,
         listOf("保存", "提交", "完成", "存储", "存", "保存修改", "保存资料"),
-    ),
-    MODIFY_REQUEST(
-        R.string.voice_command_label_modify_request,
-        listOf("修改参数", "修改请求", "修改", "编辑请求", "改一下", "编辑", "调整"),
     ),
     SKIP(
         R.string.voice_command_label_skip,
@@ -105,7 +112,7 @@ enum class VoiceCommand(
             "不跑了", "停止", "终止"),
     ),
 
-    // ===== 时长选择（CreateRequest / EditRequest） =====
+    // ===== 时长选择（CreateRequest 页） =====
     DURATION_30(
         R.string.voice_command_label_duration_30,
         listOf("三十分钟", "30分钟", "半小时", "半个钟", "半小时跑", "三十"),

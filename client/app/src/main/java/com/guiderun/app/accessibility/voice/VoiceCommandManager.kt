@@ -87,6 +87,9 @@ class VoiceCommandManager @Inject constructor(
                 TtsManager.Priority.INTERACTION,
                 timeoutMs = 3_000L,
             )
+            // prompt 播完才静音 TTS：之后任何 NORMAL/HIGH（如倒计时、定位）都会被吞掉，
+            // 防止扬声器声音污染麦克风录音
+            ttsManager.beginAsr()
             asrEngine.start(::onAsrResult)
         }
     }
@@ -95,6 +98,7 @@ class VoiceCommandManager @Inject constructor(
     fun cancel() {
         if (_state.value != State.Idle) {
             asrEngine.cancel()
+            ttsManager.endAsr()
             _state.value = State.Idle
         }
     }
@@ -102,15 +106,19 @@ class VoiceCommandManager @Inject constructor(
     private fun onAsrResult(result: AsrResult) {
         when (result) {
             is AsrResult.Final -> {
+                // 先解锁 TTS，下游反馈（speakExecuting / not_understood）才能播
+                ttsManager.endAsr()
                 _state.value = State.Parsing
                 handleFinalText(result.text)
             }
             is AsrResult.Error -> {
+                ttsManager.endAsr()
                 Timber.w("ASR error: ${result.code} ${result.message}")
                 ttsManager.speak(result.message, TtsManager.Priority.INTERACTION)
                 hapticFeedback.error()
             }
             AsrResult.Idle -> {
+                ttsManager.endAsr()
                 _state.value = State.Idle
             }
             else -> Unit

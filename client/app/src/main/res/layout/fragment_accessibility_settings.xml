@@ -58,9 +58,13 @@
                     android:layout_weight="1"
                     android:minHeight="@dimen/blind_touch_min"
                     android:paddingVertical="@dimen/blind_space_sm"
+                    android:maxLines="1"
                     android:text="@string/blind_ui_a11y_font_scale_100"
                     android:textColor="?attr/blindOnSurface"
                     android:textSize="@dimen/blind_text_label"
+                    app:autoSizeMaxTextSize="@dimen/blind_text_label"
+                    app:autoSizeMinTextSize="11sp"
+                    app:autoSizeTextType="uniform"
                     app:strokeColor="?attr/blindOnSurface" />
 
                 <com.google.android.material.button.MaterialButton
@@ -71,9 +75,13 @@
                     android:layout_weight="1"
                     android:minHeight="@dimen/blind_touch_min"
                     android:paddingVertical="@dimen/blind_space_sm"
+                    android:maxLines="1"
                     android:text="@string/blind_ui_a11y_font_scale_125"
                     android:textColor="?attr/blindOnSurface"
                     android:textSize="@dimen/blind_text_label"
+                    app:autoSizeMaxTextSize="@dimen/blind_text_label"
+                    app:autoSizeMinTextSize="11sp"
+                    app:autoSizeTextType="uniform"
                     app:strokeColor="?attr/blindOnSurface" />
 
                 <com.google.android.material.button.MaterialButton
@@ -84,9 +92,13 @@
                     android:layout_weight="1"
                     android:minHeight="@dimen/blind_touch_min"
                     android:paddingVertical="@dimen/blind_space_sm"
+                    android:maxLines="1"
                     android:text="@string/blind_ui_a11y_font_scale_150"
                     android:textColor="?attr/blindOnSurface"
                     android:textSize="@dimen/blind_text_label"
+                    app:autoSizeMaxTextSize="@dimen/blind_text_label"
+                    app:autoSizeMinTextSize="11sp"
+                    app:autoSizeTextType="uniform"
                     app:strokeColor="?attr/blindOnSurface" />
 
                 <com.google.android.material.button.MaterialButton
@@ -97,9 +109,13 @@
                     android:layout_weight="1"
                     android:minHeight="@dimen/blind_touch_min"
                     android:paddingVertical="@dimen/blind_space_sm"
+                    android:maxLines="1"
                     android:text="@string/blind_ui_a11y_font_scale_200"
                     android:textColor="?attr/blindOnSurface"
                     android:textSize="@dimen/blind_text_label"
+                    app:autoSizeMaxTextSize="@dimen/blind_text_label"
+                    app:autoSizeMinTextSize="11sp"
+                    app:autoSizeTextType="uniform"
                     app:strokeColor="?attr/blindOnSurface" />
 
             </com.google.android.material.button.MaterialButtonToggleGroup>
@@ -129,9 +145,13 @@
                     android:layout_weight="1"
                     android:minHeight="@dimen/blind_touch_min"
                     android:paddingVertical="@dimen/blind_space_sm"
+                    android:maxLines="1"
                     android:text="@string/blind_ui_a11y_contrast_black"
                     android:textColor="?attr/blindOnSurface"
                     android:textSize="@dimen/blind_text_label"
+                    app:autoSizeMaxTextSize="@dimen/blind_text_label"
+                    app:autoSizeMinTextSize="11sp"
+                    app:autoSizeTextType="uniform"
                     app:strokeColor="?attr/blindOnSurface" />
 
                 <com.google.android.material.button.MaterialButton
@@ -142,9 +162,13 @@
                     android:layout_weight="1"
                     android:minHeight="@dimen/blind_touch_min"
                     android:paddingVertical="@dimen/blind_space_sm"
+                    android:maxLines="1"
                     android:text="@string/blind_ui_a11y_contrast_white"
                     android:textColor="?attr/blindOnSurface"
                     android:textSize="@dimen/blind_text_label"
+                    app:autoSizeMaxTextSize="@dimen/blind_text_label"
+                    app:autoSizeMinTextSize="11sp"
+                    app:autoSizeTextType="uniform"
                     app:strokeColor="?attr/blindOnSurface" />
 
                 <com.google.android.material.button.MaterialButton
@@ -155,9 +179,13 @@
                     android:layout_weight="1"
                     android:minHeight="@dimen/blind_touch_min"
                     android:paddingVertical="@dimen/blind_space_sm"
+                    android:maxLines="1"
                     android:text="@string/blind_ui_a11y_contrast_yellow"
                     android:textColor="?attr/blindOnSurface"
                     android:textSize="@dimen/blind_text_label"
+                    app:autoSizeMaxTextSize="@dimen/blind_text_label"
+                    app:autoSizeMinTextSize="11sp"
+                    app:autoSizeTextType="uniform"
                     app:strokeColor="?attr/blindOnSurface" />
 
             </com.google.android.material.button.MaterialButtonToggleGroup>
@@ -263,9 +291,13 @@
                     android:layout_weight="1"
                     android:minHeight="@dimen/blind_touch_min"
                     android:paddingVertical="@dimen/blind_space_sm"
+                    android:maxLines="1"
                     android:text="@string/blind_ui_a11y_haptic_off"
                     android:textColor="?attr/blindOnSurface"
                     android:textSize="@dimen/blind_text_label"
+                    app:autoSizeMaxTextSize="@dimen/blind_text_label"
+                    app:autoSizeMinTextSize="11sp"
+                    app:autoSizeTextType="uniform"
                     app:strokeColor="?attr/blindOnSurface" />
 
                 <com.google.android.material.button.MaterialButton
@@ -276,9 +308,13 @@
                     android:layout_weight="1"
                     android:minHeight="@dimen/blind_touch_min"
                     android:paddingVertical="@dimen/blind_space_sm"
+                    android:maxLines="1"
                     android:text="@string/blind_ui_a11y_haptic_normal"
                     android:textColor="?attr/blindOnSurface"
                     android:textSize="@dimen/blind_text_label"
+                    app:autoSizeMaxTextSize="@dimen/blind_text_label"
+                    app:autoSizeMinTextSize="11sp"
+                    app:autoSizeTextType="uniform"
                     app:strokeColor="?attr/blindOnSurface" />
 
                 <com.google.android.material.button.MaterialButton
@@ -289,9 +325,13 @@
                     android:layout_weight="1"
                     android:minHeight="@dimen/blind_touch_min"
                     android:paddingVertical="@dimen/blind_space_sm"
+                    android:maxLines="1"
                     android:text="@string/blind_ui_a11y_haptic_strong"
                     android:textColor="?attr/blindOnSurface"
                     android:textSize="@dimen/blind_text_label"
+                    app:autoSizeMaxTextSize="@dimen/blind_text_label"
+                    app:autoSizeMinTextSize="11sp"
+                    app:autoSizeTextType="uniform"
                     app:strokeColor="?attr/blindOnSurface" />
 
             </com.google.android.material.button.MaterialButtonToggleGroup>

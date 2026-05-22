@@ -42,16 +42,22 @@ class HapticFeedback @Inject constructor(
     }
 
     /** 轻触反馈：按钮点击、列表选中 */
-    fun tick() = vibrate(VibrationEffect.createOneShot(20, amp(80)), Channel.TOUCH)
+    fun tick() = vibrate(
+        VibrationEffect.createOneShot(scaleDuration(20), amp(180)),
+        Channel.TOUCH,
+    )
 
     /** 确认反馈：操作成功 */
-    fun confirm() = vibrate(VibrationEffect.createOneShot(60, amp(180)), Channel.TOUCH)
+    fun confirm() = vibrate(
+        VibrationEffect.createOneShot(scaleDuration(60), amp(200)),
+        Channel.TOUCH,
+    )
 
     /** 警告反馈：双脉冲，提示危险操作 */
     fun warning() = vibrate(
         VibrationEffect.createWaveform(
-            longArrayOf(0, 80, 60, 80),
-            scaleAmps(intArrayOf(0, 200, 0, 200)),
+            scaleDurations(longArrayOf(0, 80, 60, 80)),
+            scaleAmps(intArrayOf(0, 220, 0, 220)),
             -1,
         ),
         Channel.NOTIFICATION,
@@ -60,7 +66,7 @@ class HapticFeedback @Inject constructor(
     /** 错误反馈：三脉冲 */
     fun error() = vibrate(
         VibrationEffect.createWaveform(
-            longArrayOf(0, 50, 50, 50, 50, 50),
+            scaleDurations(longArrayOf(0, 50, 50, 50, 50, 50)),
             scaleAmps(intArrayOf(0, 255, 0, 255, 0, 255)),
             -1,
         ),
@@ -101,19 +107,44 @@ class HapticFeedback @Inject constructor(
         }
     }
 
-    /** 单值 amplitude 按 strength 放大；0 输入保留为 0（间隔静默段）。 */
+    /**
+     * 单值 amplitude 按 strength 缩放；0 输入保留为 0（间隔静默段）。
+     *
+     * 设计意图：NORMAL 降到 0.6x 而不是把 STRONG 抬到 1.6x —— 后者会被 [coerceIn]
+     * 顶到 255 上限，让 NORMAL/STRONG 体感几乎一致。改为降低 NORMAL 后两档差异稳定可感。
+     */
     private fun amp(value: Int): Int {
         if (value == 0) return 0
         val factor = when (currentStrength) {
-            STRENGTH_STRONG -> 1.6f
-            else -> 1.0f
+            STRENGTH_STRONG -> 1.0f
+            STRENGTH_NORMAL -> 0.6f
+            else -> 0.6f  // OFF 时 vibrate() 已提前 return，此分支不会到达
         }
         return (value * factor).toInt().coerceIn(1, 255)
     }
 
-    /** 数组 amplitude 按 strength 放大，保留间隔静默段。 */
+    /** 数组 amplitude 按 strength 缩放，保留间隔静默段。 */
     private fun scaleAmps(original: IntArray): IntArray =
         IntArray(original.size) { amp(original[it]) }
+
+    /**
+     * 单值 duration 按 strength 缩放。
+     *
+     * 必要性：部分 ROM 不实现 [android.os.Vibrator.hasAmplitudeControl]，amplitude 参数被忽略
+     * 全部按默认强度震动。此时只能靠 duration 让用户感知 NORMAL/STRONG 的差异。
+     */
+    private fun scaleDuration(ms: Long): Long {
+        if (ms == 0L) return 0L
+        val factor = when (currentStrength) {
+            STRENGTH_STRONG -> 1.5f
+            STRENGTH_NORMAL -> 1.0f
+            else -> 1.0f
+        }
+        return (ms * factor).toLong().coerceAtLeast(1L)
+    }
+
+    private fun scaleDurations(original: LongArray): LongArray =
+        LongArray(original.size) { scaleDuration(original[it]) }
 
     /** 按业务用途分桶。各 ROM 会按 usage 决定是否受"触感反馈/勿扰/省电"开关影响。 */
     private enum class Channel(

@@ -25,6 +25,7 @@ import com.guiderun.app.databinding.FragmentBlindHistoryBinding
 import com.guiderun.app.databinding.ItemBlindHistoryBinding
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus
+import com.guiderun.app.util.DateFormat
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -205,28 +206,16 @@ private class HistoryViewHolder(
 ) : RecyclerView.ViewHolder(binding.root) {
 
     fun bind(request: RunRequest) {
-        val ctx = binding.root.context
+        // 时间：优先实际开跑时间，回落到创建时间
+        val timestamp = request.runStartedAt ?: request.createdAt
+        binding.tvTime.text = DateFormat.historyDateTime(timestamp)
         binding.tvLocation.text = request.meetingLocation.description
-        binding.tvVolunteer.text = ctx.getString(
-            R.string.blind_history_volunteer,
-            request.volunteer?.nickname ?: "未知"
-        )
+        // 用户名顶部突出显示，纯名字不带"志愿者"等前缀
+        binding.tvVolunteer.text = request.volunteer?.nickname ?: "未知"
         binding.tvStatus.text = when {
             request.status.isCompleted() -> "已完成"
             request.status == RunRequestStatus.ABORTED -> "已取消"
             else -> request.status.name
-        }
-        val distKm = (request.actualDistanceMeters ?: 0) / 1000f
-        binding.tvDistance.text = if (distKm > 0) {
-            ctx.getString(R.string.blind_history_actual_distance, distKm)
-        } else {
-            ""
-        }
-        val durMin = (request.actualDurationSeconds ?: 0) / 60
-        binding.tvDuration.text = if (durMin > 0) {
-            ctx.getString(R.string.blind_history_actual_duration, durMin)
-        } else {
-            "${request.expectedDurationMinutes}分钟（预计）"
         }
         binding.root.setOnClickListener { onItemClick(request.id) }
 

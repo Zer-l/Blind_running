@@ -61,6 +61,7 @@ import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
+import com.guiderun.app.util.DateFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -381,6 +382,15 @@ private fun HistoryCard(
 ) {
     val canReview = request.status.isCompleted() && request.myReviewSubmitted == false
 
+    // 双端统一布局：
+    //   [行1] Person 图标 | 用户名（大字突出）         状态 chip
+    //   [行2]            | 时间
+    //   [行3]            | 地点
+    //   [底部]                                     补充评价按钮（仅可评时）
+    val timestamp = request.runStartedAt ?: request.createdAt
+    val timeLabel = DateFormat.historyDateTime(timestamp)
+    val userName = request.blindRunner?.nickname ?: "未知跑友"
+
     ElevatedCard(
         onClick = onClick,
         modifier = Modifier
@@ -388,57 +398,73 @@ private fun HistoryCard(
             .padding(horizontal = AppSpacing.MD),
         shape = AppRadius.LargeShape,
     ) {
-        Column(modifier = Modifier.padding(AppSpacing.MD)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+        Row(
+            modifier = Modifier.padding(AppSpacing.MD),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.MD),
+        ) {
+            // 左侧 Person 图标（志愿者端保留）
+            Surface(
+                shape = AppRadius.MediumShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(44.dp),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.MD),
-                ) {
-                    Surface(
-                        shape = AppRadius.MediumShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.size(44.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.padding(AppSpacing.SM),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = request.blindRunner?.nickname ?: "未知跑友",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = request.meetingLocation.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-                // 状态标签
-                StatusChip(status = request.status)
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier.padding(AppSpacing.SM),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
-            // 补评按钮
-            if (canReview) {
-                Spacer(modifier = Modifier.height(AppSpacing.MD))
-                OutlinedButton(
-                    onClick = onReviewClick,
+            // 右侧主信息列
+            Column(modifier = Modifier.weight(1f)) {
+                // 行1：用户名（突出，比时间/地点大一号） + 状态 chip 右对齐
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = AppRadius.MediumShape,
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text(stringResource(R.string.volunteer_history_btn_review))
+                    Text(
+                        text = userName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(modifier = Modifier.width(AppSpacing.SM))
+                    StatusChip(status = request.status)
+                }
+                Spacer(modifier = Modifier.height(AppSpacing.XS))
+                // 行2：时间
+                Text(
+                    text = timeLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(AppSpacing.XS))
+                // 行3：地点
+                Text(
+                    text = request.meetingLocation.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                // 补评按钮：右对齐
+                if (canReview) {
+                    Spacer(modifier = Modifier.height(AppSpacing.SM))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        OutlinedButton(
+                            onClick = onReviewClick,
+                            shape = AppRadius.MediumShape,
+                        ) {
+                            Text(stringResource(R.string.volunteer_history_btn_review))
+                        }
+                    }
                 }
             }
         }

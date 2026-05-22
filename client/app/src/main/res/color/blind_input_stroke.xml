@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    视障端 TextInputLayout 的 boxStrokeColor ColorStateList。
+
+    Material3 OutlinedBox 的 boxStrokeColor 只在收到 ColorStateList 时才会区分
+    focused / hovered / default 三态；之前直接传 ?attr/blindOnSurface 单色资源时，
+    未聚焦状态 stroke 会被解释为半透明 → 黑底主题上几乎不可见。
+
+    现以 state list 强制覆盖：聚焦用 primary（黑主题=黄），未聚焦用 onSurface（=白），
+    保证任何主题下边框都清晰可见。
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true" android:color="?attr/blindPrimary" />
+    <item android:state_hovered="true" android:color="?attr/blindOnSurface" />
+    <item android:color="?attr/blindOnSurface" />
+</selector>
