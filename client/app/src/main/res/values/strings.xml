@@ -28,7 +28,7 @@
     <string name="role_blind_runner">视障跑者</string>
     <string name="role_blind_runner_desc">我需要志愿者陪我跑步</string>
     <string name="role_volunteer">志愿者</string>
-    <string name="role_volunteer_desc">我愿意陪视障人士跑步</string>
+    <string name="role_volunteer_desc">我乐于陪视障人士跑步</string>
     <string name="btn_confirm">确认</string>
 
     <!-- 首页 -->
@@ -54,7 +54,7 @@
     <string name="btn_exit">退出</string>
 
     <!-- 首页视障端入口 -->
-    <string name="home_btn_enter_blind">开始跑步（视障端）</string>
+    <string name="home_btn_enter_blind">开始跑步</string>
 
     <!-- 视障端语音控制 -->
     <string name="blind_speech_hint">请说出您的指令，例如"发起跑步"</string>
@@ -99,13 +99,13 @@
     <string name="matched_status_met">志愿者已到达汇合点，请长按确认按钮2秒汇合</string>
 
     <!-- 首页志愿者端入口 -->
-    <string name="home_btn_enter_volunteer">开始接单（志愿者端）</string>
+    <string name="home_btn_enter_volunteer">开始跑步</string>
 
     <!-- 志愿者首页 -->
-    <string name="volunteer_home_title">志愿者接单</string>
+    <string name="volunteer_home_title">接单</string>
     <string name="volunteer_toggle_label">接单状态</string>
     <string name="volunteer_online">在线</string>
-    <string name="volunteer_offline">下线</string>
+    <string name="volunteer_offline">离线</string>
     <string name="volunteer_offline_hint">切换为在线即可开始接单</string>
     <string name="volunteer_no_requests">附近暂无跑步请求</string>
     <string name="volunteer_refresh">刷新</string>
@@ -272,6 +272,11 @@
 
     <!-- 中断对话框 message 后缀：提示订单可从首页横幅恢复 -->
     <string name="interrupt_hint_resume">订单将在后台继续，可从首页横幅恢复。</string>
+
+    <!-- 视障用户取消订单 → 志愿者端弹窗 -->
+    <string name="cancelled_dialog_title">订单已取消</string>
+    <string name="cancelled_dialog_message_blind">视障跑友已取消本次跑步订单。</string>
+    <string name="cancelled_dialog_btn_home">返回首页</string>
 
     <!-- 申请结束跑步确认 -->
     <string name="end_run_title">申请结束跑步</string>

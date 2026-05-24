@@ -43,6 +43,7 @@ data class VolunteerRunningUiState(
     val isPaused: Boolean = false,
     /** 已发送结束申请，等待视障端确认中。 */
     val endRequestPending: Boolean = false,
+    val showCancelledDialog: Boolean = false,
     val errorMessage: String? = null,
 )
 
@@ -175,7 +176,7 @@ class VolunteerRunningViewModel @Inject constructor(
                     }
                     RunRequestStatus.ABORTED.name -> {
                         stopTrackingService()
-                        _navEvent.emit(VolunteerRunningNavEvent.ToHome)
+                        _uiState.update { it.copy(showCancelledDialog = true) }
                     }
                     else -> {}
                 }
@@ -202,6 +203,11 @@ class VolunteerRunningViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    fun onCancelledDialogDismiss() {
+        _uiState.update { it.copy(showCancelledDialog = false) }
+        viewModelScope.launch { _navEvent.emit(VolunteerRunningNavEvent.ToHome) }
     }
 
     fun onErrorShown() {

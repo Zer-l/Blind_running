@@ -30,6 +30,7 @@ data class NavigatingUiState(
     val isLoading: Boolean = false,
     val mapState: GuideRunMapState = GuideRunMapState(),
     val isConfirmingMet: Boolean = false,
+    val showCancelledDialog: Boolean = false,
     val errorMessage: String? = null,
 )
 
@@ -131,7 +132,7 @@ class NavigatingViewModel @Inject constructor(
                     RunRequestStatus.MET.name -> _navEvent.emit(NavigatingNavEvent.ToMet(requestId))
                     RunRequestStatus.ABORTED.name -> {
                         stopLocationService()
-                        _navEvent.emit(NavigatingNavEvent.ToHome)
+                        _uiState.update { it.copy(showCancelledDialog = true) }
                     }
                     else -> {
                         val currentStatus = _uiState.value.request?.status?.name
@@ -202,6 +203,11 @@ class NavigatingViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    fun onCancelledDialogDismiss() {
+        _uiState.update { it.copy(showCancelledDialog = false) }
+        viewModelScope.launch { _navEvent.emit(NavigatingNavEvent.ToHome) }
     }
 
     fun onErrorShown() {

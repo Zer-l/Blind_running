@@ -72,6 +72,16 @@ fun VolunteerRunningScreen(
 
     BackHandler { showInterruptDialog = true }
 
+    if (uiState.showCancelledDialog) {
+        InterruptDialog(
+            title = stringResource(R.string.cancelled_dialog_title),
+            message = stringResource(R.string.cancelled_dialog_message_blind),
+            onDismissRequest = viewModel::onCancelledDialogDismiss,
+            stayLabel = stringResource(R.string.cancelled_dialog_btn_home),
+            onStay = viewModel::onCancelledDialogDismiss,
+        )
+    }
+
     if (showInterruptDialog) {
         InterruptDialog(
             title = stringResource(R.string.interrupt_title_leave_running),

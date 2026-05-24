@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -63,6 +65,16 @@ fun NavigatingScreen(
     var showInterruptDialog by remember { mutableStateOf(false) }
 
     BackHandler { showInterruptDialog = true }
+
+    if (uiState.showCancelledDialog) {
+        InterruptDialog(
+            title = stringResource(R.string.cancelled_dialog_title),
+            message = stringResource(R.string.cancelled_dialog_message_blind),
+            onDismissRequest = viewModel::onCancelledDialogDismiss,
+            stayLabel = stringResource(R.string.cancelled_dialog_btn_home),
+            onStay = viewModel::onCancelledDialogDismiss,
+        )
+    }
 
     if (showInterruptDialog) {
         val status = uiState.request?.status
@@ -138,6 +150,8 @@ fun NavigatingScreen(
             NavigatingBottomCard(
                 runnerName = uiState.request?.blindRunner?.nickname ?: "",
                 address = uiState.request?.meetingLocation?.description ?: "",
+                durationMinutes = uiState.request?.expectedDurationMinutes ?: 0,
+                notes = uiState.request?.notes,
                 isConfirming = uiState.isConfirmingMet,
                 onArrivedClick = viewModel::onArrivedClick,
             )
@@ -149,6 +163,8 @@ fun NavigatingScreen(
 private fun NavigatingBottomCard(
     runnerName: String,
     address: String,
+    durationMinutes: Int,
+    notes: String?,
     isConfirming: Boolean,
     onArrivedClick: () -> Unit,
 ) {
@@ -227,6 +243,74 @@ private fun NavigatingBottomCard(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+
+            // 预计时长
+            if (durationMinutes > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.MD),
+                ) {
+                    Surface(
+                        shape = AppRadius.MediumShape,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = null,
+                            modifier = Modifier.padding(AppSpacing.SM),
+                            tint = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "预计时长",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = "${durationMinutes}分钟",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
+
+            // 备注
+            if (!notes.isNullOrBlank()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.MD),
+                ) {
+                    Surface(
+                        shape = AppRadius.MediumShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notes,
+                            contentDescription = null,
+                            modifier = Modifier.padding(AppSpacing.SM),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "备注",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = notes,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 3,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         )
                     }

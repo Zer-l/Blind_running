@@ -270,7 +270,7 @@ private fun VolunteerStatsCard(
     ) {
         Column(modifier = Modifier.padding(AppSpacing.LG)) {
             Text(
-                text = "我的陪跑统计",
+                text = "我的跑步统计",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,

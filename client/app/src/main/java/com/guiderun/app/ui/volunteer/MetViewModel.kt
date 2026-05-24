@@ -28,6 +28,7 @@ data class MetUiState(
     val isLoading: Boolean = false,
     val mapState: GuideRunMapState = GuideRunMapState(),
     val statusMessage: String = "",
+    val showCancelledDialog: Boolean = false,
 )
 
 sealed interface MetNavEvent {
@@ -107,7 +108,7 @@ class MetViewModel @Inject constructor(
                     RunRequestStatus.RUNNING.name -> _navEvent.emit(MetNavEvent.ToRunning(requestId))
                     RunRequestStatus.ABORTED.name -> {
                         stopLocationService()
-                        _navEvent.emit(MetNavEvent.ToHome)
+                        _uiState.update { it.copy(showCancelledDialog = true) }
                     }
                     else -> {
                         val currentStatus = _uiState.value.request?.status?.name
@@ -138,6 +139,11 @@ class MetViewModel @Inject constructor(
             runRequestRepository.getRunRequest(requestId)
                 .onSuccess { req -> _uiState.update { it.copy(request = req) } }
         }
+    }
+
+    fun onCancelledDialogDismiss() {
+        _uiState.update { it.copy(showCancelledDialog = false) }
+        viewModelScope.launch { _navEvent.emit(MetNavEvent.ToHome) }
     }
 
     override fun onCleared() {
