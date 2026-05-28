@@ -178,11 +178,23 @@ class RunRequestRepositoryImpl @Inject constructor(
     override suspend fun getReviews(requestId: String): Result<List<Review>> =
         execute { api.getReviews(requestId).requireData().items.map { it.toDomain() } }
 
-    override suspend fun uploadTracks(requestId: String, role: String, points: List<TrackPoint>): Result<List<RunTrack>> =
+    override suspend fun uploadTracks(
+        requestId: String,
+        role: String,
+        points: List<TrackPoint>,
+        totalDistanceMeters: Int?,
+        totalDurationSeconds: Int?,
+        avgPaceSeconds: Int?,
+        maxSpeed: Float?,
+    ): Result<List<RunTrack>> =
         execute {
             val dto = UploadTracksDto(
                 role = role,
                 points = points.map { TrackPointDto(it.t, it.lat, it.lng, it.acc, it.spd) },
+                totalDistanceMeters = totalDistanceMeters,
+                totalDurationSeconds = totalDurationSeconds,
+                avgPaceSeconds = avgPaceSeconds,
+                maxSpeed = maxSpeed,
             )
             api.uploadTracks(requestId, dto).requireData().items.map { it.toDomain() }
         }

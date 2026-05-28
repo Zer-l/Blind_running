@@ -18,8 +18,8 @@ import com.guiderun.app.data.local.entity.RunTrackBufferEntity
 import com.guiderun.app.domain.repository.LocationProvider
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.util.PaceCalculator
-import com.guiderun.app.util.PaceWindow
 import com.guiderun.app.util.SimpleKalmanFilter
+import com.guiderun.app.util.SpeedSmoother
 import java.util.LinkedList
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -46,7 +46,7 @@ import kotlinx.coroutines.sync.withLock
  *    - 精度差（accuracy > 阈值）→ 丢弃
  *    - 相邻点位移 < MIN_DELTA_M 且 dt < MIN_DELTA_TIME_MS → 不计入距离（屏蔽静止漂移）
  *    - 瞬时速度 > MAX_SPEED_MPS（≈ 43 km/h）→ 视为离群点，整帧丢弃
- * 4. **配速窗口**：使用 [PaceWindow]，"最近 30s 或 100m" 双约束，与采样间隔解耦。
+ * 4. **配速**：基于多普勒速度（Location.getSpeed）做 [SpeedSmoother] 5s 滑动平均，单层平滑。
  * 5. **距离精度**：累加器使用 [Double]，长跑无累加误差。
  * 6. **写入节奏**：每帧 location 触发一次 stats 写；额外 1 Hz 兜底 tick 保证无新点时时长仍涨。
  * 7. **写入并发**：通过 [statsMutex] 串行化 stats 读 / 写，避免 location 帧与 1Hz tick 同时 upsert。
@@ -78,19 +78,24 @@ abstract class RunTrackingService : Service() {
     private var lastSmoothLng: Double? = null
 
     private var accumulatedDistanceM: Double = 0.0
-    private var lastSmoothSpeedMps: Float = 0f
+    // 本帧"有效速度"（m/s）：多普勒优先，缺失时 fallback 位置差分。供距离门控 / 暂停判定 / maxSpeed / 轨迹缓存共用。
+    private var lastEffectiveSpeedMps: Float = 0f
+    // 最近一帧有效定位的 elapsedRealtime；用于 flushStats 判断帧是否新鲜（陈旧则按静止推进暂停）。
+    private var lastFrameElapsedMs: Long = 0L
 
-    private val paceWindow = PaceWindow()
+    // 多普勒健康检测：部分机型 / 模拟定位 hasSpeed()=true 但 speed 恒 0，
+    // 会让距离/配速冻死、暂停无法恢复。累计"多普勒报~0 却位置明显持续移动"的帧，超阈值则本会话弃用多普勒。
+    private var dopplerZeroMovingFrames = 0
+    private var dopplerUnavailable = false
+
+    // 配速平滑器：对多普勒速度做 5s 滑动平均，单层平滑（替代旧的 PaceWindow + EMA 双层）
+    private val speedSmoother = SpeedSmoother()
     private val statsMutex = Mutex()
 
-    // 动态采样间隔
+    // 采样间隔：活动中固定 1Hz；自动暂停时降频省电（暂停期配速冻结，不影响手感）
     private val locationIntervalFlow = MutableStateFlow(DEFAULT_INTERVAL_MS)
-    private var isStationary = false
-    private var stationarySinceMs: Long = -1L
 
-    // 自动暂停（独立于 isStationary）
-    // - isStationary：用于把采集间隔拉到 30s 省电（30s 触发，体感慢）
-    // - isPaused：用于"距离/配速/运动时长 冻结"（10s 触发，体感快）
+    // 自动暂停：连续低速 → 冻结"距离/配速/运动时长"
     private var isPaused: Boolean = false
     private var lowSpeedSinceRealtimeMs: Long = -1L
     private var pendingResumeSinceRealtimeMs: Long = -1L
@@ -117,40 +122,44 @@ abstract class RunTrackingService : Service() {
 
     companion object {
         const val EXTRA_REQUEST_ID = "request_id"
-        const val DEFAULT_INTERVAL_MS = 3_000L
+        // 固定 1Hz 采集：主流运动 App 标准，配速/距离/时长每秒平滑刷新
+        const val DEFAULT_INTERVAL_MS = 1_000L
+        // 自动暂停时降频省电（暂停期配速冻结，2s 仍足够快识别"又跑起来"）
+        private const val PAUSED_INTERVAL_MS = 2_000L
 
         private const val NOTIFICATION_ID = 1002
         private const val CHANNEL_ID = "run_tracking"
         private const val UPLOAD_BATCH_SIZE = 100
-        private const val UPLOAD_INTERVAL_MS = 30_000L
+        // 15s 周期增量上传：缩短窗口，弱网/中途退出时已上传的点更多，配合结束 flush 减少丢失
+        private const val UPLOAD_INTERVAL_MS = 15_000L
         private const val TICK_INTERVAL_MS = 1_000L
 
         // 精度门控
         private const val ACCURACY_THRESHOLD_M = 30f
+        // 多普勒速度精度门控：speedAccuracy 超过该值视为不可信，回退位置差分
+        private const val SPEED_ACCURACY_THRESHOLD_MPS = 2f
+        // 多普勒健康检测：speed < 该值视为"报 0"
+        private const val DOPPLER_ZERO_EPS_MPS = 0.1f
+        // 位置差分速度 > 该值视为"明显在动"（高于静止 GPS 抖动噪声，约等于慢走）
+        private const val DOPPLER_HEALTH_SPEED_MPS = 1.0f
+        // 连续 N 帧"多普勒报 0 但位置在动"才判定多普勒坏（≈8s，避免偶发抖动误判）
+        private const val DOPPLER_HEALTH_FRAMES = 8
 
-        // 离群点阈值（按瞬时速度判断，比固定距离阈值更准）
+        // 离群点阈值（按瞬时速度判断）
         private const val MAX_SPEED_MPS = 12f         // ≈ 43 km/h
-        // 位移 < 5m 视为静止漂移：实测视障端原地不动时 GPS 单帧漂移常见 3-6m，原来 2m 太低
-        private const val MIN_DELTA_M = 5f
-        // isMicroMove 的 dt 下限固定 5s；上限改为跟随采样间隔（见 handleLocation），
-        // 避免 30s 静止省电模式下 deltaTimeMs ≈ 30s 跌出窗口、微漂移直接入账
-        private const val MIN_DELTA_TIME_MS = 5_000L
-        // 相对精度门控：位移必须显著大于定位误差，否则一定是噪声
-        // accuracy * 0.5 经验值：accuracy=20m 的点要求位移 > 10m 才算真位移
-        private const val NOISE_ACCURACY_RATIO = 0.5f
+        // 移动门控：有效速度 ≥ 该值才累加距离，否则视为静止（杀 GPS 漂移）
+        // 取代旧的 MIN_DELTA_M/isMicroMove/NOISE_ACCURACY 位移启发式（那套在 1Hz 下会误杀步行）
+        private const val MOVING_SPEED_MPS = 0.5f
 
-        // 静止判定（用于采集间隔降频）
-        private const val STATIONARY_SPEED_MPS = 0.5f
-        private const val STATIONARY_DURATION_MS = 30_000L
-        private const val STATIONARY_INTERVAL_MS = 30_000L
+        // 帧新鲜度阈值：超过该时长无有效定位帧，flushStats 按"静止（速度 0）"推进暂停判定。
+        // 取 3s（活动期望 1Hz 出帧），覆盖 GPS 未锁定 / 室内信号差 / 帧被精度门控丢弃等场景。
+        private const val FRAME_STALE_MS = 3_000L
 
         // 自动暂停判定（用于距离/配速冻结）
-        // 0.7 m/s ≈ 2.5 km/h：原 0.5 太接近 GPS 噪声速度（6m/5s=1.2m/s），导致原地噪声反复踢出暂停
-        private const val PAUSE_SPEED_MPS = 0.7f
+        private const val PAUSE_SPEED_MPS = 0.7f      // 持续低于该速度才入暂停
         private const val PAUSE_DURATION_MS = 10_000L // 持续 10s 才入暂停
-        private const val RESUME_SPEED_MPS = 1.0f     // 高于该速度即恢复
-        // 3s 高速持续才退出暂停：原来 0 单帧噪声就能恢复，造成静止时距离仍在涨
-        private const val RESUME_DURATION_MS = 3_000L
+        private const val RESUME_SPEED_MPS = 1.0f     // 高于该速度才恢复
+        private const val RESUME_DURATION_MS = 3_000L // 持续 3s 才退出暂停
 
         // 速度→采集间隔自适应
         private const val SPEED_WALK = 2.0f
@@ -255,50 +264,53 @@ abstract class RunTrackingService : Service() {
         val nowRealtimeMs = if (geo.realtimeMs > 0L) geo.realtimeMs else SystemClock.elapsedRealtime()
         val wallNowMs = System.currentTimeMillis()
 
-        // 3. 离群速度过滤（用原始坐标计算瞬时速度）
+        // 3. 位置差分（用原始坐标）：用于距离累加 + 多普勒缺失时的速度兜底
         val prevRawLat = lastRawLat
         val prevRawLng = lastRawLng
         val prevRawTime = lastRawRealtimeMs
 
         var deltaM = 0f
         var deltaTimeMs = 0L
+        var posDiffSpeed = 0f
         if (prevRawLat != null && prevRawLng != null && prevRawTime > 0L) {
             deltaM = PaceCalculator.distanceMeters(prevRawLat, prevRawLng, geo.lat, geo.lng)
             deltaTimeMs = nowRealtimeMs - prevRawTime
             if (deltaTimeMs <= 0L) return // 时间倒退，丢弃
-            val speed = if (deltaTimeMs > 0L) deltaM / (deltaTimeMs / 1000f) else 0f
-            if (speed > MAX_SPEED_MPS) return // 离群点
-            lastSmoothSpeedMps = speed
+            posDiffSpeed = deltaM / (deltaTimeMs / 1000f)
         }
 
-        // 4. 平滑（仅影响轨迹写入与展示坐标，不影响距离）
+        // 4. 有效速度：多普勒优先（精度可信时），否则用位置差分兜底
+        val effectiveSpeed = resolveSpeed(geo, posDiffSpeed)
+        if (effectiveSpeed > MAX_SPEED_MPS) return // 离群点（≈43km/h 以上）整帧丢弃
+        lastEffectiveSpeedMps = effectiveSpeed
+        lastFrameElapsedMs = SystemClock.elapsedRealtime()
+
+        // 5. 平滑（仅影响轨迹写入与展示坐标，不影响距离）
         val (medianLat, medianLng) = medianFilter(geo.lat, geo.lng)
         val (smoothLat, smoothLng) = kalmanFilter.update(medianLat, medianLng, geo.accuracy)
 
-        // 5. 自动暂停状态机（必须在距离累加之前判定，使本帧位移直接被冻结）
-        updatePauseState(nowRealtimeMs)
+        // 6. 暂停判定已移到 flushStats（1Hz 驱动，不依赖帧到达，静止/无信号也能及时进暂停）。
+        //    这里直接用上次判定的 isPaused 控制本帧累距，至多一帧延迟，无影响。
 
-        // 6. 位移门控 + 暂停冻结：屏蔽静止漂移对距离的污染；暂停期间距离/配速完全不动
-        //   - isMicroMove：位移 < 5m 且 dt 在合理采样窗口内 → 微漂移（dt 上限跟随当前采样间隔的 1.5 倍，
-        //     兼容 30s 静止模式，否则 30s 间隔下漂移会跌出窗口被错误计入距离）
-        //   - isNoiseMove：位移小于定位误差的 0.5 倍 → 一定是噪声（accuracy=20m 时要求位移 > 10m）
-        val maxMicroDt = (locationIntervalFlow.value * 3 / 2).coerceAtLeast(MIN_DELTA_TIME_MS)
-        val isMicroMove = deltaM < MIN_DELTA_M && deltaTimeMs in 1..maxMicroDt
-        val isNoiseMove = deltaM < geo.accuracy * NOISE_ACCURACY_RATIO
-        if (!isPaused && prevRawLat != null && prevRawLng != null && !isMicroMove && !isNoiseMove) {
+        // 7. 速度平滑器喂样本（暂停期不喂，恢复后窗口自然重建，避免 0 速污染）
+        if (!isPaused) speedSmoother.add(effectiveSpeed, nowRealtimeMs)
+
+        // 8. 距离累加：速度门控（有效速度 ≥ MOVING_SPEED_MPS 才算移动）。
+        //    取代旧位移启发式——多普勒速度判定"是否在动"远比"位移阈值"准，且 1Hz 步行不再被误杀。
+        val isMoving = effectiveSpeed >= MOVING_SPEED_MPS
+        if (!isPaused && isMoving && prevRawLat != null && deltaTimeMs > 0L) {
             accumulatedDistanceM += deltaM
-            paceWindow.addSegment(deltaM, deltaTimeMs, nowRealtimeMs)
         }
 
-        // 7. 更新"上一个原始点 / 平滑点"
+        // 9. 更新"上一个原始点 / 平滑点"
         lastRawLat = geo.lat
         lastRawLng = geo.lng
         lastRawRealtimeMs = nowRealtimeMs
         lastSmoothLat = smoothLat
         lastSmoothLng = smoothLng
 
-        // 8. 写入轨迹缓存（用平滑后的坐标，但保留原始 accuracy）
-        //    暂停期间仍写轨迹点，便于回放看到"停在原地"的轨迹形态。
+        // 10. 写入轨迹缓存（坐标用平滑值，speed 存有效速度=多普勒优先，供回放配速复用）
+        //     暂停期间仍写轨迹点，便于回放看到"停在原地"的轨迹形态。
         trackBufferDao.insert(
             RunTrackBufferEntity(
                 requestId = requestId,
@@ -308,16 +320,40 @@ abstract class RunTrackingService : Service() {
                 lat = smoothLat,
                 lng = smoothLng,
                 accuracy = geo.accuracy,
-                speed = lastSmoothSpeedMps,
+                speed = effectiveSpeed,
             )
         )
 
-        // 9. 静止判定 & 自适应间隔
-        checkAndUpdateStationary(nowRealtimeMs)
-        adjustIntervalBySpeed()
+        // 11. 采样间隔随暂停态切换（活动 1Hz / 暂停 2s）
+        applyIntervalForState()
 
-        // 10. 持久化 stats
+        // 12. 持久化 stats
         flushStats(requestId, wallNowMs)
+    }
+
+    /**
+     * 有效速度：多普勒优先（精度可信时），否则位置差分兜底。
+     *
+     * 带健康检测：部分机型 / 模拟定位 hasSpeed()=true 但 speed 恒 0，会把距离/配速冻死、暂停锁死。
+     * 当多普勒"恒报 ~0 却位置明显持续移动"累计超 [DOPPLER_HEALTH_FRAMES] 帧，本会话永久切位置差分；
+     * 检测期间也返回位置差分，确保移动不被丢失（不会卡在暂停态出不来）。
+     */
+    private fun resolveSpeed(geo: com.guiderun.app.domain.model.GeoPoint, posDiffSpeed: Float): Float {
+        val doppler = geo.speedMps
+        val acc = geo.speedAccuracyMps
+        val dopplerTrusted = !dopplerUnavailable && doppler != null &&
+            (acc == null || acc <= SPEED_ACCURACY_THRESHOLD_MPS)
+
+        if (!dopplerTrusted) return posDiffSpeed
+
+        // 多普勒报 ~0 但位置在明显移动 → 计一帧；连续累计超阈值则判定多普勒不可用
+        if (doppler!! < DOPPLER_ZERO_EPS_MPS && posDiffSpeed > DOPPLER_HEALTH_SPEED_MPS) {
+            dopplerZeroMovingFrames++
+            if (dopplerZeroMovingFrames >= DOPPLER_HEALTH_FRAMES) dopplerUnavailable = true
+            return posDiffSpeed
+        }
+        dopplerZeroMovingFrames = 0
+        return doppler.coerceAtLeast(0f)
     }
 
     /**
@@ -326,8 +362,7 @@ abstract class RunTrackingService : Service() {
      *
      * 用计时器累加而非速度均值，避免单点抖动让状态来回切换。
      */
-    private fun updatePauseState(nowRealtimeMs: Long) {
-        val speed = lastSmoothSpeedMps
+    private fun updatePauseState(nowRealtimeMs: Long, speed: Float) {
         if (!isPaused) {
             if (speed in 0f..PAUSE_SPEED_MPS) {
                 if (lowSpeedSinceRealtimeMs <= 0L) lowSpeedSinceRealtimeMs = nowRealtimeMs
@@ -361,8 +396,8 @@ abstract class RunTrackingService : Service() {
     }
 
     /**
-     * 1Hz 兜底 tick：当采样间隔被拉到 30s（静止）时，仍保证 UI 时长 1 秒一跳。
-     * 该 tick 只更新时长字段，不动距离/配速 —— 距离/配速由 location 帧驱动。
+     * 1Hz 兜底 tick：保证暂停降频（2s）或无新帧时 UI 时长/配速仍每秒刷新。
+     * 配速由 speedSmoother 当前均值算出（5s 窗口随时间自然衰减），不依赖新 location 帧。
      */
     private fun startStatsTicker(requestId: String) {
         tickerJob?.cancel()
@@ -377,6 +412,11 @@ abstract class RunTrackingService : Service() {
     private suspend fun flushStats(requestId: String, wallNowMs: Long) {
         statsMutex.withLock {
             val nowElapsed = SystemClock.elapsedRealtime()
+            // 暂停判定在此 1Hz 驱动（而非帧驱动）：无新帧/帧被精度门控丢弃时也能按时间推进。
+            // 帧陈旧（> FRAME_STALE_MS）按静止（速度 0）处理 → 静止 / GPS 未锁定也能在 10s 后及时进暂停。
+            val frameFresh = lastFrameElapsedMs > 0L && (nowElapsed - lastFrameElapsedMs) <= FRAME_STALE_MS
+            val speedForPause = if (frameFresh) lastEffectiveSpeedMps else 0f
+            updatePauseState(nowElapsed, speedForPause)
             // 运动时长 = 总墙钟时长 - 已结束的暂停段 - 进行中暂停段
             val ongoingPauseMs = if (isPaused && pauseStartedAtRealtimeMs > 0L) {
                 (nowElapsed - pauseStartedAtRealtimeMs).coerceAtLeast(0L)
@@ -385,12 +425,12 @@ abstract class RunTrackingService : Service() {
                 .coerceAtLeast(0L)
             val durationSec = (movingMs / 1000L).toInt()
             val totalDistM = accumulatedDistanceM.toInt()
-            // 暂停时立即把瞬时配速置 null，不再依赖 PaceWindow evict 自然衰减
+            // 瞬时配速：来自多普勒速度的 5s 滑动平均（单层平滑）；暂停时置 null
             val currentPace = if (isPaused) null
-                else paceWindow.currentPaceSecondsPerKm(nowElapsed)
+                else speedSmoother.currentPaceSecondsPerKm(nowElapsed)
             val avgPace = PaceCalculator.avgPace(totalDistM, durationSec)
             val existing = sessionStatsDao.get(requestId, currentUserId)
-            val maxSpeed = maxOf(existing?.maxSpeedMps ?: 0f, lastSmoothSpeedMps)
+            val maxSpeed = maxOf(existing?.maxSpeedMps ?: 0f, lastEffectiveSpeedMps)
 
             val stats = RunSessionStatsEntity(
                 requestId = requestId,
@@ -407,23 +447,6 @@ abstract class RunTrackingService : Service() {
         }
     }
 
-    private fun checkAndUpdateStationary(nowRealtimeMs: Long) {
-        val nowStationary = lastSmoothSpeedMps in 0f..STATIONARY_SPEED_MPS
-        if (nowStationary && !isStationary) {
-            if (stationarySinceMs <= 0L) stationarySinceMs = nowRealtimeMs
-            if (nowRealtimeMs - stationarySinceMs >= STATIONARY_DURATION_MS) {
-                isStationary = true
-                locationIntervalFlow.value = STATIONARY_INTERVAL_MS
-            }
-        } else if (!nowStationary) {
-            stationarySinceMs = -1L
-            if (isStationary) {
-                isStationary = false
-                adjustIntervalBySpeed()
-            }
-        }
-    }
-
     /** 中值滤波：3 点窗口去尖刺。 */
     private fun medianFilter(lat: Double, lng: Double): Pair<Double, Double> {
         medianLatBuffer.addLast(lat)
@@ -437,21 +460,12 @@ abstract class RunTrackingService : Service() {
         return Pair(sortedLat[sortedLat.size / 2], sortedLng[sortedLng.size / 2])
     }
 
-    private fun adjustIntervalBySpeed() {
-        // 暂停期间：强制保持高频采样，便于尽早识别"用户又跑起来"。
-        // 不让 isStationary 把间隔拉到 30s —— 否则恢复要等一个 30s 周期，体感卡死。
-        if (isPaused) {
-            if (locationIntervalFlow.value != INTERVAL_RUN_MS) {
-                locationIntervalFlow.value = INTERVAL_RUN_MS
-            }
-            return
-        }
-        if (isStationary) return
-        val target = when {
-            lastSmoothSpeedMps < SPEED_WALK -> INTERVAL_WALK_MS
-            lastSmoothSpeedMps < SPEED_JOG -> INTERVAL_JOG_MS
-            else -> INTERVAL_RUN_MS
-        }
+    /**
+     * 采样间隔随暂停态切换：活动中固定 1Hz（消除间隔抖动造成的配速不一致），
+     * 自动暂停时降到 2s 省电（暂停期配速冻结，2s 仍能快速识别恢复）。
+     */
+    private fun applyIntervalForState() {
+        val target = if (isPaused) PAUSED_INTERVAL_MS else DEFAULT_INTERVAL_MS
         if (locationIntervalFlow.value != target) {
             locationIntervalFlow.value = target
         }
@@ -467,20 +481,40 @@ abstract class RunTrackingService : Service() {
         }
     }
 
+    /**
+     * 循环上传未发送的轨迹点，直到 buffer 清空或一次失败。
+     * 单批 [UPLOAD_BATCH_SIZE] 上限防止请求过大；上一批成功才取下一批，失败即停（下个周期/结束 flush 再试）。
+     */
     private suspend fun uploadPendingPoints(requestId: String) {
-        val pending = trackBufferDao.getPendingPoints(requestId, UPLOAD_BATCH_SIZE)
-        if (pending.isEmpty()) return
-        val points = pending.map {
-            com.guiderun.app.domain.model.TrackPoint(
-                t = it.timestamp,
-                lat = it.lat,
-                lng = it.lng,
-                acc = it.accuracy,
-                spd = it.speed,
-            )
+        // 带上本端实时权威累计值（已扣暂停），服务端按此存储，供回放跨设备/清数据后保持一致
+        val stats = sessionStatsDao.get(requestId, currentUserId)
+        while (true) {
+            val pending = trackBufferDao.getPendingPoints(requestId, UPLOAD_BATCH_SIZE)
+            if (pending.isEmpty()) return
+            val points = pending.map {
+                com.guiderun.app.domain.model.TrackPoint(
+                    t = it.timestamp,
+                    lat = it.lat,
+                    lng = it.lng,
+                    acc = it.accuracy,
+                    spd = it.speed,
+                )
+            }
+            val ok = runCatching {
+                runRequestRepository.uploadTracks(
+                    requestId = requestId,
+                    role = role,
+                    points = points,
+                    totalDistanceMeters = stats?.totalDistanceMeters,
+                    totalDurationSeconds = stats?.totalDurationSeconds,
+                    avgPaceSeconds = stats?.avgPaceSeconds,
+                    maxSpeed = stats?.maxSpeedMps,
+                )
+            }.isSuccess
+            if (!ok) return
+            trackBufferDao.markUploaded(pending.map { it.id })
+            if (pending.size < UPLOAD_BATCH_SIZE) return // 最后一批，传完即止
         }
-        runCatching { runRequestRepository.uploadTracks(requestId, role, points) }
-            .onSuccess { trackBufferDao.markUploaded(pending.map { it.id }) }
     }
 
     override fun onDestroy() {
@@ -488,13 +522,19 @@ abstract class RunTrackingService : Service() {
         trackingJob?.cancel()
         tickerJob?.cancel()
         uploadJob?.cancel()
-        scope.launch {
-            if (currentRequestId.isNotEmpty()) uploadPendingPoints(currentRequestId)
+        // 终态 flush 必须在 scope 被取消后仍能跑完，否则短跑 / 弱网时本次轨迹点全部丢失
+        // （旧实现 scope.launch 后立刻 scope.cancel() 会把它当场杀掉 → 服务器空轨迹 → 回放无数据）。
+        // 用独立的、不受 scope.cancel 影响的 scope 做最后一次全量上传。
+        val rid = currentRequestId
+        if (rid.isNotEmpty()) {
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                uploadPendingPoints(rid)
+            }
         }
         kalmanFilter.reset()
         medianLatBuffer.clear()
         medianLngBuffer.clear()
-        paceWindow.reset()
+        speedSmoother.reset()
         scope.cancel()
     }
 

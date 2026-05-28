@@ -93,10 +93,11 @@ class FusedLocationProviderImpl(private val context: Context) : LocationProvider
             )
         }
 
-        // FusedLocation
-        val request = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, intervalMs)
-            .setMinUpdateIntervalMillis(intervalMs / 2)
-            .setMaxUpdateDelayMillis(intervalMs * 2)
+        // FusedLocation：跑步实时配速需要高精度 + 多普勒速度，用 HIGH_ACCURACY。
+        // setMinUpdateDistanceMillis 不设（保持 0），保证匀速/静止也按时间稳定出帧供 1Hz 显示。
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMs)
+            .setMinUpdateIntervalMillis(intervalMs)
+            .setMaxUpdateDelayMillis(intervalMs)
             .build()
         val fusedCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
@@ -116,12 +117,20 @@ class FusedLocationProviderImpl(private val context: Context) : LocationProvider
     private fun Location.toGeoPoint(): GeoPoint {
         // elapsedRealtimeNanos 在所有 Android 版本上单调递增，作为统一时间戳基准。
         val realtimeMs = elapsedRealtimeNanos / 1_000_000L
+        // 多普勒速度：hasSpeed() 为真才取，否则交给采集端 fallback 位置差分。
+        val speed = if (hasSpeed()) speed else null
+        // 速度精度仅 API 26+ 提供；低版本返回 null（精度未知，仍信任 speed）。
+        val speedAcc = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+            hasSpeedAccuracy()
+        ) speedAccuracyMetersPerSecond else null
         return GeoPoint(
             lat = latitude,
             lng = longitude,
             description = "",
             accuracy = accuracy,
             realtimeMs = if (realtimeMs > 0L) realtimeMs else SystemClock.elapsedRealtime(),
+            speedMps = speed,
+            speedAccuracyMps = speedAcc,
         )
     }
 

@@ -43,6 +43,10 @@ class LegacyLocationProviderImpl(context: Context) : LocationProvider {
     @SuppressLint("MissingPermission")
     override fun locationUpdates(intervalMs: Long): Flow<GeoPoint> = callbackFlow {
         val listener = LocationListener { location ->
+            val speed = if (location.hasSpeed()) location.speed else null
+            val speedAcc = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+                location.hasSpeedAccuracy()
+            ) location.speedAccuracyMetersPerSecond else null
             trySend(
                 GeoPoint(
                     lat = location.latitude,
@@ -50,6 +54,8 @@ class LegacyLocationProviderImpl(context: Context) : LocationProvider {
                     description = "",
                     accuracy = location.accuracy,
                     realtimeMs = location.elapsedRealtimeNanos / 1_000_000L,
+                    speedMps = speed,
+                    speedAccuracyMps = speedAcc,
                 )
             )
         }

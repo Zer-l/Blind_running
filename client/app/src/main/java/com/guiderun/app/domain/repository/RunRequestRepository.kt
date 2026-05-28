@@ -50,7 +50,15 @@ interface RunRequestRepository {
 
     suspend fun getReviews(requestId: String): Result<List<Review>>
 
-    suspend fun uploadTracks(requestId: String, role: String, points: List<TrackPoint>): Result<List<RunTrack>>
+    suspend fun uploadTracks(
+        requestId: String,
+        role: String,
+        points: List<TrackPoint>,
+        totalDistanceMeters: Int? = null,
+        totalDurationSeconds: Int? = null,
+        avgPaceSeconds: Int? = null,
+        maxSpeed: Float? = null,
+    ): Result<List<RunTrack>>
 
     suspend fun getTracks(requestId: String): Result<List<RunTrack>>
 

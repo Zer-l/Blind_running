@@ -3,6 +3,8 @@ package com.guiderun.app.ui.volunteer
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.data.local.UserPreferences
+import com.guiderun.app.data.local.dao.RunSessionStatsDao
 import com.guiderun.app.domain.model.RunTrack
 import com.guiderun.app.domain.model.TrackPoint
 import com.guiderun.app.domain.repository.RunRequestRepository
@@ -10,9 +12,7 @@ import com.guiderun.app.ui.shared.map.CameraTarget
 import com.guiderun.app.ui.shared.map.GuideRunMapState
 import com.guiderun.app.ui.shared.map.PolylineConfig
 import com.guiderun.app.util.PaceCalculator
-import com.guiderun.app.util.PaceWindow
-import kotlin.math.max
-import kotlin.math.min
+import com.guiderun.app.util.SpeedSmoother
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -55,6 +55,8 @@ data class TrackPlaybackUiState(
 class TrackPlaybackViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val runRequestRepository: RunRequestRepository,
+    private val sessionStatsDao: RunSessionStatsDao,
+    private val userPreferences: UserPreferences,
 ) : ViewModel() {
 
     private val requestId: String = checkNotNull(savedStateHandle["requestId"])
@@ -91,8 +93,10 @@ class TrackPlaybackViewModel @Inject constructor(
                     val tracks = allTracks.filter { it.role == role }
                     val points = tracks.flatMap { it.points }.sortedBy { it.t }
                     precomputeCumulatives(points)
+                    // 权威总时长/距离优先级：本机 sessionStats（最精确）→ 服务端轨迹存的权威值
+                    // （跨设备/清数据后仍一致）→ 反推（最后兜底）。
+                    alignCumulativesToAuthoritative(tracks)
                     val mapState = buildMapState(tracks, points, currentIndex = 0)
-                    // 计算最终距离和时长
                     val finalDist = if (points.isNotEmpty()) cumDistanceM.last().toInt() else 0
                     val finalDur = if (points.isNotEmpty()) (cumDurationMs.last() / 1000L).toInt() else 0
                     _uiState.update {
@@ -118,8 +122,51 @@ class TrackPlaybackViewModel @Inject constructor(
     }
 
     /**
-     * 预计算每个轨迹点的累积距离（Haversine）和累积时长（基于首点时间戳）。
-     * 播放循环里直接查表，避免每帧重算。
+     * 把反推得到的 cum 数组整体缩放到权威总值。反推只用来描述"进度形状"（marker 占比），
+     * 最终总量以权威值为准 —— 与实时端一致、抗弱网丢点、跨设备/清数据后保持稳定。
+     *
+     * 权威值优先级：
+     * 1. 本机 sessionStats —— 采集那台设备上最精确（与实时逐帧一致）
+     * 2. 服务端轨迹存的权威值（[tracks].totalDuration/Distance）—— 清数据/换设备后仍可读，跨端一致
+     * 3. 都没有 → 保持反推值兜底
+     */
+    private suspend fun alignCumulativesToAuthoritative(tracks: List<RunTrack>) {
+        if (cumDurationMs.isEmpty()) return
+
+        val userId = userPreferences.getCurrentUserId()
+        val localStats = if (userId != null) sessionStatsDao.get(requestId, userId) else null
+
+        // 服务端轨迹权威值：同 role 过滤后通常一条；多条则取累计和
+        val serverDurSec = tracks.sumOf { it.totalDurationSeconds }
+        val serverDistM = tracks.sumOf { it.totalDistanceMeters }
+
+        val authDurSec = localStats?.totalDurationSeconds ?: serverDurSec
+        val authDistM = localStats?.totalDistanceMeters ?: serverDistM
+
+        val reconDurMs = cumDurationMs.last()
+        val authDurMs = authDurSec * 1000L
+        if (authDurMs > 0L && reconDurMs > 0L) {
+            val k = authDurMs.toDouble() / reconDurMs
+            for (i in cumDurationMs.indices) cumDurationMs[i] = (cumDurationMs[i] * k).toLong()
+        }
+
+        val reconDistM = cumDistanceM.last()
+        if (authDistM > 0 && reconDistM > 0.0) {
+            val k = authDistM / reconDistM
+            for (i in cumDistanceM.indices) cumDistanceM[i] = cumDistanceM[i] * k
+        }
+    }
+
+    /**
+     * 预计算每个轨迹点的累积距离与累积"运动时长"。
+     *
+     * 时长口径必须与采集端一致，否则回放时长对不上实时显示。采集端不是简单按速度阈值切，
+     * 而是一套带迟滞的暂停状态机（连续 [PAUSE_DURATION_MS] 低于 [PAUSE_SPEED_MPS] 才入暂停，
+     * 连续 [RESUME_DURATION_MS] 高于 [RESUME_SPEED_MPS] 才退出），运动时长 = 墙钟 − 暂停时长。
+     * 这里用每个点存的速度（spd，缺失时位置差分兜底）原样复刻该状态机，得到与实时一致的运动时长。
+     * 实测 bug：志愿者静止入暂停直到结束，旧实现按"墙钟跨度"显示 7 分多，复刻后 ≈ 真实运动时长。
+     *
+     * 距离同样只在"移动中且未暂停"累加，排除静止点 GPS 抖动的虚假距离。
      */
     private fun precomputeCumulatives(points: List<TrackPoint>) {
         orderedPoints = points
@@ -132,13 +179,55 @@ class TrackPlaybackViewModel @Inject constructor(
         cumDurationMs = LongArray(points.size)
         cumDistanceM[0] = 0.0
         cumDurationMs[0] = 0L
+
+        val t0 = points[0].t
+        // 暂停状态机镜像（对应 RunTrackingService.updatePauseState）
+        var paused = false
+        var lowSpeedSince = -1L
+        var pendingResumeSince = -1L
+        var pausedAccumMs = 0L
+        var pauseStartedAt = -1L
+
         for (i in 1 until points.size) {
+            val t = points[i].t
+            val v = speedAt(points, i)
+
+            if (!paused) {
+                if (v <= PAUSE_SPEED_MPS) {
+                    if (lowSpeedSince < 0L) lowSpeedSince = t
+                    if (t - lowSpeedSince >= PAUSE_DURATION_MS) {
+                        paused = true
+                        pauseStartedAt = t
+                        pendingResumeSince = -1L
+                    }
+                } else {
+                    lowSpeedSince = -1L
+                }
+            } else {
+                if (v >= RESUME_SPEED_MPS) {
+                    if (pendingResumeSince < 0L) pendingResumeSince = t
+                    if (t - pendingResumeSince >= RESUME_DURATION_MS) {
+                        paused = false
+                        if (pauseStartedAt > 0L) {
+                            pausedAccumMs += (t - pauseStartedAt).coerceAtLeast(0L)
+                            pauseStartedAt = -1L
+                        }
+                        lowSpeedSince = -1L
+                    }
+                } else {
+                    pendingResumeSince = -1L
+                }
+            }
+
+            val ongoingPause = if (paused && pauseStartedAt > 0L) (t - pauseStartedAt).coerceAtLeast(0L) else 0L
+            cumDurationMs[i] = (t - t0 - pausedAccumMs - ongoingPause).coerceAtLeast(0L)
+
             val seg = PaceCalculator.distanceMeters(
                 points[i - 1].lat, points[i - 1].lng,
                 points[i].lat, points[i].lng,
             ).toDouble()
-            cumDistanceM[i] = cumDistanceM[i - 1] + seg
-            cumDurationMs[i] = points[i].t - points[0].t
+            val moving = !paused && v >= MOVING_SPEED_MPS
+            cumDistanceM[i] = cumDistanceM[i - 1] + if (moving) seg else 0.0
         }
     }
 
@@ -166,8 +255,9 @@ class TrackPlaybackViewModel @Inject constructor(
         // 若上一轮已播放到末尾，再次点播放视为「从头开始」，但不动相机 —— 保留用户手势缩放后的视野。
         val startIdx = if (state.currentIndex >= points.size - 1) 0 else state.currentIndex
 
-        // 重建 PaceWindow，把已经走过的最近 30s 或 100m 段喂进去，让续播时瞬时配速立刻可读
-        val paceWindow = PaceWindow().apply { primeForIndex(points, startIdx) }
+        // 配速复用采集端口径：直接用每个点存的多普勒速度（spd）做 5s 滑动平均。
+        // 比旧 PaceWindow（按真实时间戳 evict 段）在稀疏 GPS 段更稳——稀疏点也自带速度值，不会大面积变空。
+        val smoother = SpeedSmoother().apply { primeForIndex(points, startIdx) }
 
         _uiState.update {
             it.copy(
@@ -175,7 +265,7 @@ class TrackPlaybackViewModel @Inject constructor(
                 currentIndex = startIdx,
                 currentDistanceMeters = cumDistanceM[startIdx].toInt(),
                 currentDurationSeconds = (cumDurationMs[startIdx] / 1000L).toInt(),
-                currentPaceSeconds = paceWindow.currentPaceSecondsPerKm(points[startIdx].t),
+                currentPaceSeconds = smoother.currentPaceSecondsPerKm(points[startIdx].t),
                 mapState = it.mapState.copy(
                     animatedMarker = points[startIdx].let { p -> Pair(p.lat, p.lng) },
                 ),
@@ -192,14 +282,11 @@ class TrackPlaybackViewModel @Inject constructor(
                 delay(intervalMs)
                 idx++
 
-                // PaceWindow 同步推进一段（用真实时间戳，与跑步采集端口径一致）
-                val segM = PaceCalculator.distanceMeters(current.lat, current.lng, next.lat, next.lng)
-                val segDt = (next.t - current.t).coerceAtLeast(0L)
-                paceWindow.addSegment(segM, segDt, next.t)
+                smoother.add(speedAt(points, idx), next.t)
 
                 val nowDist = cumDistanceM[idx].toInt()
                 val nowDur = (cumDurationMs[idx] / 1000L).toInt()
-                val nowPace = paceWindow.currentPaceSecondsPerKm(next.t)
+                val nowPace = smoother.currentPaceSecondsPerKm(next.t)
                 _uiState.update { s ->
                     s.copy(
                         currentIndex = idx,
@@ -214,6 +301,19 @@ class TrackPlaybackViewModel @Inject constructor(
                 _uiState.update { it.copy(isPlaying = false) }
             }
         }
+    }
+
+    /**
+     * 取第 idx 个点的速度（m/s）：优先用存储的多普勒速度 spd；
+     * 旧数据 spd 缺失时用相邻点位置差分兜底。
+     */
+    private fun speedAt(points: List<TrackPoint>, idx: Int): Float {
+        points[idx].spd?.let { return it }
+        if (idx <= 0) return 0f
+        val a = points[idx - 1]
+        val b = points[idx]
+        val dt = (b.t - a.t).coerceAtLeast(1L)
+        return PaceCalculator.distanceMeters(a.lat, a.lng, b.lat, b.lng) / (dt / 1000f)
     }
 
     private fun pausePlayback() {
@@ -244,18 +344,14 @@ class TrackPlaybackViewModel @Inject constructor(
     }
 
     /**
-     * 给续播场景的 PaceWindow 预热：把 startIdx 之前最近的若干段喂进窗口，
-     * 让 currentPaceSecondsPerKm 立刻能返回非 null 值（PaceWindow 内部会按 30s/100m 自动 evict 老段）。
+     * 给续播场景的 SpeedSmoother 预热：把 startIdx 之前最近的若干点速度喂进去，
+     * 让 currentPaceSecondsPerKm 立刻能返回非 null 值（SpeedSmoother 内部按 5s 窗口自动收敛）。
      */
-    private fun PaceWindow.primeForIndex(points: List<TrackPoint>, startIdx: Int) {
+    private fun SpeedSmoother.primeForIndex(points: List<TrackPoint>, startIdx: Int) {
         if (startIdx <= 0) return
-        // 倒推最多 30 段（PaceWindow 自身会再按时间/距离窗口收敛）
-        val from = (startIdx - 30).coerceAtLeast(1)
+        val from = (startIdx - 10).coerceAtLeast(0)
         for (i in from..startIdx) {
-            val a = points[i - 1]
-            val b = points[i]
-            val seg = PaceCalculator.distanceMeters(a.lat, a.lng, b.lat, b.lng)
-            addSegment(seg, (b.t - a.t).coerceAtLeast(0L), b.t)
+            add(speedAt(points, i), points[i].t)
         }
     }
 
@@ -341,5 +437,14 @@ class TrackPlaybackViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         playbackJob?.cancel()
+    }
+
+    private companion object {
+        // 以下阈值必须与采集端 RunTrackingService 保持一致，回放才能复刻出相同的运动时长
+        const val MOVING_SPEED_MPS = 0.5f   // 移动门控（距离累加）
+        const val PAUSE_SPEED_MPS = 0.7f    // 持续低于该速度才入暂停
+        const val PAUSE_DURATION_MS = 10_000L
+        const val RESUME_SPEED_MPS = 1.0f   // 持续高于该速度才退出暂停
+        const val RESUME_DURATION_MS = 3_000L
     }
 }

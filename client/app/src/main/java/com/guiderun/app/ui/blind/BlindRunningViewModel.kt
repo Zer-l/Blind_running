@@ -17,7 +17,6 @@ import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.service.BlindRunTrackingService
 import com.guiderun.app.service.RunTrackingService
-import com.guiderun.app.util.Ema
 import com.guiderun.app.util.PaceCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -88,7 +87,6 @@ class BlindRunningViewModel @Inject constructor(
     private var lastAnnouncedMinuteBucket: Int = 0
     /** 上次观测到的暂停状态，用于检测切换并触发 TTS+震动反馈。 */
     private var lastIsPaused: Boolean? = null
-    private val paceEma = Ema(alpha = 0.3)
 
     init {
         viewModelScope.launch {
@@ -142,14 +140,14 @@ class BlindRunningViewModel @Inject constructor(
                     // 暂停状态切换：朗读 + 震动，视障用户无屏幕反馈也能感知
                     announcePauseToggleIfChanged(stats.isPaused)
                     // 双端独立：本端 UI 100% 由本机 RunTrackingService 写入的 stats 驱动；
-                    // 不再订阅对端 peerMetrics，避免对端数据异常 / 5s 跳变 / 0 覆盖等问题
-                    val display = smoothPaceForDisplay(stats.currentPaceSeconds, stats.isPaused)
+                    // 不再订阅对端 peerMetrics，避免对端数据异常 / 5s 跳变 / 0 覆盖等问题。
+                    // 配速平滑已在 service 的 SpeedSmoother（5s 滑动平均）完成，UI 不再叠第二层 EMA。
                     _uiState.update {
                         it.copy(
                             totalDistanceMeters = stats.totalDistanceMeters,
                             totalDurationSeconds = stats.totalDurationSeconds,
                             currentPaceSeconds = stats.currentPaceSeconds,
-                            displayPaceSeconds = display,
+                            displayPaceSeconds = stats.currentPaceSeconds,
                             avgPaceSeconds = stats.avgPaceSeconds,
                             isPaused = stats.isPaused,
                         )
@@ -173,15 +171,6 @@ class BlindRunningViewModel @Inject constructor(
             hapticFeedback.confirm()
             suppressAndSpeak(context.getString(R.string.tts_running_resumed))
         }
-    }
-
-    /** UI 配速 EMA 平滑；暂停时重置并返回 null。 */
-    private fun smoothPaceForDisplay(rawPace: Int?, paused: Boolean): Int? {
-        if (paused || rawPace == null) {
-            paceEma.reset()
-            return null
-        }
-        return paceEma.update(rawPace.toDouble()).toInt()
     }
 
     /** 每 5 分钟整点播报一次跑步进度，由 stats 1Hz tick 驱动。 */

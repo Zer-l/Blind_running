@@ -66,6 +66,12 @@ data class TrackPointDto(
 data class UploadTracksDto(
     val role: String,
     val points: List<TrackPointDto>,
+    // 本端实时算好的权威累计值（已扣暂停），随轨迹上传持久化到服务端，
+    // 供回放跨设备/清数据后仍能读到与实时一致的时长/距离。为空则服务端回退墙钟重算。
+    val totalDistanceMeters: Int? = null,
+    val totalDurationSeconds: Int? = null,
+    val avgPaceSeconds: Int? = null,
+    val maxSpeed: Float? = null,
 )
 
 @Serializable

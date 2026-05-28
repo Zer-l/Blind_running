@@ -16,7 +16,6 @@ import com.guiderun.app.domain.repository.LocationProvider
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.service.RunTrackingService
 import com.guiderun.app.service.VolunteerRunTrackingService
-import com.guiderun.app.util.Ema
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +33,7 @@ data class VolunteerRunningUiState(
     val isLoading: Boolean = true,
     val totalDistanceMeters: Int = 0,
     val totalDurationSeconds: Int = 0,
-    /** 原始瞬时配速（来自 PaceWindow，用于上传/统计）。 */
+    /** 原始瞬时配速（来自 service SpeedSmoother，用于统计）。 */
     val currentPaceSeconds: Int? = null,
     /** 显示用瞬时配速：基于 currentPaceSeconds 做 EMA 平滑，仅用于 UI。 */
     val displayPaceSeconds: Int? = null,
@@ -76,7 +75,6 @@ class VolunteerRunningViewModel @Inject constructor(
     val navEvent: SharedFlow<VolunteerRunningNavEvent> = _navEvent.asSharedFlow()
 
     private var userId: String = ""
-    private val paceEma = Ema(alpha = 0.3)
 
     init {
         viewModelScope.launch {
@@ -138,8 +136,14 @@ class VolunteerRunningViewModel @Inject constructor(
             if (userId.isEmpty()) return@launch
             sessionStatsDao.observe(requestId, userId).collect { stats ->
                 if (stats != null) {
-                    val display = smoothPaceForDisplay(stats.currentPaceSeconds, stats.isPaused)
                     _uiState.update {
+                        // 配速平滑已在 service SpeedSmoother（5s 滑动平均）完成，UI 不再叠 EMA。
+                        // 暂停 / 无瞬时配速时保留上一次有效值（UI 用 isPaused 切淡色），避免数字闪没。
+                        val display = if (stats.isPaused || stats.currentPaceSeconds == null) {
+                            it.displayPaceSeconds
+                        } else {
+                            stats.currentPaceSeconds
+                        }
                         it.copy(
                             totalDistanceMeters = stats.totalDistanceMeters,
                             totalDurationSeconds = stats.totalDurationSeconds,
@@ -163,20 +167,6 @@ class VolunteerRunningViewModel @Inject constructor(
         }
     }
 
-    /**
-     * UI 配速做指数移动平均，避免瞬时跳变。
-     * 暂停时保留上一次有效配速（由 UI 用 isPaused 切换淡色样式），不再返回 null。
-     */
-    private fun smoothPaceForDisplay(rawPace: Int?, paused: Boolean): Int? {
-        if (paused) {
-            return _uiState.value.displayPaceSeconds
-        }
-        if (rawPace == null) {
-            paceEma.reset()
-            return _uiState.value.displayPaceSeconds
-        }
-        return paceEma.update(rawPace.toDouble()).toInt()
-    }
 
     private fun observeWs() {
         viewModelScope.launch {

@@ -44,6 +44,7 @@ class RunTrackService(
                 points = validPoints,
             )
             recalcStats(entity)
+            applyClientAuthoritative(entity, dto)
             trackRepo.save(entity).toDto()
         } else {
             val existingTs = existing.points.mapTo(HashSet()) { it.t }
@@ -51,8 +52,24 @@ class RunTrackService(
             val sorted = merged.sortedBy { it.t }
             existing.points = sorted
             recalcStats(existing)
+            applyClientAuthoritative(existing, dto)
             trackRepo.save(existing).toDto()
         }
+    }
+
+    /**
+     * 客户端提供权威累计值（已扣暂停的运动时长/距离）时，覆盖服务端基于墙钟跨度的重算结果。
+     * 服务端 recalcStats 的 totalDurationSeconds = last.t - first.t（含暂停），对"静止占大半"的跑步严重偏大；
+     * 客户端实时值才是用户看到的真实运动数据，且持久化到服务端后可跨设备/清数据后保持一致。
+     */
+    private fun applyClientAuthoritative(entity: RunTrackEntity, dto: UploadTracksDto) {
+        dto.totalDistanceMeters?.let { if (it >= 0) entity.totalDistanceMeters = it }
+        dto.totalDurationSeconds?.let { if (it >= 0) entity.totalDurationSeconds = it }
+        dto.maxSpeed?.let { if (it > 0f) entity.maxSpeed = it }
+        // 平均配速按权威距离/时长重算，保持自洽
+        val d = entity.totalDistanceMeters
+        val t = entity.totalDurationSeconds
+        entity.avgPaceSeconds = if (d > 0) (t / (d / 1000.0)).toInt() else dto.avgPaceSeconds
     }
 
     @Transactional(readOnly = true)

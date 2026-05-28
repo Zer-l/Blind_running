@@ -52,6 +52,12 @@ data class GeoPoint(
     // 单调时钟时间戳（ms，SystemClock.elapsedRealtime 域），仅用于跑步采集，
     // 来自 LocationProvider 的位置流；其他来源（如手动构造、Mapper）默认 0。
     val realtimeMs: Long = 0L,
+    // GPS 多普勒速度（m/s），来自 Location.getSpeed()。比位置差分准得多、噪声小。
+    // null 表示该定位不含速度（老设备 / 无 GNSS 速度），由采集端 fallback 位置差分。
+    val speedMps: Float? = null,
+    // 速度精度（m/s，1σ），来自 Location.getSpeedAccuracyMetersPerSecond()（API 26+）。
+    // null 表示精度未知，此时仍信任 speedMps。
+    val speedAccuracyMps: Float? = null,
 )
 
 data class UserSummary(
