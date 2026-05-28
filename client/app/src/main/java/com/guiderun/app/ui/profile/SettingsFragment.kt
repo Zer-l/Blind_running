@@ -84,6 +84,11 @@ class SettingsFragment : Fragment() {
             VoiceCommand.OPEN_ACCESSIBILITY -> {
                 findNavController().navigate(R.id.action_settings_to_accessibilitySettings); true
             }
+            VoiceCommand.LOGOUT -> {
+                // 语音是明确意图，跳过长按 2s+5s 撤销窗口直接登出（与 WaitingMatch CANCEL 一致）；
+                // "退出登录/登出/注销" 短语足够独特，CommandParser 单字模糊已禁用，误触风险低
+                viewModel.logout(); true
+            }
             VoiceCommand.CANCEL -> {
                 findNavController().popBackStack(); true
             }

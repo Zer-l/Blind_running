@@ -67,6 +67,8 @@ class CreateRequestViewModel @Inject constructor(
 
     private var isPageAnnounced = false
     private var hasAnnouncedPage = false
+    /** 入页播报协程：onScreenPaused 取消，避免压栈进等待匹配页后尾句 hint 抢播打断目标页。 */
+    private var announceJob: kotlinx.coroutines.Job? = null
 
     /**
      * 系统定位完成后自动填入的地址（用于判断用户是否手改/语音改了集合点）。
@@ -168,6 +170,9 @@ class CreateRequestViewModel @Inject constructor(
             if (state.notes.isNotBlank()) {
                 append(context.getString(R.string.blind_tts_voice_input_readback_notes, state.notes))
             }
+            // 语音录入引导拼进同一条 utterance 播报：入页 hint 会被本条 HIGH 播报 FLUSH，
+            // 放这里确保"定位+订单信息+语音引导"一次性连续播完
+            append(context.getString(R.string.blind_tts_create_voice_hint))
         }
         ttsManager.speak(message, TtsManager.Priority.HIGH)
     }
@@ -176,7 +181,8 @@ class CreateRequestViewModel @Inject constructor(
         ttsManager.acquire()
         if (!hasAnnouncedPage) {
             hasAnnouncedPage = true
-            viewModelScope.launch {
+            announceJob?.cancel()
+            announceJob = viewModelScope.launch {
                 ttsManager.stop()
                 ttsManager.speakAndWait(
                     context.getString(R.string.tts_page_create_request),
@@ -192,6 +198,8 @@ class CreateRequestViewModel @Inject constructor(
     }
 
     fun onScreenPaused() {
+        announceJob?.cancel()
+        announceJob = null
         ttsManager.release()
     }
 

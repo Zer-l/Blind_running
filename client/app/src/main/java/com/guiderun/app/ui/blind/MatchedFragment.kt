@@ -66,10 +66,17 @@ class MatchedFragment : Fragment() {
             hapticFeedback = hapticFeedback,
             thresholdLabelRes = R.string.blind_tts_matched_confirm_threshold,
             countdownLabelRes = R.string.blind_tts_long_press_cancelled,
-            onCountdownCommitted = { viewModel.executeConfirmMet() },
+            // 主按钮随状态切换语义：MET → 确认汇合开始跑步；非 MET → 取消订单。
+            // 两种状态都是可执行动作，故 canStartGesture 恒 true。
+            onCountdownCommitted = {
+                if (viewModel.uiState.value.currentStatus == RunRequestStatus.MET) {
+                    viewModel.executeConfirmMet()
+                } else {
+                    viewModel.cancelByUser()
+                }
+            },
+            onGestureStart = { viewModel.onLongPressStarted() },
         )
-        // 初始 disabled：仅 MET 状态会启用，由 collectUiState 控制
-        binding.footer.primaryGesture.isEnabled = false
     }
 
     /**
@@ -151,13 +158,24 @@ class MatchedFragment : Fragment() {
                 binding.tvStatus.visibility = View.GONE
             }
 
-            // ★ footer 主按钮：仅 MET 状态可用；hint 文案动态切换
+            // ★ 两个页面：未到达="志愿者已接单"+取消订单按钮；已到达(MET)="志愿者已到达"+确认汇合按钮
             val isMet = state.currentStatus == RunRequestStatus.MET
-            binding.footer.primaryGesture.isEnabled = isMet
-            val hintRes = if (isMet) R.string.blind_hint_matched_confirm
-            else R.string.blind_hint_matched_waiting
-            binding.tvActionHint.setText(hintRes)
-            binding.footer.primaryGesture.contentDescription = getString(hintRes)
+            binding.header.title = getString(
+                if (isMet) R.string.matched_title_arrived else R.string.matched_title
+            )
+            if (isMet) {
+                binding.footer.primaryGesture.text = getString(R.string.blind_ui_matched_btn_confirm)
+                binding.tvActionHint.setText(R.string.blind_hint_matched_confirm)
+                binding.footer.primaryGesture.contentDescription =
+                    getString(R.string.blind_hint_matched_confirm)
+                binding.footer.primaryGesture.setThresholdLabel(R.string.blind_tts_matched_confirm_threshold)
+            } else {
+                binding.footer.primaryGesture.text = getString(R.string.blind_ui_matched_btn_cancel_order)
+                binding.tvActionHint.setText(R.string.blind_hint_cancel_order_long_press)
+                binding.footer.primaryGesture.contentDescription =
+                    getString(R.string.blind_hint_cancel_order_long_press)
+                binding.footer.primaryGesture.setThresholdLabel(R.string.blind_tts_cancel_order_threshold)
+            }
         }
     }
 

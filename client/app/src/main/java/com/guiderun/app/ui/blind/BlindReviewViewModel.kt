@@ -160,7 +160,9 @@ class BlindReviewViewModel @Inject constructor(
                 appContext.getString(R.string.tts_page_blind_review),
                 TtsManager.Priority.HIGH,
             )
-            // 2) 首次入页：等 init 加载完跑步数据，串行播 intro + hint
+            // 2) 首次入页：等 init 加载完跑步数据。
+            //    intro 末尾已含完整操作引导，二者二选一，避免引导被重复播报：
+            //    有跑步数据 → 播 intro（含引导）；无数据（如补评）→ 单独播引导
             if (firstTime) {
                 val state = withTimeoutOrNull(800L) {
                     _uiState.first { it.distanceMeters > 0 || it.durationSeconds > 0 }
@@ -172,11 +174,12 @@ class BlindReviewViewModel @Inject constructor(
                         state.durationSeconds / 60,
                     )
                     ttsManager.speakAndWait(intro, TtsManager.Priority.HIGH)
+                } else {
+                    ttsManager.speak(
+                        appContext.getString(R.string.tts_hint_blind_review),
+                        TtsManager.Priority.HIGH,
+                    )
                 }
-                ttsManager.speak(
-                    appContext.getString(R.string.tts_hint_blind_review),
-                    TtsManager.Priority.HIGH,
-                )
             }
         }
     }

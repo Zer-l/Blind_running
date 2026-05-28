@@ -102,6 +102,9 @@ class MatchedViewModel @Inject constructor(
         suppressStatusAnnounceUntil = System.currentTimeMillis() + SUPPRESS_DURATION_MS
     }
 
+    /** 长按手势按下时调用：抑制 5s 轮询状态播报，避免抢播打断长按阈值/倒计时提示。 */
+    fun onLongPressStarted() = suppressStatusAnnounce()
+
     private fun loadAndPoll() {
         viewModelScope.launch {
             while (currentCoroutineContext().isActive) {
@@ -162,19 +165,26 @@ class MatchedViewModel @Inject constructor(
         // 首次进入志愿者信息 + 状态合并为一条 TTS，避免被打断
         if (volunteer != null && !hasAnnouncedVolunteer) {
             hasAnnouncedVolunteer = true
-            val rating = volunteer.rating
-                ?.let { r -> context.getString(R.string.matched_volunteer_rating_tts, r) }
-                ?: context.getString(R.string.matched_volunteer_rating_tts_none)
             // 页面名作为前缀拼进合并消息，单次 speak 播完整句，
             // 避免 onScreenResumed.speakAndWait(页面名) 与本处 speak 在不同协程并发被互相 FLUSH。
-            val combined = context.getString(R.string.tts_page_matched) + "。" +
-                context.getString(
-                    R.string.matched_volunteer_tts_combined,
-                    volunteer.nickname,
-                    rating,
-                    volunteer.totalRuns,
-                    statusText,
-                )
+            val combined = if (request.status == RunRequestStatus.MET) {
+                // 已到达（多为首页重进）：用户已知志愿者，跳过"志愿者X已接单评分…"介绍，
+                // 只播"志愿者已到达页面 + 到达状态"
+                context.getString(R.string.tts_page_matched_arrived) + "。" + statusText
+            } else {
+                // 首次匹配（ACCEPTED/EN_ROUTE）：完整介绍志愿者
+                val rating = volunteer.rating
+                    ?.let { r -> context.getString(R.string.matched_volunteer_rating_tts, r) }
+                    ?: context.getString(R.string.matched_volunteer_rating_tts_none)
+                context.getString(R.string.tts_page_matched) + "。" +
+                    context.getString(
+                        R.string.matched_volunteer_tts_combined,
+                        volunteer.nickname,
+                        rating,
+                        volunteer.totalRuns,
+                        statusText,
+                    )
+            }
             suppressStatusAnnounce()
             ttsManager.speak(combined, TtsManager.Priority.HIGH)
             hapticFeedback.confirm()
@@ -188,7 +198,13 @@ class MatchedViewModel @Inject constructor(
             _uiState.update { it.copy(statusText = statusText) }
             val isMetArrival = request.status == RunRequestStatus.MET
             if (isMetArrival || System.currentTimeMillis() >= suppressStatusAnnounceUntil) {
-                ttsManager.speak(statusText, TtsManager.Priority.HIGH)
+                // 到达(MET)时页面名变更，前缀"志愿者已到达页面"一并播报，告知用户已切到新页面
+                val announce = if (isMetArrival) {
+                    context.getString(R.string.tts_page_matched_arrived) + "。" + statusText
+                } else {
+                    statusText
+                }
+                ttsManager.speak(announce, TtsManager.Priority.HIGH)
                 hapticFeedback.confirm()
             }
         }
@@ -201,7 +217,13 @@ class MatchedViewModel @Inject constructor(
         // 重入（hasAnnouncedVolunteer 已 true）：合并消息不会再发，需要本方法独立播页面名 + 当前状态。
         if (!hasAnnouncedVolunteer) return
         viewModelScope.launch {
-            ttsManager.speakAndWait(context.getString(R.string.tts_page_matched), TtsManager.Priority.HIGH)
+            // 页面名随状态：MET="志愿者已到达页面"，否则"志愿者已接单页面"
+            val pageRes = if (_uiState.value.currentStatus == RunRequestStatus.MET) {
+                R.string.tts_page_matched_arrived
+            } else {
+                R.string.tts_page_matched
+            }
+            ttsManager.speakAndWait(context.getString(pageRes), TtsManager.Priority.HIGH)
             val statusText = _uiState.value.statusText
             if (statusText.isNotBlank()) {
                 ttsManager.speak(statusText, TtsManager.Priority.HIGH)
@@ -285,7 +307,8 @@ class MatchedViewModel @Inject constructor(
             _uiState.update { it.copy(isCancelling = true) }
             runRequestRepository.cancel(requestId, reason = "用户主动取消")
                 .onSuccess {
-                    // 取消成功后立即 nav 回首页，TTS 由 BlindHomeFragment 接力播报
+                    // 取消成功后先清除状态再导航，避免"加载中..."闪烁
+                    _uiState.update { it.copy(isCancelling = false) }
                     hapticFeedback.confirm()
                     _navEvent.emit(MatchedNavEvent.ToHome(R.string.tts_order_cancelled))
                 }

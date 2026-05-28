@@ -161,12 +161,57 @@ class AccessibilitySettingsFragment : Fragment() {
                 adjustTtsSpeed(-5)
                 true
             }
+            VoiceCommand.VOLUME_UP -> {
+                adjustTtsVolume(+1)
+                true
+            }
+            VoiceCommand.VOLUME_DOWN -> {
+                adjustTtsVolume(-1)
+                true
+            }
+            VoiceCommand.FONT_LARGER -> {
+                stepFontScale(+1)
+                true
+            }
+            VoiceCommand.FONT_SMALLER -> {
+                stepFontScale(-1)
+                true
+            }
             VoiceCommand.CANCEL -> {
                 findNavController().popBackStack()
                 true
             }
             else -> false
         }
+    }
+
+    /** 语音调节 TTS 音量：直接改 seekBar + 落库，并 TTS 反馈当前百分比。 */
+    private fun adjustTtsVolume(delta: Int) {
+        val next = (binding.seekBarTtsVolume.progress + delta)
+            .coerceIn(0, binding.seekBarTtsVolume.max)
+        binding.seekBarTtsVolume.progress = next
+        val volume = (next * 0.1f).coerceIn(0f, 1f)
+        viewModel.updateTtsVolume(volume)
+        binding.tvTtsVolumeValue.text = "${(volume * 100).toInt()}%"
+        hapticFeedback.tick()
+        ttsManager.speak(getString(R.string.tts_speed_adjusted), TtsManager.Priority.INTERACTION)
+    }
+
+    /** 语音切换字号档位：按 toggle 4 档（100/125/150/200）顺序循环步进，复用 toggle 监听落库。 */
+    private fun stepFontScale(delta: Int) {
+        val order = listOf(
+            R.id.btn_font_100,
+            R.id.btn_font_125,
+            R.id.btn_font_150,
+            R.id.btn_font_200,
+        )
+        val curIdx = order.indexOf(binding.toggleFontScale.checkedButtonId).coerceAtLeast(0)
+        val nextIdx = (curIdx + delta).coerceIn(0, order.lastIndex)
+        if (nextIdx != curIdx) {
+            // check() 触发 addOnButtonCheckedListener → viewModel.updateFontScale
+            binding.toggleFontScale.check(order[nextIdx])
+        }
+        hapticFeedback.tick()
     }
 
     private fun adjustTtsSpeed(delta: Int) {

@@ -93,6 +93,7 @@ class BlindRunningFragment : Fragment() {
             thresholdLabelRes = R.string.blind_tts_running_end_threshold,
             countdownLabelRes = R.string.blind_tts_long_press_cancelled,
             onCountdownCommitted = { viewModel.executeEndRun() },
+            onGestureStart = { viewModel.onLongPressStarted() },
         )
     }
 

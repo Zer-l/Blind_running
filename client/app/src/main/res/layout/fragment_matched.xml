@@ -30,7 +30,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:orientation="vertical"
             android:padding="@dimen/blind_space_md">
 
@@ -72,11 +72,14 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 关键状态文字：默认 GONE，仅 assertive 重要事件显示 -->
+            <!-- 关键状态文字：默认 GONE，仅 assertive 重要事件显示。
+                 weight=1 占据志愿者卡下方剩余空间，gravity=center 让状态文字在该区域垂直居中，
+                 志愿者卡保持顶部不动 -->
             <TextView
                 android:id="@+id/tv_status"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="1"
                 android:accessibilityLiveRegion="assertive"
                 android:gravity="center"
                 android:minHeight="@dimen/blind_touch_min"

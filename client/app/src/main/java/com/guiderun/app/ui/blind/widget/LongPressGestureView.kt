@@ -60,6 +60,19 @@ class LongPressGestureView @JvmOverloads constructor(
     private var onCountdownCommitted: (() -> Unit)? = null
     private var onCancel: (() -> Unit)? = null
 
+    /**
+     * 手势按下（ACTION_DOWN，进入 PRESSING）即触发。
+     * 用于让页面抑制定时/轮询自动播报，避免在长按 0~2s 静默窗口内抢播打断阈值/倒计时提示。
+     */
+    private var onGestureStart: (() -> Unit)? = null
+
+    /**
+     * 是否允许启动长按手势。返回 false 时，按下只读 contentDescription 状态提示、
+     * 不进入 2s 阈值 / 5s 倒计时，避免在动作尚不可执行时播报误导性的阈值文案
+     * （如志愿者未到达时按"确认汇合"却播"5秒后开始跑步"）。
+     */
+    private var canStartGesture: () -> Boolean = { true }
+
     private var job: Job? = null
 
     @Volatile private var state: State = State.IDLE
@@ -137,6 +150,8 @@ class LongPressGestureView @JvmOverloads constructor(
         onThresholdReached: suspend () -> Unit = {},
         onCountdownCommitted: () -> Unit,
         onCancel: () -> Unit = {},
+        canStartGesture: () -> Boolean = { true },
+        onGestureStart: () -> Unit = {},
     ) {
         this.scope = scope
         this.tts = ttsManager
@@ -146,7 +161,18 @@ class LongPressGestureView @JvmOverloads constructor(
         this.onThresholdReached = onThresholdReached
         this.onCountdownCommitted = onCountdownCommitted
         this.onCancel = onCancel
+        this.canStartGesture = canStartGesture
+        this.onGestureStart = onGestureStart
         setupListeners()
+    }
+
+    /** 按下时不可启动手势：仅读状态提示，不进倒计时。 */
+    private fun speakHintOnly() {
+        haptic?.tick()
+        val hint = contentDescription ?: text
+        if (!hint.isNullOrBlank()) {
+            tts?.speak(hint.toString(), TtsManager.Priority.INTERACTION)
+        }
     }
 
     private fun setupListeners() {
@@ -155,7 +181,8 @@ class LongPressGestureView @JvmOverloads constructor(
             // performClick 由系统派发后由 setOnClickListener 处理。
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    startGesture()
+                    // 手势不可启动（如志愿者未到达）：只读状态提示，不进 2s/5s 倒计时
+                    if (!canStartGesture()) speakHintOnly() else startGesture()
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
@@ -169,8 +196,13 @@ class LongPressGestureView @JvmOverloads constructor(
             // 仅 TalkBack 模式会到这里（普通模式 onTouchListener 消费了 ACTION_UP，
             // performClick 不会被触发）。TalkBack 用户双击 = 明确确认，跳过渐进确认。
             if (accessibilityManager.isTouchExplorationEnabled) {
-                haptic?.confirm()
-                onCountdownCommitted?.invoke()
+                // 不可启动时只读提示，不执行确认
+                if (!canStartGesture()) {
+                    speakHintOnly()
+                } else {
+                    haptic?.confirm()
+                    onCountdownCommitted?.invoke()
+                }
             }
         }
     }
@@ -179,6 +211,8 @@ class LongPressGestureView @JvmOverloads constructor(
         if (state != State.IDLE) return
         job?.cancel()
         state = State.PRESSING
+        // 按下即通知页面抑制定时/轮询播报，防止 0~2s 静默窗口被抢播
+        onGestureStart?.invoke()
         if (tickHapticEnabled) haptic?.tick()
         val activeScope = scope ?: return
         job = activeScope.launch {
@@ -246,6 +280,11 @@ class LongPressGestureView @JvmOverloads constructor(
             }
             State.IDLE -> Unit
         }
+    }
+
+    /** 动态切换阈值播报文案（如按钮在"取消订单/确认汇合"间随状态切换）。 */
+    fun setThresholdLabel(@StringRes resId: Int) {
+        thresholdLabelRes = resId
     }
 
     /** 主动重置到 IDLE，取消正在进行的手势。Fragment.onPause 可调用。 */

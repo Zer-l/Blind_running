@@ -134,15 +134,15 @@ class BlindHomeFragment : Fragment() {
 
 
     private fun setupBackPressIntercept() {
-        // BlindHome 是 BlindActivity 的起始目的地，返回键应直接退出 Activity 而不是 popBackStack。
-        // BlindActivity.onCreate 的 onBackPressedDispatcher 默认会在起点 finish()，
-        // 这里再显式注册以便先播 TTS 反馈再退出。
+        // BlindHome 是 BlindActivity 的起始目的地，返回键应退出整个应用。
+        // 不能只 finish() BlindActivity，否则 MainActivity 的 HomeScreen 检测到 BLIND_RUNNER
+        // 会通过 LaunchedEffect 自动跳回 BlindActivity，造成"闪屏又回到首页"。
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
                     isEnabled = false
-                    requireActivity().onBackPressedDispatcher.onBackPressed()
+                    requireActivity().finishAffinity()
                 }
             },
         )
@@ -163,6 +163,19 @@ class BlindHomeFragment : Fragment() {
                 // 等价于长按主按钮直发：跳到 CreateRequest 让用户走完确认流程，
                 // 避免语音指令直接绕过 5s 撤销窗口
                 navigateToCreateRequest(quickStart = false); true
+            }
+            VoiceCommand.RESUME_ORDER -> {
+                // 恢复进行中订单：有非终态 activeRequest 才路由，否则 TTS 反馈
+                val request = viewModel.activeRequest.value
+                if (request != null && !request.status.isTerminal()) {
+                    navigateToActiveOrder(request)
+                } else {
+                    ttsManager.speak(
+                        getString(R.string.voice_command_resume_order_none),
+                        TtsManager.Priority.INTERACTION,
+                    )
+                }
+                true
             }
             else -> false
         }

@@ -66,6 +66,7 @@ class WaitingMatchFragment : Fragment() {
             thresholdLabelRes = R.string.blind_tts_waiting_match_cancel_threshold,
             countdownLabelRes = R.string.blind_tts_long_press_cancelled,
             onCountdownCommitted = { viewModel.executeCancel() },
+            onGestureStart = { viewModel.onLongPressStarted() },
         )
     }
 
@@ -117,7 +118,7 @@ class WaitingMatchFragment : Fragment() {
             val seconds = state.elapsedSeconds % 60
             binding.tvElapsed.text = getString(R.string.waiting_match_elapsed, minutes, seconds)
 
-            binding.tvCancelStatus.text = if (state.isCancelling) getString(R.string.loading) else ""
+            // isCancelling 状态不显示"加载中..."，取消操作很快完成无需中间状态
 
             // ★ 关键状态在 contentDescription 上一并暴露给 TalkBack
             binding.tvElapsed.contentDescription = if (minutes > 0)

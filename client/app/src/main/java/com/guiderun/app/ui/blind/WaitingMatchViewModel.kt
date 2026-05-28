@@ -82,6 +82,9 @@ class WaitingMatchViewModel @Inject constructor(
         suppressAutoAnnounceUntil = System.currentTimeMillis() + SUPPRESS_DURATION_MS
     }
 
+    /** 长按手势按下时调用：抑制 15s 等待播报，避免抢播打断长按阈值/倒计时提示。 */
+    fun onLongPressStarted() = suppressAutoAnnounce()
+
     private fun startElapsedTimer() {
         viewModelScope.launch {
             while (true) {
@@ -173,7 +176,8 @@ class WaitingMatchViewModel @Inject constructor(
             suppressAutoAnnounce()
             cancelRunRequest(requestId, reason = "用户主动取消")
                 .onSuccess {
-                    // 取消成功后即将切页，TTS 由 BlindHomeFragment 接力，避免 release 吞掉
+                    // 取消成功后先清除状态再导航，避免"加载中..."闪烁
+                    _uiState.update { it.copy(isCancelling = false) }
                     hapticFeedback.confirm()
                     _navEvent.emit(WaitingMatchNavEvent.ToHome(R.string.tts_cancel_success))
                 }

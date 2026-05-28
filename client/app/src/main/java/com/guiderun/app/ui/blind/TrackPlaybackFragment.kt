@@ -6,11 +6,15 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.accessibility.speakPageEntry
+import com.guiderun.app.accessibility.voice.VoiceCommand
+import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.ui.volunteer.TrackPlaybackScreen
+import com.guiderun.app.ui.volunteer.TrackPlaybackViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -18,6 +22,10 @@ import javax.inject.Inject
 class TrackPlaybackFragment : Fragment() {
 
     @Inject lateinit var ttsManager: TtsManager
+
+    // 与 Compose Screen 共享同一 VM 实例（Fragment 作为 ViewModelStoreOwner），
+    // 让语音指令能直接调用 togglePlayback / seekToStart 控制回放
+    private val viewModel: TrackPlaybackViewModel by viewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -33,8 +41,30 @@ class TrackPlaybackFragment : Fragment() {
                     requestId = requestId,
                     role = role,
                     onBack = { findNavController().navigateUp() },
+                    viewModel = viewModel,
                 )
             }
+        }
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupVoiceCommands()
+    }
+
+    /**
+     * 轨迹回放页语音控制：
+     * - 播放/暂停：CONFIRM（"确认"）/ PAUSE_RUN（"暂停"）/ RESUME_RUN（"继续"）统一 toggle
+     * - 重播：RETRY（"重来/再来一次"）回到起点
+     * 变速暂不语音化（5/10/20x 多档，低频且无干净短语映射）。
+     */
+    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+        when (cmd) {
+            VoiceCommand.CONFIRM,
+            VoiceCommand.PAUSE_RUN,
+            VoiceCommand.RESUME_RUN -> { viewModel.togglePlayback(); true }
+            VoiceCommand.RETRY -> { viewModel.seekToStart(); true }
+            else -> false
         }
     }
 

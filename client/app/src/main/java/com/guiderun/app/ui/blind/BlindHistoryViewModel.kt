@@ -49,6 +49,8 @@ class BlindHistoryViewModel @Inject constructor(
     private var currentPage = 0
     private var allRequests: List<RunRequest> = emptyList()
     private var hasAnnouncedPage = false
+    /** 入页播报协程：onScreenPaused 时取消，避免离开页面（如点补评进评价页）后尾句"可筛选…"抢播打断目标页。 */
+    private var announceJob: kotlinx.coroutines.Job? = null
 
     init {
         // init 路径不 speak 摘要：onScreenResumed 首次入页会等加载完成后串行播页面名+摘要+hint，
@@ -166,7 +168,8 @@ class BlindHistoryViewModel @Inject constructor(
         // 后续入页：仅播 page。
         val firstTime = !hasAnnouncedPage
         hasAnnouncedPage = true
-        viewModelScope.launch {
+        announceJob?.cancel()
+        announceJob = viewModelScope.launch {
             ttsManager.speakAndWait(context.getString(R.string.tts_page_blind_history), TtsManager.Priority.HIGH)
             if (firstTime) {
                 // 等首次加载完成（最多 1500ms）；超时则按当前状态播
@@ -190,6 +193,8 @@ class BlindHistoryViewModel @Inject constructor(
     }
 
     fun onScreenPaused() {
+        announceJob?.cancel()
+        announceJob = null
         ttsManager.release()
     }
 }

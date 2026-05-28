@@ -113,7 +113,13 @@ class CommandExecutor @Inject constructor(
             VoiceCommand.OPEN_ACCESSIBILITY,
             VoiceCommand.ADD_CONTACT,
             VoiceCommand.SPEED_FASTER,
-            VoiceCommand.SPEED_SLOWER -> Result.NeedsContext
+            VoiceCommand.SPEED_SLOWER,
+            VoiceCommand.FONT_LARGER,
+            VoiceCommand.FONT_SMALLER,
+            VoiceCommand.VOLUME_UP,
+            VoiceCommand.VOLUME_DOWN,
+            VoiceCommand.LOGOUT,
+            VoiceCommand.RESUME_ORDER -> Result.NeedsContext
         }
     }
 }

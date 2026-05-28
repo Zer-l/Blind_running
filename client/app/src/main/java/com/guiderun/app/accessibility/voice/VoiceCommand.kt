@@ -199,5 +199,34 @@ enum class VoiceCommand(
         R.string.voice_command_label_speed_slower,
         listOf("说慢点", "语速减慢", "慢一点", "更慢"),
     ),
+    FONT_LARGER(
+        R.string.voice_command_label_font_larger,
+        listOf("放大字号", "字大一点", "字体放大", "字大点", "放大字体", "字更大"),
+    ),
+    FONT_SMALLER(
+        R.string.voice_command_label_font_smaller,
+        listOf("缩小字号", "字小一点", "字体缩小", "字小点", "缩小字体", "字更小"),
+    ),
+    VOLUME_UP(
+        R.string.voice_command_label_volume_up,
+        listOf("调高音量", "声音大一点", "大声点", "音量加大", "声音大点", "更大声"),
+    ),
+    VOLUME_DOWN(
+        R.string.voice_command_label_volume_down,
+        listOf("调低音量", "声音小一点", "小声点", "音量减小", "声音小点", "更小声"),
+    ),
+
+    // ===== 退出登录（Settings） =====
+    LOGOUT(
+        R.string.voice_command_label_logout,
+        listOf("退出登录", "登出", "注销", "退出账号", "退出帐号", "登出账号"),
+    ),
+
+    // ===== 恢复进行中订单（Home） =====
+    RESUME_ORDER(
+        R.string.voice_command_label_resume_order,
+        listOf("恢复订单", "继续订单", "回到跑步", "进行中的订单", "继续跑步订单",
+            "恢复进行中订单", "我的订单", "当前订单", "继续我的订单"),
+    ),
     ;
 }

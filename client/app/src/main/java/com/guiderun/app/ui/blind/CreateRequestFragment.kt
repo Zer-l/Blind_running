@@ -9,7 +9,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -24,7 +23,6 @@ import com.guiderun.app.accessibility.voice.RequestVoiceParser
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentCreateRequestBinding
-import com.guiderun.app.ui.blind.widget.BlindConfirmDialogFragment
 import com.guiderun.app.util.AppPermissions
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PermissionHelper
@@ -105,6 +103,8 @@ class CreateRequestFragment : Fragment() {
             arguments?.remove(BlindActivity.EXTRA_QUICK_START)
             isQuickStart = true
             permissionChecked = true  // 跳过 onResume 内的权限再申请路径
+            // 隐藏页面内容避免闪屏（提交完成后直接导航到 WaitingMatch）
+            binding.root.visibility = View.INVISIBLE
             viewModel.submitWithLastPrefs()
         }
     }
@@ -141,27 +141,13 @@ class CreateRequestFragment : Fragment() {
     }
 
     private fun setupBackPressInterception() {
-        // 返回结果监听器：长按确认 → finish；短按继续 → 不处理
-        setFragmentResultListener(REQ_KEY_DISCARD) { _, bundle ->
-            if (bundle.getBoolean(BlindConfirmDialogFragment.KEY_CONFIRMED)) {
-                requireActivity().finish()
-            }
-        }
+        // 取消创建无需二次确认：返回键直接退出，与语音"取消"统一走 onBackRequested → finish
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    BlindConfirmDialogFragment.newInstance(
-                        requestKey = REQ_KEY_DISCARD,
-                        titleRes = R.string.interrupt_title_leave_create,
-                        messageRes = R.string.interrupt_message_leave_create,
-                        primaryLabelRes = R.string.interrupt_btn_discard,
-                        primaryHintRes = R.string.blind_hint_discard_long_press,
-                        thresholdLabelRes = R.string.blind_tts_discard_threshold,
-                        cancelledLabelRes = R.string.blind_tts_long_press_cancelled,
-                        secondaryLabelRes = R.string.interrupt_btn_stay,
-                        hostPageTitleRes = R.string.create_request_title,
-                    ).show(parentFragmentManager, REQ_KEY_DISCARD)
+                    binding.footer.primaryGesture.reset()
+                    viewModel.onBackRequested()
                 }
             },
         )
@@ -350,9 +336,5 @@ class CreateRequestFragment : Fragment() {
         voiceInputManager?.destroy()
         voiceInputManager = null
         _binding = null
-    }
-
-    private companion object {
-        const val REQ_KEY_DISCARD = "create_discard_confirm"
     }
 }
