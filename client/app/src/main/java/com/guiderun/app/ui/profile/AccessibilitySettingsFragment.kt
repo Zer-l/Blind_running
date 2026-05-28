@@ -14,6 +14,7 @@ import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.speakPageEntry
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentAccessibilitySettingsBinding
@@ -60,13 +61,10 @@ class AccessibilitySettingsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        ttsManager.speak(
-            getString(R.string.tts_page_accessibility_settings),
-            TtsManager.Priority.INTERACTION,
-        )
-        ttsManager.speak(
-            getString(R.string.tts_hint_accessibility_settings),
-            TtsManager.Priority.INTERACTION,
+        speakPageEntry(
+            ttsManager,
+            R.string.tts_page_accessibility_settings,
+            R.string.tts_hint_accessibility_settings,
         )
     }
 

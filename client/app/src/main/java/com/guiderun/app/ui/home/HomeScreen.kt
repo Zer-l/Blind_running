@@ -178,7 +178,7 @@ fun HomeScreen(
                     )
                 }
 
-                Spacer(Modifier.height(AppSpacing.XXL))
+                Spacer(Modifier.height(AppSpacing.MD))
 
                 // 功能按钮区域
                 Column(
@@ -193,7 +193,7 @@ fun HomeScreen(
                             title = stringResource(R.string.home_btn_enter_volunteer),
                             subtitle = if (activeRequest != null)
                                 stringResource(R.string.home_btn_disabled_has_active)
-                            else stringResource(R.string.home_btn_enter_volunteer_desc),
+                            else "",
                             onClick = onEnterVolunteerFlow,
                             isPrimary = true,
                             enabled = activeRequest == null,
@@ -201,37 +201,17 @@ fun HomeScreen(
                         HomeMenuItem(
                             icon = Icons.Default.History,
                             title = stringResource(R.string.home_btn_history),
-                            subtitle = stringResource(R.string.home_btn_history_desc),
                             onClick = onNavigateToHistory,
                         )
                         HomeMenuItem(
                             icon = Icons.Default.Settings,
                             title = stringResource(R.string.home_btn_settings),
-                            subtitle = stringResource(R.string.home_btn_settings_desc),
                             onClick = onNavigateToProfile,
                         )
                     }
                 }
 
                 Spacer(Modifier.weight(1f))
-
-                // 退出登录
-                OutlinedButton(
-                    onClick = viewModel::logout,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = AppRadius.LargeShape,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Logout,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(Modifier.width(AppSpacing.SM))
-                    Text(stringResource(R.string.btn_logout))
-                }
 
                 Spacer(Modifier.height(AppSpacing.MD))
             }
@@ -311,7 +291,7 @@ private fun ActiveOrderBanner(
 private fun HomeMenuItem(
     icon: ImageVector,
     title: String,
-    subtitle: String,
+    subtitle: String = "",
     onClick: () -> Unit,
     isPrimary: Boolean = false,
     enabled: Boolean = true,
@@ -353,11 +333,13 @@ private fun HomeMenuItem(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                    )
+                    if (subtitle.isNotBlank()) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                        )
+                    }
                 }
             }
         }
@@ -392,11 +374,13 @@ private fun HomeMenuItem(
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (subtitle.isNotBlank()) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 Icon(
                     Icons.Default.ChevronRight,

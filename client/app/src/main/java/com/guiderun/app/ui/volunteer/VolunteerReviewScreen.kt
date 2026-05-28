@@ -279,6 +279,14 @@ private fun TagsCard(
                     R.string.volunteer_review_tag_cooperative,
                     R.string.volunteer_review_tag_clear_communication,
                     R.string.volunteer_review_tag_friendly,
+                    R.string.volunteer_review_tag_pace_stable,
+                    R.string.volunteer_review_tag_good_stamina,
+                    R.string.volunteer_review_tag_listens_well,
+                    R.string.volunteer_review_tag_positive,
+                    R.string.volunteer_review_tag_persistent,
+                    R.string.volunteer_review_tag_trusting,
+                    R.string.volunteer_review_tag_feedback_timely,
+                    R.string.volunteer_review_tag_safe_aware,
                 )
                 tags.forEach { resId ->
                     val tag = stringResource(resId)

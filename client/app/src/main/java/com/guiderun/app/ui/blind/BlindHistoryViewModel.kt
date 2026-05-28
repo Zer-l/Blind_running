@@ -12,8 +12,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import android.content.Context
 import javax.inject.Inject
 
@@ -49,28 +51,38 @@ class BlindHistoryViewModel @Inject constructor(
     private var hasAnnouncedPage = false
 
     init {
-        loadHistory()
+        // init 路径不 speak 摘要：onScreenResumed 首次入页会等加载完成后串行播页面名+摘要+hint，
+        // 避免 loadHistory 的 HIGH speak 与 speakAndWait(页面名) 在两协程并发互相 FLUSH
+        loadHistory(speakResult = false)
     }
 
-    fun loadHistory() {
+    /**
+     * @param speakResult 是否在加载完成后立即 speak 摘要。init 路径传 false（由 onScreenResumed 接管串行播报），
+     *                   retry / pull-refresh 路径传 true（无并发的 onScreenResumed 竞争）。
+     */
+    fun loadHistory(speakResult: Boolean = true) {
         viewModelScope.launch {
             currentPage = 0
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runRequestRepository.getMyRequests(role = "BLIND", page = 0)
                 .onSuccess { list ->
                     applyList(list, append = false)
-                    if (list.isEmpty()) {
-                        ttsManager.speak(context.getString(R.string.blind_history_empty), TtsManager.Priority.HIGH)
-                    } else {
-                        val state = _uiState.value
-                        ttsManager.speak(context.getString(R.string.tts_history_loaded, state.totalRuns, "%.1f".format(state.totalDistanceKm), "%.1f".format(state.totalDurationHours)), TtsManager.Priority.HIGH)
+                    if (speakResult) {
+                        if (list.isEmpty()) {
+                            ttsManager.speak(context.getString(R.string.blind_history_empty), TtsManager.Priority.HIGH)
+                        } else {
+                            val state = _uiState.value
+                            ttsManager.speak(context.getString(R.string.tts_history_loaded, state.totalRuns, "%.1f".format(state.totalDistanceKm), "%.1f".format(state.totalDurationHours)), TtsManager.Priority.HIGH)
+                        }
                     }
                 }
                 .onFailure {
                     _uiState.update {
                         it.copy(isLoading = false, errorMessage = "加载失败，请重试")
                     }
-                    ttsManager.speak(context.getString(R.string.error_network), TtsManager.Priority.HIGH)
+                    if (speakResult) {
+                        ttsManager.speak(context.getString(R.string.error_network), TtsManager.Priority.HIGH)
+                    }
                 }
         }
     }
@@ -149,10 +161,29 @@ class BlindHistoryViewModel @Inject constructor(
 
     fun onScreenResumed() {
         ttsManager.acquire()
-        if (!hasAnnouncedPage) {
-            hasAnnouncedPage = true
-            viewModelScope.launch {
-                ttsManager.speakAndWait(context.getString(R.string.tts_page_blind_history), TtsManager.Priority.HIGH)
+        // 页面名每次 onResume 都播（从 TrackPlayback 返回时也需要重新告知用户当前位置）；
+        // 首次入页：等首次 loadHistory 完成后串行播 page → summary → hint，避免 race。
+        // 后续入页：仅播 page。
+        val firstTime = !hasAnnouncedPage
+        hasAnnouncedPage = true
+        viewModelScope.launch {
+            ttsManager.speakAndWait(context.getString(R.string.tts_page_blind_history), TtsManager.Priority.HIGH)
+            if (firstTime) {
+                // 等首次加载完成（最多 1500ms）；超时则按当前状态播
+                val state = withTimeoutOrNull(1500L) {
+                    _uiState.first { !it.isLoading }
+                } ?: _uiState.value
+                val summary = when {
+                    state.errorMessage != null -> context.getString(R.string.error_network)
+                    state.requests.isEmpty() -> context.getString(R.string.blind_history_empty)
+                    else -> context.getString(
+                        R.string.tts_history_loaded,
+                        state.totalRuns,
+                        "%.1f".format(state.totalDistanceKm),
+                        "%.1f".format(state.totalDurationHours),
+                    )
+                }
+                ttsManager.speakAndWait(summary, TtsManager.Priority.HIGH)
                 ttsManager.speak(context.getString(R.string.tts_hint_blind_history), TtsManager.Priority.HIGH)
             }
         }

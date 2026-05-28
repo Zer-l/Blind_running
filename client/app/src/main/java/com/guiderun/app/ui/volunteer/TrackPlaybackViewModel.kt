@@ -10,6 +10,7 @@ import com.guiderun.app.ui.shared.map.CameraTarget
 import com.guiderun.app.ui.shared.map.GuideRunMapState
 import com.guiderun.app.ui.shared.map.PolylineConfig
 import com.guiderun.app.util.PaceCalculator
+import com.guiderun.app.util.PaceWindow
 import kotlin.math.max
 import kotlin.math.min
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,17 +24,31 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 回放页 UI 状态。
+ *
+ * `currentDistanceMeters / currentDurationSeconds / currentPaceSeconds` 是"当前 marker 位置"的累计数据，
+ * 跟随播放进度同步变化；暂停回放时数值冻结；从头播放时归零。
+ */
 data class TrackPlaybackUiState(
     val tracks: List<RunTrack> = emptyList(),
     val isLoading: Boolean = true,
     val mapState: GuideRunMapState = GuideRunMapState(),
     val errorMessage: String? = null,
     val isPlaying: Boolean = false,
-    val speedMultiplier: Int = 5,
+    val speedMultiplier: Int = 1,
     val currentIndex: Int = 0,
     val totalPoints: Int = 0,
-    val avgPaceSeconds: Int? = null,
-    val maxSpeed: Float? = null,
+    /** 当前 marker 位置的累计距离（米） */
+    val currentDistanceMeters: Int = 0,
+    /** 当前 marker 位置的已用时长（秒），= points[currentIndex].t - points[0].t */
+    val currentDurationSeconds: Int = 0,
+    /** 当前 marker 位置的滑窗瞬时配速（秒/公里），无效时为 null */
+    val currentPaceSeconds: Int? = null,
+    /** 最终距离（米），用于初始显示和重放时显示 */
+    val finalDistanceMeters: Int = 0,
+    /** 最终时长（秒），用于初始显示和重放时显示 */
+    val finalDurationSeconds: Int = 0,
 )
 
 @HiltViewModel
@@ -44,10 +59,24 @@ class TrackPlaybackViewModel @Inject constructor(
 
     private val requestId: String = checkNotNull(savedStateHandle["requestId"])
 
+    /**
+     * 调用方（视障 Fragment / 志愿者 NavGraph）必填 role=BLIND/VOLUNTEER；
+     * 双端各自只看自己采集的轨迹，互不串扰。兜底用 "VOLUNTEER"。
+     */
+    private val role: String = savedStateHandle["role"] ?: "VOLUNTEER"
+
     private val _uiState = MutableStateFlow(TrackPlaybackUiState())
     val uiState: StateFlow<TrackPlaybackUiState> = _uiState.asStateFlow()
 
     private var playbackJob: Job? = null
+
+    /**
+     * 预计算的累积表（按 role 过滤后排序的 points 顺序）。
+     * 放成员字段而非 UiState：避免每帧 Flow 写入庞大数组造成重组开销。
+     */
+    private var orderedPoints: List<TrackPoint> = emptyList()
+    private var cumDistanceM: DoubleArray = DoubleArray(0)
+    private var cumDurationMs: LongArray = LongArray(0)
 
     init {
         loadTracks()
@@ -57,25 +86,59 @@ class TrackPlaybackViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             runRequestRepository.getTracks(requestId)
-                .onSuccess { tracks ->
-                    val allPoints = tracks.flatMap { it.points }.sortedBy { it.t }
-                    val mapState = buildMapState(tracks, allPoints, currentIndex = 0)
-                    val avgPace = computeAvgPace(tracks)
-                    val maxSpd = tracks.maxOfOrNull { it.maxSpeed ?: 0f }?.takeIf { it > 0f }
+                .onSuccess { allTracks ->
+                    // 双端独立：只取自己角色的轨迹，不再 flatMap 两边
+                    val tracks = allTracks.filter { it.role == role }
+                    val points = tracks.flatMap { it.points }.sortedBy { it.t }
+                    precomputeCumulatives(points)
+                    val mapState = buildMapState(tracks, points, currentIndex = 0)
+                    // 计算最终距离和时长
+                    val finalDist = if (points.isNotEmpty()) cumDistanceM.last().toInt() else 0
+                    val finalDur = if (points.isNotEmpty()) (cumDurationMs.last() / 1000L).toInt() else 0
                     _uiState.update {
                         it.copy(
                             tracks = tracks,
                             isLoading = false,
                             mapState = mapState,
-                            totalPoints = allPoints.size,
-                            avgPaceSeconds = avgPace,
-                            maxSpeed = maxSpd,
+                            totalPoints = points.size,
+                            currentIndex = 0,
+                            // 初始显示最终距离和时长
+                            currentDistanceMeters = finalDist,
+                            currentDurationSeconds = finalDur,
+                            currentPaceSeconds = null,
+                            finalDistanceMeters = finalDist,
+                            finalDurationSeconds = finalDur,
                         )
                     }
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
                 }
+        }
+    }
+
+    /**
+     * 预计算每个轨迹点的累积距离（Haversine）和累积时长（基于首点时间戳）。
+     * 播放循环里直接查表，避免每帧重算。
+     */
+    private fun precomputeCumulatives(points: List<TrackPoint>) {
+        orderedPoints = points
+        if (points.isEmpty()) {
+            cumDistanceM = DoubleArray(0)
+            cumDurationMs = LongArray(0)
+            return
+        }
+        cumDistanceM = DoubleArray(points.size)
+        cumDurationMs = LongArray(points.size)
+        cumDistanceM[0] = 0.0
+        cumDurationMs[0] = 0L
+        for (i in 1 until points.size) {
+            val seg = PaceCalculator.distanceMeters(
+                points[i - 1].lat, points[i - 1].lng,
+                points[i].lat, points[i].lng,
+            ).toDouble()
+            cumDistanceM[i] = cumDistanceM[i - 1] + seg
+            cumDurationMs[i] = points[i].t - points[0].t
         }
     }
 
@@ -97,39 +160,57 @@ class TrackPlaybackViewModel @Inject constructor(
 
     private fun startPlayback() {
         val state = _uiState.value
-        if (state.tracks.isEmpty()) return
-        val allPoints = state.tracks.flatMap { it.points }.sortedBy { it.t }
-        if (allPoints.isEmpty()) return
+        val points = orderedPoints
+        if (points.isEmpty()) return
 
         // 若上一轮已播放到末尾，再次点播放视为「从头开始」，但不动相机 —— 保留用户手势缩放后的视野。
-        val startIdx = if (state.currentIndex >= allPoints.size - 1) 0 else state.currentIndex
+        val startIdx = if (state.currentIndex >= points.size - 1) 0 else state.currentIndex
+
+        // 重建 PaceWindow，把已经走过的最近 30s 或 100m 段喂进去，让续播时瞬时配速立刻可读
+        val paceWindow = PaceWindow().apply { primeForIndex(points, startIdx) }
+
         _uiState.update {
             it.copy(
                 isPlaying = true,
                 currentIndex = startIdx,
+                currentDistanceMeters = cumDistanceM[startIdx].toInt(),
+                currentDurationSeconds = (cumDurationMs[startIdx] / 1000L).toInt(),
+                currentPaceSeconds = paceWindow.currentPaceSecondsPerKm(points[startIdx].t),
                 mapState = it.mapState.copy(
-                    animatedMarker = allPoints[startIdx].let { p -> Pair(p.lat, p.lng) },
+                    animatedMarker = points[startIdx].let { p -> Pair(p.lat, p.lng) },
                 ),
             )
         }
+
         playbackJob?.cancel()
         playbackJob = viewModelScope.launch {
             var idx = startIdx
-            while (isActive && idx < allPoints.size - 1) {
-                val current = allPoints[idx]
-                val next = allPoints[idx + 1]
+            while (isActive && idx < points.size - 1) {
+                val current = points[idx]
+                val next = points[idx + 1]
                 val intervalMs = ((next.t - current.t) / state.speedMultiplier).coerceIn(50L, 5000L)
                 delay(intervalMs)
                 idx++
+
+                // PaceWindow 同步推进一段（用真实时间戳，与跑步采集端口径一致）
+                val segM = PaceCalculator.distanceMeters(current.lat, current.lng, next.lat, next.lng)
+                val segDt = (next.t - current.t).coerceAtLeast(0L)
+                paceWindow.addSegment(segM, segDt, next.t)
+
+                val nowDist = cumDistanceM[idx].toInt()
+                val nowDur = (cumDurationMs[idx] / 1000L).toInt()
+                val nowPace = paceWindow.currentPaceSecondsPerKm(next.t)
                 _uiState.update { s ->
-                    val marker = Pair(next.lat, next.lng)
                     s.copy(
                         currentIndex = idx,
-                        mapState = s.mapState.copy(animatedMarker = marker),
+                        currentDistanceMeters = nowDist,
+                        currentDurationSeconds = nowDur,
+                        currentPaceSeconds = nowPace,
+                        mapState = s.mapState.copy(animatedMarker = Pair(next.lat, next.lng)),
                     )
                 }
             }
-            if (idx >= allPoints.size - 1) {
+            if (idx >= points.size - 1) {
                 _uiState.update { it.copy(isPlaying = false) }
             }
         }
@@ -138,18 +219,43 @@ class TrackPlaybackViewModel @Inject constructor(
     private fun pausePlayback() {
         playbackJob?.cancel()
         playbackJob = null
+        // 仅停止播放循环；currentDistance/Duration/Pace 保持在当前 marker 位置不动
         _uiState.update { it.copy(isPlaying = false) }
     }
 
     fun seekToStart() {
         playbackJob?.cancel()
-        val state = _uiState.value
-        val allPoints = state.tracks.flatMap { it.points }.sortedBy { it.t }
+        val tracks = _uiState.value.tracks
+        val points = orderedPoints
         // 显式构造新的 mapState（含新 CameraTarget 实例），让地图把相机重新定位到起点；
         // 否则用户中途放大后调 seekToStart，相机不会复位。
-        val mapState = buildMapState(state.tracks, allPoints, currentIndex = 0)
+        val mapState = buildMapState(tracks, points, currentIndex = 0)
         _uiState.update {
-            it.copy(isPlaying = false, currentIndex = 0, mapState = mapState)
+            it.copy(
+                isPlaying = false,
+                currentIndex = 0,
+                // 重放时显示最终距离和时长
+                currentDistanceMeters = it.finalDistanceMeters,
+                currentDurationSeconds = it.finalDurationSeconds,
+                currentPaceSeconds = null,
+                mapState = mapState,
+            )
+        }
+    }
+
+    /**
+     * 给续播场景的 PaceWindow 预热：把 startIdx 之前最近的若干段喂进窗口，
+     * 让 currentPaceSecondsPerKm 立刻能返回非 null 值（PaceWindow 内部会按 30s/100m 自动 evict 老段）。
+     */
+    private fun PaceWindow.primeForIndex(points: List<TrackPoint>, startIdx: Int) {
+        if (startIdx <= 0) return
+        // 倒推最多 30 段（PaceWindow 自身会再按时间/距离窗口收敛）
+        val from = (startIdx - 30).coerceAtLeast(1)
+        for (i in from..startIdx) {
+            val a = points[i - 1]
+            val b = points[i]
+            val seg = PaceCalculator.distanceMeters(a.lat, a.lng, b.lat, b.lng)
+            addSegment(seg, (b.t - a.t).coerceAtLeast(0L), b.t)
         }
     }
 
@@ -161,9 +267,6 @@ class TrackPlaybackViewModel @Inject constructor(
         val polylines = tracks.flatMap { track ->
             buildPaceColoredSegments(track.points.sortedBy { it.t })
         }
-
-        // 贝塞尔插值用于动画路径
-        val smoothPath = interpolateBezier(allPoints)
 
         val currentPoint = allPoints.getOrNull(currentIndex)
         val center = currentPoint ?: allPoints.firstOrNull()
@@ -178,13 +281,6 @@ class TrackPlaybackViewModel @Inject constructor(
             polylines = polylines,
             animatedMarker = currentPoint?.let { Pair(it.lat, it.lng) },
         )
-    }
-
-    private fun computeAvgPace(tracks: List<RunTrack>): Int? {
-        val totalDist = tracks.sumOf { it.totalDistanceMeters }
-        val totalDur = tracks.sumOf { it.totalDurationSeconds }
-        if (totalDist <= 0 || totalDur <= 0) return null
-        return (totalDur * 1000.0 / totalDist).toInt()
     }
 
     /**
@@ -236,41 +332,6 @@ class TrackPlaybackViewModel @Inject constructor(
         paceSecKm < 360 -> "#FDD835"  // 5:00-6:00 黄
         paceSecKm < 480 -> "#7CB342"  // 6:00-8:00 草绿
         else -> "#00C853"             // > 8:00/km 翠绿
-    }
-
-    /**
-     * Catmull-Rom 贝塞尔曲线插值，让回放路径更平滑。
-     * 每两个原始点之间插入 [segments] 个中间点。
-     */
-    private fun interpolateBezier(points: List<TrackPoint>, segments: Int = 5): List<Pair<Double, Double>> {
-        if (points.size < 2) return points.map { Pair(it.lat, it.lng) }
-
-        val result = mutableListOf<Pair<Double, Double>>()
-        for (i in 0 until points.size - 1) {
-            val p0 = points[max(0, i - 1)]
-            val p1 = points[i]
-            val p2 = points[i + 1]
-            val p3 = points[min(points.size - 1, i + 2)]
-
-            for (t in 0 until segments) {
-                val ratio = t.toDouble() / segments
-                val lat = catmullRom(p0.lat, p1.lat, p2.lat, p3.lat, ratio)
-                val lng = catmullRom(p0.lng, p1.lng, p2.lng, p3.lng, ratio)
-                result.add(Pair(lat, lng))
-            }
-        }
-        result.add(Pair(points.last().lat, points.last().lng))
-        return result
-    }
-
-    /** Catmull-Rom 样条插值公式 */
-    private fun catmullRom(p0: Double, p1: Double, p2: Double, p3: Double, t: Double): Double {
-        val t2 = t * t
-        val t3 = t2 * t
-        return 0.5 * ((2 * p1) +
-                (-p0 + p2) * t +
-                (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
-                (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
     }
 
     fun onErrorShown() {

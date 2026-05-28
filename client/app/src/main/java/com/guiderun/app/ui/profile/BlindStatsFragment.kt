@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.speakPageEntry
 import com.guiderun.app.databinding.FragmentBlindStatsBinding
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -47,8 +48,7 @@ class BlindStatsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        ttsManager.speak(getString(R.string.tts_page_blind_stats), TtsManager.Priority.INTERACTION)
-        ttsManager.speak(getString(R.string.tts_hint_blind_stats), TtsManager.Priority.INTERACTION)
+        speakPageEntry(ttsManager, R.string.tts_page_blind_stats, R.string.tts_hint_blind_stats)
     }
 
     override fun onDestroyView() {

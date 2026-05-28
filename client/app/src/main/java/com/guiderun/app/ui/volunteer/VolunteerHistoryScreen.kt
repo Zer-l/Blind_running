@@ -207,23 +207,12 @@ private fun BadgesSection(badges: List<String>) {
         ),
     ) {
         Column(modifier = Modifier.padding(AppSpacing.MD)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.EmojiEvents,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.secondary,
-                )
-                Text(
-                    text = "我的徽章",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
+            Text(
+                text = "我的徽章",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
             Spacer(modifier = Modifier.height(AppSpacing.MD))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
@@ -283,17 +272,14 @@ private fun VolunteerStatsCard(
                 StatsItem(
                     value = "$totalRuns",
                     label = "完成次数",
-                    icon = Icons.AutoMirrored.Filled.DirectionsRun,
                 )
                 StatsItem(
                     value = "%.1f".format(totalDistanceKm),
-                    label = "总距离(km)",
-                    icon = Icons.Default.Timer,
+                    label = "总距离",
                 )
                 StatsItem(
                     value = "%.1f".format(totalDurationHours),
-                    label = "总时长(h)",
-                    icon = Icons.Default.Timer,
+                    label = "总时长",
                 )
             }
         }
@@ -304,34 +290,21 @@ private fun VolunteerStatsCard(
 private fun StatsItem(
     value: String,
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(AppSpacing.XS),
     ) {
-        Surface(
-            shape = AppRadius.MediumShape,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-            modifier = Modifier.size(44.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.padding(AppSpacing.SM),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+        )
         Text(
             text = value,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
         )
     }
 }

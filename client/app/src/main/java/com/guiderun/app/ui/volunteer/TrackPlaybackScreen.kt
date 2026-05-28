@@ -61,6 +61,12 @@ import com.guiderun.app.ui.theme.AppSpacing
 @Composable
 fun TrackPlaybackScreen(
     requestId: String,
+    /**
+     * 调用方角色 BLIND / VOLUNTEER。双端各自传自己的角色；
+     * 实际过滤逻辑在 [TrackPlaybackViewModel] 内通过 SavedStateHandle 读取，
+     * 这里保留参数是为了让 Fragment / NavGraph 调用方在编译期就知道必须传值。
+     */
+    @Suppress("UNUSED_PARAMETER") role: String,
     onBack: () -> Unit,
     viewModel: TrackPlaybackViewModel = hiltViewModel(),
 ) {
@@ -98,10 +104,12 @@ fun TrackPlaybackScreen(
                 uiState.tracks.isEmpty() -> EmptyTrackContent()
                 else -> {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // 统计卡片
-                        TrackStatsRow(
-                            avgPaceSeconds = uiState.avgPaceSeconds,
-                            maxSpeed = uiState.maxSpeed,
+                        // 实时进度卡：跟随 marker 同步显示当前距离 / 已用时长 / 瞬时配速
+                        // 暂停回放时数值保持，从头播放时归零
+                        PlaybackLiveStatsRow(
+                            distanceMeters = uiState.currentDistanceMeters,
+                            durationSeconds = uiState.currentDurationSeconds,
+                            paceSeconds = uiState.currentPaceSeconds,
                             modifier = Modifier.padding(
                                 horizontal = AppSpacing.MD,
                                 vertical = AppSpacing.XS,
@@ -169,12 +177,20 @@ private fun EmptyTrackContent() {
     }
 }
 
+/**
+ * 回放进度同步卡：展示当前 marker 位置的累计距离、已用时长、瞬时配速。
+ * 跟随 [TrackPlaybackUiState.currentIndex] 变化而变化；播放暂停时数值保持。
+ */
 @Composable
-private fun TrackStatsRow(
-    avgPaceSeconds: Int?,
-    maxSpeed: Float?,
+private fun PlaybackLiveStatsRow(
+    distanceMeters: Int,
+    durationSeconds: Int,
+    paceSeconds: Int?,
     modifier: Modifier = Modifier,
 ) {
+    val distanceText = "%.2f".format(distanceMeters / 1000.0)
+    val durationText = formatDuration(durationSeconds)
+    val paceText = paceSeconds?.let { "%d'%02d\"".format(it / 60, it % 60) } ?: "--'--\""
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = AppRadius.LargeShape,
@@ -188,53 +204,41 @@ private fun TrackStatsRow(
                 .padding(AppSpacing.MD),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            StatItem(
-                value = avgPaceSeconds?.let { "%d'%02d\"".format(it / 60, it % 60) } ?: "--",
-                label = "均速(/km)",
-                icon = Icons.Default.Speed,
-            )
-            StatItem(
-                value = maxSpeed?.let { "%.1f m/s".format(it) } ?: "--",
-                label = "最高速度",
-                icon = Icons.Default.Timer,
-            )
+            PlaybackStatItem(value = distanceText, label = "距离")
+            PlaybackStatItem(value = durationText, label = "时长")
+            PlaybackStatItem(value = paceText, label = "配速")
         }
     }
 }
 
 @Composable
-private fun StatItem(
+private fun PlaybackStatItem(
     value: String,
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.XS),
     ) {
-        Surface(
-            shape = AppRadius.MediumShape,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-            modifier = Modifier.size(44.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.padding(AppSpacing.SM),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        }
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-        )
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+        )
     }
+}
+
+/** 时长格式化：< 1h 显示 mm:ss，>= 1h 显示 h:mm:ss */
+private fun formatDuration(seconds: Int): String {
+    val h = seconds / 3600
+    val m = (seconds % 3600) / 60
+    val s = seconds % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -300,14 +304,6 @@ private fun PlaybackControlsRow(
                 .padding(AppSpacing.SM),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // 进度文本
-            Text(
-                text = "%d / %d".format(currentIndex, totalPoints),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(AppSpacing.SM))
-
             // 控制按钮行
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -315,7 +311,7 @@ private fun PlaybackControlsRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // 速度选择
-                val speeds = listOf(5, 10, 20)
+                val speeds = listOf(1, 5, 10, 20)
                 Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.XS)) {
                     speeds.forEach { speed ->
                         Surface(

@@ -43,7 +43,11 @@ class BlindHistoryFragment : Fragment() {
         HistoryAdapter(
             onItemClick = { requestId ->
                 hapticFeedback.tick()
-                val bundle = Bundle().apply { putString("requestId", requestId) }
+                // role 默认 BLIND（nav xml 也有 defaultValue），显式传一遍保证 SavedStateHandle 一定能取到
+                val bundle = Bundle().apply {
+                    putString("requestId", requestId)
+                    putString("role", "BLIND")
+                }
                 findNavController().navigate(R.id.action_history_to_trackPlayback, bundle)
             },
             onReviewClick = { requestId ->

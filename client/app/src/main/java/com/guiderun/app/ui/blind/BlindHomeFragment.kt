@@ -35,7 +35,6 @@ import javax.inject.Inject
  * 关键交互：
  * - 主按钮 btn_start（长按 2s+5s）→ 进入 CreateRequestFragment
  * - 主按钮 btn_quick_start（长按 2s+5s，仅 quickStartEnabled 时显示）→ 进入 CreateRequest 并自动提交上次设置
- * - 次按钮 btn_logout（单击）→ 二次确认后退出登录（authEvent 由 MainActivity 监听）
  * - 历史记录 / 设置卡片（单击）→ 跳对应 Fragment
  * - 进行中订单横幅（visible 时单击）→ ActiveOrderRouter.blindFragmentId 直接跳对应业务 Fragment
  *
@@ -66,7 +65,6 @@ class BlindHomeFragment : Fragment() {
         EdgeToEdgeHelper.applyInsets(view)
         setupPrimaryButton()
         setupQuickStartButton()
-        setupLogoutButton()
         setupSecondaryButtons()
         setupBackPressIntercept()
         setupVoiceCommands()
@@ -100,10 +98,22 @@ class BlindHomeFragment : Fragment() {
             scope = viewLifecycleOwner.lifecycleScope,
             ttsManager = ttsManager,
             hapticFeedback = hapticFeedback,
-            thresholdLabelRes = R.string.blind_tts_home_quick_start_threshold,
+            thresholdLabelRes = 0, // 不播报静态文本，改为 onThresholdReached 动态播报
             countdownLabelRes = R.string.blind_tts_long_press_cancelled,
+            onThresholdReached = { speakLastRequestSummary() },
             onCountdownCommitted = { navigateToCreateRequest(quickStart = true) },
         )
+    }
+
+    /** 长按阈值达到时播报上次订单信息，等待播报完成后再进入倒计时 */
+    private suspend fun speakLastRequestSummary() {
+        val summary = viewModel.uiState.value.lastRequestSummary
+        val msg = if (summary != null) {
+            getString(R.string.blind_tts_quick_start_summary, summary)
+        } else {
+            getString(R.string.blind_tts_quick_start_no_history)
+        }
+        ttsManager.speakAndWait(msg, TtsManager.Priority.INTERACTION)
     }
 
     private fun setupSecondaryButtons() {
@@ -122,23 +132,6 @@ class BlindHomeFragment : Fragment() {
         }
     }
 
-    /**
-     * 退出登录采用与主按钮一致的长按 2s+5s 倒计时手势。
-     * 撤销窗口防误触；倒计时执行后调 logout()，由 collectUiState 监听 loggedOut → finish Activity。
-     * 不在此处直接 finish，因为 logout 是 suspend（清 token / 清缓存）需要等完成。
-     */
-    private fun setupLogoutButton() {
-        binding.btnLogout.contentDescription =
-            getString(R.string.blind_hint_home_logout_long_press)
-        binding.btnLogout.bind(
-            scope = viewLifecycleOwner.lifecycleScope,
-            ttsManager = ttsManager,
-            hapticFeedback = hapticFeedback,
-            thresholdLabelRes = R.string.blind_tts_home_logout_threshold,
-            countdownLabelRes = R.string.blind_tts_long_press_cancelled,
-            onCountdownCommitted = { viewModel.logout() },
-        )
-    }
 
     private fun setupBackPressIntercept() {
         // BlindHome 是 BlindActivity 的起始目的地，返回键应直接退出 Activity 而不是 popBackStack。
@@ -212,19 +205,6 @@ class BlindHomeFragment : Fragment() {
 
     private suspend fun collectUiState() {
         viewModel.uiState.collect { state ->
-            // logout 倒计时执行后会清 token + emit AuthEvents，BlindActivity 必须 finish
-            // 才能让 MainActivity 恢复并响应 authEvents 跳 Login；
-            // 否则 BlindActivity 残留会导致后续视障端 API 调用因 token 失效全部 403。
-            if (state.loggedOut) {
-                viewModel.onNavigated()
-                ttsManager.speak(
-                    getString(R.string.blind_tts_home_logout_done),
-                    TtsManager.Priority.INTERACTION,
-                )
-                hapticFeedback.confirm()
-                requireActivity().finish()
-                return@collect
-            }
             binding.tvWelcome.text = if (state.nickname.isNotBlank()) {
                 getString(R.string.blind_ui_home_welcome, state.nickname)
             } else {
@@ -261,8 +241,17 @@ class BlindHomeFragment : Fragment() {
      *
      * 首次启动时 nickname 异步加载，最多等 800ms 拿到非空昵称；超时 fallback 到"首页"短播报。
      * 后续从子页面返回时 uiState 已就绪，first { nonBlank } 立即返回。
+     *
+     * 接力 TTS（pending）：上游 ViewModel（如 Matched/BlindRunning 收到对端 ABORTED）通过
+     * BlindActivity.setPendingHomeTts(reasonRes) 暂存原因，本方法优先以 HIGH 播报，跳过欢迎语。
+     * 避免在源 Fragment 自播时被 onPause→ttsManager.release()→engine.stop() 清队列吞掉。
      */
     private fun announceHomeOnce() {
+        val pending = (activity as? BlindActivity)?.consumePendingHomeTts()
+        if (pending != null) {
+            ttsManager.speak(getString(pending), TtsManager.Priority.HIGH)
+            return
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             val state = kotlinx.coroutines.withTimeoutOrNull(800L) {
                 viewModel.uiState.first { it.nickname.isNotBlank() || !it.isLoading }
@@ -280,7 +269,6 @@ class BlindHomeFragment : Fragment() {
         super.onPause()
         binding.btnStart.reset()
         binding.btnQuickStart.reset()
-        binding.btnLogout.reset()
     }
 
     override fun onDestroyView() {

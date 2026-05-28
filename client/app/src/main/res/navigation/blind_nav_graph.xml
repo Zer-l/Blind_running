@@ -68,6 +68,14 @@
             app:destination="@id/blindRunningFragment"
             app:popUpTo="@id/blindMatchedFragment"
             app:popUpToInclusive="true" />
+        <!-- 志愿者 abandon 前2次：订单回 MATCHING，视障端回等待匹配。
+             正常路径（WaitingMatch→Matched）下 MatchedFragment 优先用 popBackStack 复用旧实例；
+             仅在恢复路径（订单恢复直接进 Matched，栈无 WaitingMatch）才走本 action 新建实例。 -->
+        <action
+            android:id="@+id/action_matched_to_waitingMatch"
+            app:destination="@id/blindWaitingMatchFragment"
+            app:popUpTo="@id/blindMatchedFragment"
+            app:popUpToInclusive="true" />
     </fragment>
 
     <!-- 阶段5：跑步中 -->
@@ -127,6 +135,10 @@
         <argument
             android:name="requestId"
             app:argType="string" />
+        <argument
+            android:name="role"
+            app:argType="string"
+            android:defaultValue="BLIND" />
     </fragment>
 
     <!-- 紧急联系人列表 -->

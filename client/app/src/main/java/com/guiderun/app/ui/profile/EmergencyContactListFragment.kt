@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.speakPageEntry
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentEmergencyContactListBinding
@@ -79,8 +80,11 @@ class EmergencyContactListFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         viewModel.loadContacts()
-        ttsManager.speak(getString(R.string.tts_page_emergency_contact_list), TtsManager.Priority.INTERACTION)
-        ttsManager.speak(getString(R.string.tts_hint_emergency_contact_list), TtsManager.Priority.INTERACTION)
+        speakPageEntry(
+            ttsManager,
+            R.string.tts_page_emergency_contact_list,
+            R.string.tts_hint_emergency_contact_list,
+        )
     }
 
     override fun onDestroyView() {

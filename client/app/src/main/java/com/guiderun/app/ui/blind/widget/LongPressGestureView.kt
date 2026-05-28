@@ -15,6 +15,7 @@ import com.guiderun.app.accessibility.TtsManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  * 视障端通用长按手势组件，统一"长按阈值 + 倒计时撤销"双段确认模型。
@@ -55,7 +56,7 @@ class LongPressGestureView @JvmOverloads constructor(
     private var scope: LifecycleCoroutineScope? = null
     private var tts: TtsManager? = null
     private var haptic: HapticFeedback? = null
-    private var onThresholdReached: (() -> Unit)? = null
+    private var onThresholdReached: (suspend () -> Unit)? = null
     private var onCountdownCommitted: (() -> Unit)? = null
     private var onCancel: (() -> Unit)? = null
 
@@ -133,7 +134,7 @@ class LongPressGestureView @JvmOverloads constructor(
         hapticFeedback: HapticFeedback,
         @StringRes thresholdLabelRes: Int = this.thresholdLabelRes,
         @StringRes countdownLabelRes: Int = this.countdownLabelRes,
-        onThresholdReached: () -> Unit = {},
+        onThresholdReached: suspend () -> Unit = {},
         onCountdownCommitted: () -> Unit,
         onCancel: () -> Unit = {},
     ) {
@@ -186,6 +187,7 @@ class LongPressGestureView @JvmOverloads constructor(
 
             state = State.COUNTDOWN
             haptic?.confirm()
+            // 先执行外部回调（可 suspend，用于播报动态内容），再播报静态文本
             onThresholdReached?.invoke()
             if (thresholdLabelRes != 0) {
                 // 阈值播报：INTERACTION FLUSH，打断之前任何播报，启动 INTERACTION 锁

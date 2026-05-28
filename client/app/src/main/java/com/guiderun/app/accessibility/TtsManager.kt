@@ -196,27 +196,30 @@ class TtsManager @Inject constructor(
         val utteranceId = enqueueSpeak(text, priority, flush, deferred) ?: return
 
         // 等待 onDone 回调，带超时保护
-        withTimeoutOrNull(timeoutMs) {
-            suspendCancellableCoroutine { cont ->
-                scope.launch {
-                    deferred.await()
-                    if (cont.isActive) cont.resume(Unit)
-                }
-                cont.invokeOnCancellation {
-                    pendingUtterances.remove(utteranceId)?.let { entry ->
-                        if (entry.priority == Priority.INTERACTION || entry.priority == Priority.CRITICAL) {
-                            pendingInteractionCount.decrementAndGet().coerceAtLeast(0)
-                        }
+        try {
+            withTimeoutOrNull(timeoutMs) {
+                deferred.await()
+            } ?: run {
+                // 超时清理
+                pendingUtterances.remove(utteranceId)?.let { entry ->
+                    if (entry.priority == Priority.INTERACTION || entry.priority == Priority.CRITICAL) {
+                        pendingInteractionCount.decrementAndGet().coerceAtLeast(0)
                     }
                 }
+                Timber.w("TTS speakAndWait timed out for text='$text'")
             }
-        } ?: run {
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // 结构化并发：必须向上传播取消信号
+            pendingUtterances.remove(utteranceId)
+            throw e
+        } catch (e: Exception) {
+            // 异常清理
             pendingUtterances.remove(utteranceId)?.let { entry ->
                 if (entry.priority == Priority.INTERACTION || entry.priority == Priority.CRITICAL) {
                     pendingInteractionCount.decrementAndGet().coerceAtLeast(0)
                 }
             }
-            Timber.w("TTS speakAndWait timed out for text='$text'")
+            Timber.w(e, "TTS speakAndWait failed for text='$text'")
         }
     }
 

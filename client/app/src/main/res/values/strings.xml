@@ -35,15 +35,9 @@
     <string name="home_welcome">你好，%1$s</string>
     <string name="home_current_role">当前角色：%1$s</string>
     <string name="home_btn_start_running">开始跑步</string>
-    <string name="home_btn_start_running_desc">发起跑步请求，寻找志愿者</string>
     <string name="home_btn_disabled_has_active">您有进行中订单，请点击上方横幅恢复</string>
     <string name="home_btn_settings">个人设置</string>
-    <string name="home_btn_settings_desc">查看和修改个人资料</string>
     <string name="home_btn_history">跑步历史</string>
-    <string name="home_btn_history_desc">查看跑步历史记录</string>
-    <string name="home_btn_profile">个人资料</string>
-    <string name="home_btn_profile_desc">查看和修改个人资料</string>
-    <string name="home_btn_enter_volunteer_desc">查看附近跑步请求并接单</string>
     <string name="btn_logout">退出登录</string>
 
     <!-- 通用 -->
@@ -94,6 +88,10 @@
     <string name="matched_title">志愿者已接单</string>
     <string name="matched_volunteer_name">志愿者：%1$s</string>
     <string name="matched_volunteer_rating">评分 %1$.1f 分·共陪跑 %2$d 次</string>
+    <string name="matched_volunteer_rating_none">暂无评分·共陪跑 %1$d 次</string>
+    <string name="matched_volunteer_rating_tts">评分%1$.1f分</string>
+    <string name="matched_volunteer_rating_tts_none">暂无评分</string>
+    <string name="matched_volunteer_tts_combined">志愿者%1$s已接单。%2$s，共陪跑%3$d次。%4$s。</string>
     <string name="matched_status_accepted">志愿者正在准备，即将出发</string>
     <string name="matched_status_en_route">志愿者正在赶往汇合点</string>
     <string name="matched_status_met">志愿者已到达汇合点，请长按确认按钮2秒汇合</string>
@@ -152,11 +150,10 @@
     <string name="volunteer_running_distance">距离</string>
     <string name="volunteer_running_duration">时长</string>
     <string name="volunteer_running_pace">配速</string>
-    <string name="volunteer_running_avg_pace">均速</string>
-    <string name="volunteer_running_end">申请结束跑步</string>
+    <string name="volunteer_running_end">申请结束</string>
     <string name="volunteer_running_end_pending">等待视障用户确认中…</string>
     <string name="volunteer_running_end_waiting">已通知视障用户，请等待对方确认</string>
-    <string name="volunteer_running_end_confirm_title">申请结束跑步</string>
+    <string name="volunteer_running_end_confirm_title">申请结束</string>
     <string name="volunteer_running_end_confirm_message">将向视障用户发起结束申请，对方确认后跑步结束。</string>
     <string name="confirm">确认</string>
     <string name="cancel">取消</string>
@@ -173,6 +170,14 @@
     <string name="volunteer_review_tag_cooperative">配合度好</string>
     <string name="volunteer_review_tag_clear_communication">表达清晰</string>
     <string name="volunteer_review_tag_friendly">友善</string>
+    <string name="volunteer_review_tag_pace_stable">节奏稳定</string>
+    <string name="volunteer_review_tag_good_stamina">耐力好</string>
+    <string name="volunteer_review_tag_listens_well">听从指导</string>
+    <string name="volunteer_review_tag_positive">积极乐观</string>
+    <string name="volunteer_review_tag_persistent">坚持到底</string>
+    <string name="volunteer_review_tag_trusting">信任度高</string>
+    <string name="volunteer_review_tag_feedback_timely">反馈及时</string>
+    <string name="volunteer_review_tag_safe_aware">注意安全</string>
 
     <!-- 志愿者历史 -->
     <string name="volunteer_history_title">跑步历史</string>
@@ -302,8 +307,8 @@
 
     <!-- ==================== 视障端首页（BlindHomeFragment） ==================== -->
     <string name="blind_ui_home_title">首页</string>
-    <string name="blind_ui_home_welcome">欢迎，%1$s</string>
-    <string name="blind_ui_home_welcome_anonymous">欢迎</string>
+    <string name="blind_ui_home_welcome">你好，%1$s</string>
+    <string name="blind_ui_home_welcome_anonymous">你好</string>
     <string name="blind_ui_home_active_role">当前角色：%1$s</string>
     <string name="blind_ui_home_role_unknown">视障跑者</string>
     <string name="blind_ui_home_active_order_title">您有进行中的订单</string>
@@ -316,20 +321,20 @@
     <string name="blind_ui_home_status_running">跑步中</string>
     <string name="blind_ui_home_status_review">等待评价</string>
     <string name="blind_ui_home_status_in_progress">进行中</string>
-    <string name="blind_ui_home_history_title">历史记录</string>
-    <string name="blind_ui_home_history_desc">查看跑步历史与轨迹回放</string>
-    <string name="blind_ui_home_settings_title">设置</string>
-    <string name="blind_ui_home_settings_desc">个人资料、紧急联系人、无障碍设置</string>
     <string name="blind_ui_home_btn_create">发起跑步请求</string>
-    <string name="blind_ui_home_btn_quick_start">一键发起（用上次设置）</string>
+    <string name="blind_ui_home_btn_quick_start">一键发起</string>
     <string name="blind_ui_home_btn_logout">退出登录</string>
     <string name="blind_ui_countdown_default">5秒倒计时内松开撤销</string>
     <string name="blind_hint_home_create_long_press">长按主按钮2秒发起跑步请求，5秒倒计时内松开撤销</string>
     <string name="blind_hint_home_quick_start_long_press">长按一键发起2秒，使用上次设置直接发起，5秒倒计时内松开撤销</string>
     <string name="blind_hint_home_logout_long_press">长按退出登录2秒，5秒倒计时内松开撤销</string>
     <string name="blind_tts_home_create_threshold">5秒后进入发起跑步请求，松开撤销</string>
-    <string name="blind_tts_home_quick_start_threshold">5秒后用上次设置直接发起，松开撤销</string>
     <string name="blind_tts_home_logout_threshold">5秒后退出登录，松开撤销</string>
+    <string name="blind_tts_quick_start_summary">上次订单：%1$s，5秒后发起，松开撤销</string>
+    <string name="blind_tts_quick_start_no_history">无历史订单，5秒后发起，松开撤销</string>
+    <string name="quick_start_summary_location">地点%1$s</string>
+    <string name="quick_start_summary_duration">时长%1$d分钟</string>
+    <string name="quick_start_summary_notes">备注%1$s</string>
     <string name="blind_tts_home_logout_done">已退出登录</string>
     <string name="tts_page_blind_home">首页</string>
 
@@ -417,7 +422,7 @@
     <string name="tts_hint_blind_review">单击卡片选择评分，长按提交按钮2秒提交，单击跳过按钮跳过评价</string>
     <string name="tts_hint_blind_history">可筛选记录，点击条目查看轨迹回放</string>
     <string name="tts_hint_track_playback">点击播放按钮开始回放，可调节回放速度</string>
-    <string name="tts_hint_settings">可编辑资料、查看紧急联系人、跑步统计和无障碍设置</string>
+    <string name="tts_hint_settings">可编辑资料、查看紧急联系人、跑步统计和无障碍设置，或退出登录</string>
     <string name="tts_hint_profile_edit">可修改昵称、性别、视力等级等个人信息</string>
     <string name="tts_hint_blind_stats">显示您的跑步统计数据</string>
     <string name="tts_hint_emergency_contact_list">可添加、编辑或删除紧急联系人</string>
@@ -440,6 +445,8 @@
     <string name="tts_cancel_release">松开取消请求</string>
     <string name="tts_match_found">已找到志愿者！正在前往与您汇合</string>
     <string name="tts_request_aborted">请求已终止</string>
+    <string name="tts_aborted_by_volunteer">订单已被志愿者取消，已返回首页</string>
+    <string name="tts_volunteer_abandoned_rematching">志愿者已放弃接单，正在为您重新匹配，请稍候</string>
     <string name="tts_cancel_countdown">%1$d秒后取消请求，再按一次可撤销</string>
     <string name="tts_cancel_success">请求已取消</string>
     <string name="tts_cancel_failed">取消失败：%1$s</string>
@@ -516,7 +523,7 @@
 
     <!-- BlindRunning 试点 -->
     <string name="blind_ui_running_distance_label">距离</string>
-    <string name="blind_ui_running_distance_unit">公里</string>
+    <string name="blind_ui_running_distance_unit"></string>
     <string name="blind_ui_running_duration_label">时长</string>
     <string name="blind_ui_running_duration_unit"></string>
     <string name="blind_ui_running_pace_label">配速</string>

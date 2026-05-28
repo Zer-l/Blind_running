@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.addCallback
 import androidx.annotation.IdRes
+import androidx.annotation.StringRes
 import androidx.core.os.bundleOf
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
@@ -71,6 +72,45 @@ class BlindActivity : BaseBlindActivity() {
 
     private var navController: NavController? = null
     private var isStartDestination = true
+
+    /**
+     * 跨 Fragment TTS 接力：当 ViewModel 收到对端取消 / 重新匹配等"目标页才播"的事件时，
+     * 不在源 Fragment 自播（onPause→ttsManager.release()→engine.stop() 会清队列吞掉），
+     * 改为把 reasonRes 暂存到 Activity，由目标 Fragment 在 onResume 内消费并 speak。
+     *
+     * Activity 不会因 Fragment 切换被销毁，TTS 由目标 Fragment 自己 acquire 后播放，
+     * 生命周期对齐，不会被释放清队列。
+     */
+    @StringRes private var pendingHomeTtsRes: Int? = null
+    @StringRes private var pendingWaitingTtsRes: Int? = null
+
+    fun setPendingHomeTts(@StringRes resId: Int) {
+        pendingHomeTtsRes = resId
+    }
+
+    @StringRes
+    fun consumePendingHomeTts(): Int? {
+        val res = pendingHomeTtsRes
+        pendingHomeTtsRes = null
+        return res
+    }
+
+    fun setPendingWaitingTts(@StringRes resId: Int) {
+        pendingWaitingTtsRes = resId
+    }
+
+    @StringRes
+    fun consumePendingWaitingTts(): Int? {
+        val res = pendingWaitingTtsRes
+        pendingWaitingTtsRes = null
+        return res
+    }
+
+    /** 带 TTS 接力的回首页：先存 reason 再走常规 popBackStack。 */
+    fun navigateToHomeWithTts(@StringRes reasonRes: Int) {
+        pendingHomeTtsRes = reasonRes
+        navigateToHome()
+    }
 
     /**
      * 统一返回首页：popBackStack 到 BlindHome 节点，不 finish Activity。

@@ -3,6 +3,7 @@ package com.guiderun.app.ui.blind
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -12,7 +13,6 @@ import com.guiderun.app.accessibility.TtsManager
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.data.local.dao.RunSessionStatsDao
 import com.guiderun.app.data.remote.WebSocketManager
-import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.service.BlindRunTrackingService
@@ -21,15 +21,10 @@ import com.guiderun.app.util.Ema
 import com.guiderun.app.util.PaceCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
@@ -56,7 +51,11 @@ data class BlindRunningUiState(
 
 sealed interface BlindRunningNavEvent {
     data class ToReview(val requestId: String) : BlindRunningNavEvent
-    data object ToHome : BlindRunningNavEvent
+    /**
+     * 返回首页。reasonRes 非空时由 BlindHomeFragment.onResume 接力播报，
+     * 避免本页 onPause→ttsManager.release()→engine.stop() 清队列吞掉。
+     */
+    data class ToHome(@StringRes val reasonRes: Int? = null) : BlindRunningNavEvent
 }
 
 @HiltViewModel
@@ -82,7 +81,6 @@ class BlindRunningViewModel @Inject constructor(
 
     private var userId: String = ""
     private var suppressAnnounceUntil = 0L
-    private var lastPeerMetricsTimeMs: Long = 0L
     private var lastAnnouncedKm: Int = 0
     /** 上次"每 5 分钟整点"播报的"分钟"刻度，避免同一分钟反复触发。 */
     private var lastAnnouncedMinuteBucket: Int = 0
@@ -93,6 +91,10 @@ class BlindRunningViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             userId = userPreferences.getCurrentUserId() ?: ""
+            // 区分"全新开始 vs 返回首页重进"：DB 已存在该 request 的 stats 行且时长 > 0 → 重进；
+            // 否则视为首次进入。startTrackingService 是幂等的，service 已在跑也安全。
+            val isResume = userId.isNotEmpty() &&
+                (sessionStatsDao.get(requestId, userId)?.totalDurationSeconds ?: 0) > 0
             try {
                 startTrackingService()
             } catch (e: Exception) {
@@ -100,9 +102,9 @@ class BlindRunningViewModel @Inject constructor(
             }
             loadPeerPhone()
             observeSessionStats()
-            observePeerMetrics()
             observeWs()
-            suppressAndSpeak(context.getString(R.string.tts_running_started), TtsManager.Priority.HIGH)
+            val ttsRes = if (isResume) R.string.blind_tts_running_resumed else R.string.tts_running_started
+            suppressAndSpeak(context.getString(ttsRes), TtsManager.Priority.HIGH)
         }
     }
 
@@ -137,22 +139,21 @@ class BlindRunningViewModel @Inject constructor(
                 if (stats != null) {
                     // 暂停状态切换：朗读 + 震动，视障用户无屏幕反馈也能感知
                     announcePauseToggleIfChanged(stats.isPaused)
-                    // peer metrics 超过 8 秒未更新时使用本地数据作为 fallback
-                    val now = System.currentTimeMillis()
-                    if (now - lastPeerMetricsTimeMs > 8_000L) {
-                        val display = smoothPaceForDisplay(stats.currentPaceSeconds, stats.isPaused)
-                        _uiState.update {
-                            it.copy(
-                                totalDistanceMeters = stats.totalDistanceMeters,
-                                totalDurationSeconds = stats.totalDurationSeconds,
-                                currentPaceSeconds = stats.currentPaceSeconds,
-                                displayPaceSeconds = display,
-                                avgPaceSeconds = stats.avgPaceSeconds,
-                                isPaused = stats.isPaused,
-                            )
-                        }
-                        maybeAnnouncePeriodic(stats.totalDurationSeconds, stats.totalDistanceMeters)
+                    // 双端独立：本端 UI 100% 由本机 RunTrackingService 写入的 stats 驱动；
+                    // 不再订阅对端 peerMetrics，避免对端数据异常 / 5s 跳变 / 0 覆盖等问题
+                    val display = smoothPaceForDisplay(stats.currentPaceSeconds, stats.isPaused)
+                    _uiState.update {
+                        it.copy(
+                            totalDistanceMeters = stats.totalDistanceMeters,
+                            totalDurationSeconds = stats.totalDurationSeconds,
+                            currentPaceSeconds = stats.currentPaceSeconds,
+                            displayPaceSeconds = display,
+                            avgPaceSeconds = stats.avgPaceSeconds,
+                            isPaused = stats.isPaused,
+                        )
                     }
+                    checkKmAnnouncement(stats.totalDistanceMeters)
+                    maybeAnnouncePeriodic(stats.totalDurationSeconds, stats.totalDistanceMeters)
                 }
             }
         }
@@ -192,31 +193,6 @@ class BlindRunningViewModel @Inject constructor(
         suppressAndSpeak(context.getString(R.string.tts_running_progress, minute, km))
     }
 
-    private fun observePeerMetrics() {
-        viewModelScope.launch {
-            wsManager.peerMetrics.collect { metrics ->
-                if (metrics.requestId != requestId) return@collect
-                lastPeerMetricsTimeMs = System.currentTimeMillis()
-                // 距离单调约束：peer 推送回退时不允许 UI 距离回退（避免 GPS 重算造成视觉跳变）
-                val curDist = _uiState.value.totalDistanceMeters
-                val safeDist = maxOf(curDist, metrics.totalDistanceMeters)
-                // peer 协议未携带 isPaused，按 currentPaceSeconds 是否存在近似判断
-                val display = smoothPaceForDisplay(metrics.currentPaceSeconds, paused = false)
-                _uiState.update {
-                    it.copy(
-                        totalDistanceMeters = safeDist,
-                        totalDurationSeconds = metrics.totalDurationSeconds,
-                        currentPaceSeconds = metrics.currentPaceSeconds,
-                        displayPaceSeconds = display,
-                        avgPaceSeconds = metrics.avgPaceSeconds,
-                    )
-                }
-                checkKmAnnouncement(safeDist)
-                maybeAnnouncePeriodic(metrics.totalDurationSeconds, safeDist)
-            }
-        }
-    }
-
     private fun checkKmAnnouncement(distanceMeters: Int) {
         val km = distanceMeters / 1000
         if (km > lastAnnouncedKm && km > 0) {
@@ -241,10 +217,10 @@ class BlindRunningViewModel @Inject constructor(
                         _navEvent.send(BlindRunningNavEvent.ToReview(requestId))
                     }
                     RunRequestStatus.ABORTED.name -> {
+                        // 跑步中对端取消：TTS 由 BlindHomeFragment 接力，避免本页 release 吞掉
                         stopTrackingService()
-                        suppressAndSpeak(context.getString(R.string.tts_request_aborted), TtsManager.Priority.HIGH)
                         hapticFeedback.error()
-                        _navEvent.send(BlindRunningNavEvent.ToHome)
+                        _navEvent.send(BlindRunningNavEvent.ToHome(R.string.tts_aborted_by_volunteer))
                     }
                     else -> {}
                 }
@@ -322,16 +298,39 @@ class BlindRunningViewModel @Inject constructor(
         }
     }
 
+    private var hasAnnouncedPageOnce = false
+
     fun onScreenResumed() {
         ttsManager.acquire()
+        val firstTime = !hasAnnouncedPageOnce
+        hasAnnouncedPageOnce = true
+        viewModelScope.launch {
+            if (firstTime) {
+                // 首次：init 已播"跑步开始/已恢复跑步"，本次仅补操作 hint 串在其后
+                ttsManager.speak(
+                    context.getString(R.string.tts_hint_blind_running),
+                    TtsManager.Priority.HIGH,
+                )
+            } else {
+                // 从子页/后台返回：完整播"跑步中页面" + 操作 hint，重新告知用户当前位置
+                ttsManager.speakAndWait(
+                    context.getString(R.string.tts_page_blind_running),
+                    TtsManager.Priority.HIGH,
+                )
+                ttsManager.speak(
+                    context.getString(R.string.tts_hint_blind_running),
+                    TtsManager.Priority.HIGH,
+                )
+            }
+        }
     }
 
     fun onScreenPaused() {
         ttsManager.release()
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        stopTrackingService()
-    }
+    // 故意不在 onCleared 内 stopTrackingService。
+    // 返回首页（popBackStack 弹出 BlindRunningFragment）会触发 ViewModel.onCleared，
+    // 此时跑步应在后台继续（TTS"跑步在后台继续"，首页横幅可恢复），
+    // 终态停止由显式分支负责：FINISHED WS / ABORTED WS / doEndRun success 都已调 stopTrackingService。
 }

@@ -1,5 +1,6 @@
 package com.guiderun.app.ui.blind
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -39,7 +40,16 @@ data class MatchedUiState(
 )
 
 sealed interface MatchedNavEvent {
-    data object ToHome : MatchedNavEvent
+    /**
+     * 返回首页。reasonRes 非空时由目标页（BlindHomeFragment）在 onResume 内播报，
+     * 不在本页自播——避免 onPause→ttsManager.release()→engine.stop() 清队列吞掉提示。
+     */
+    data class ToHome(@StringRes val reasonRes: Int? = null) : MatchedNavEvent
+    /**
+     * 志愿者放弃接单（abandon 第 1/2 次），订单回 MATCHING，视障端退回等待匹配页。
+     * 同样走"目标页接力 TTS"机制。
+     */
+    data class ToWaitingMatch(val requestId: String, @StringRes val reasonRes: Int? = null) : MatchedNavEvent
     data class ToRunning(val requestId: String) : MatchedNavEvent
 }
 
@@ -128,9 +138,22 @@ class MatchedViewModel @Inject constructor(
                 return
             }
             RunRequestStatus.ABORTED -> {
+                // 对端取消 / abandon 第3次：TTS 由 BlindHomeFragment 接力播报，避免被 onPause 吞掉
                 suppressStatusAnnounce()
-                ttsManager.speak(context.getString(R.string.tts_request_aborted), TtsManager.Priority.HIGH)
-                _navEvent.emit(MatchedNavEvent.ToHome)
+                _navEvent.emit(MatchedNavEvent.ToHome(R.string.tts_aborted_by_volunteer))
+                return
+            }
+            RunRequestStatus.MATCHING -> {
+                // 志愿者 abandon 前 2 次：订单回 MATCHING 重新匹配，视障端退回等待页
+                // 重置志愿者播报标志，下次匹配新志愿者时能再播报一次
+                hasAnnouncedVolunteer = false
+                suppressStatusAnnounce()
+                _navEvent.emit(
+                    MatchedNavEvent.ToWaitingMatch(
+                        requestId = request.id,
+                        reasonRes = R.string.tts_volunteer_abandoned_rematching,
+                    )
+                )
                 return
             }
             else -> return
@@ -139,9 +162,19 @@ class MatchedViewModel @Inject constructor(
         // 首次进入志愿者信息 + 状态合并为一条 TTS，避免被打断
         if (volunteer != null && !hasAnnouncedVolunteer) {
             hasAnnouncedVolunteer = true
-            val rating = volunteer.rating?.let { r -> "评分${r}分" } ?: "暂无评分"
-            val combined =
-                "志愿者${volunteer.nickname}已接单。${rating}，共陪跑${volunteer.totalRuns}次。${statusText}。"
+            val rating = volunteer.rating
+                ?.let { r -> context.getString(R.string.matched_volunteer_rating_tts, r) }
+                ?: context.getString(R.string.matched_volunteer_rating_tts_none)
+            // 页面名作为前缀拼进合并消息，单次 speak 播完整句，
+            // 避免 onScreenResumed.speakAndWait(页面名) 与本处 speak 在不同协程并发被互相 FLUSH。
+            val combined = context.getString(R.string.tts_page_matched) + "。" +
+                context.getString(
+                    R.string.matched_volunteer_tts_combined,
+                    volunteer.nickname,
+                    rating,
+                    volunteer.totalRuns,
+                    statusText,
+                )
             suppressStatusAnnounce()
             ttsManager.speak(combined, TtsManager.Priority.HIGH)
             hapticFeedback.confirm()
@@ -163,11 +196,16 @@ class MatchedViewModel @Inject constructor(
 
     fun onScreenResumed() {
         ttsManager.acquire()
+        // 首次入页：页面名已经被 handleUpdate 拼进合并消息（"志愿者已接单页面。志愿者xx已接单..."），
+        //          这里不再单独播，避免与 handleUpdate 在不同协程并发被互相 FLUSH。
+        // 重入（hasAnnouncedVolunteer 已 true）：合并消息不会再发，需要本方法独立播页面名 + 当前状态。
+        if (!hasAnnouncedVolunteer) return
         viewModelScope.launch {
-            // 仅播报页面名；操作提示由 handleUpdate 根据当前状态精确播报：
-            // ACCEPTED/EN_ROUTE → "志愿者正在准备/在赶往"，MET → "已到达汇合点，请长按确认按钮 2 秒汇合"
-            // 避免在按钮 disabled 状态下播报"按住 2 秒确认汇合"误导用户
             ttsManager.speakAndWait(context.getString(R.string.tts_page_matched), TtsManager.Priority.HIGH)
+            val statusText = _uiState.value.statusText
+            if (statusText.isNotBlank()) {
+                ttsManager.speak(statusText, TtsManager.Priority.HIGH)
+            }
         }
     }
 
@@ -247,11 +285,12 @@ class MatchedViewModel @Inject constructor(
             _uiState.update { it.copy(isCancelling = true) }
             runRequestRepository.cancel(requestId, reason = "用户主动取消")
                 .onSuccess {
-                    ttsManager.speak(context.getString(R.string.tts_order_cancelled), TtsManager.Priority.HIGH)
+                    // 取消成功后立即 nav 回首页，TTS 由 BlindHomeFragment 接力播报
                     hapticFeedback.confirm()
-                    _navEvent.emit(MatchedNavEvent.ToHome)
+                    _navEvent.emit(MatchedNavEvent.ToHome(R.string.tts_order_cancelled))
                 }
                 .onFailure { e ->
+                    // 失败仍留在本页，TTS 直接播即可（不切页面，不会被 release 吞）
                     _uiState.update { it.copy(isCancelling = false) }
                     ttsManager.speak(context.getString(R.string.tts_order_cancel_failed, e.message ?: "请重试"), TtsManager.Priority.HIGH)
                     hapticFeedback.error()

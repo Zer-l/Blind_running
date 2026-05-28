@@ -108,11 +108,10 @@ class MatchedFragment : Fragment() {
                 override fun handleOnBackPressed() {
                     val isMet = viewModel.uiState.value.currentStatus == RunRequestStatus.MET
                     if (isMet) {
-                        ttsManager.speak(
-                            getString(R.string.blind_tts_minimized_to_home),
-                            TtsManager.Priority.INTERACTION,
+                        // TTS 接力：避免本页 onPause→ttsManager.release()→engine.stop() 吞掉提示
+                        (activity as? BlindActivity)?.navigateToHomeWithTts(
+                            R.string.blind_tts_minimized_to_home,
                         )
-                        (activity as? BlindActivity)?.navigateToHome()
                     } else {
                         BlindConfirmDialogFragment.newInstance(
                             requestKey = REQ_KEY_CANCEL,
@@ -141,7 +140,8 @@ class MatchedFragment : Fragment() {
 
             binding.tvVolunteerRating.text = if (state.volunteerRating != null)
                 getString(R.string.matched_volunteer_rating, state.volunteerRating, state.volunteerTotalRuns)
-            else ""
+            else
+                getString(R.string.matched_volunteer_rating_none, state.volunteerTotalRuns)
 
             // tv_status 仅在有内容时显示（assertive 关键事件），空文本时 GONE 避免占用空间
             if (state.statusText.isNotBlank()) {
@@ -164,8 +164,28 @@ class MatchedFragment : Fragment() {
     private suspend fun collectNavEvents() {
         viewModel.navEvent.collect { event ->
             when (event) {
-                MatchedNavEvent.ToHome ->
-                    (activity as? BlindActivity)?.navigateToHome()
+                is MatchedNavEvent.ToHome -> {
+                    val act = activity as? BlindActivity
+                    if (event.reasonRes != null) {
+                        act?.navigateToHomeWithTts(event.reasonRes)
+                    } else {
+                        act?.navigateToHome()
+                    }
+                }
+                is MatchedNavEvent.ToWaitingMatch -> {
+                    // 接力 TTS：让 WaitingMatchFragment.onResume 内消费并 speak HIGH
+                    event.reasonRes?.let {
+                        (activity as? BlindActivity)?.setPendingWaitingTts(it)
+                    }
+                    val nc = findNavController()
+                    // 优先 pop 回栈中已有的 WaitingMatchFragment，复用其 elapsed 计时；
+                    // 若不在栈中（如订单恢复直接进 Matched），fallback 走 navigate 新建实例。
+                    val popped = nc.popBackStack(R.id.blindWaitingMatchFragment, /* inclusive = */ false)
+                    if (!popped) {
+                        val args = Bundle().apply { putString("requestId", event.requestId) }
+                        nc.navigate(R.id.action_matched_to_waitingMatch, args)
+                    }
+                }
                 is MatchedNavEvent.ToRunning -> {
                     val args = Bundle().apply { putString("requestId", event.requestId) }
                     findNavController().navigate(R.id.action_matched_to_running, args)

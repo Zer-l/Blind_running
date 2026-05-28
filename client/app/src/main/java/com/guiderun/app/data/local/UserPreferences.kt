@@ -137,7 +137,7 @@ class UserPreferences @Inject constructor(
     }
 
     companion object {
-        const val DEFAULT_TTS_SPEECH_RATE = 1.5f
+        const val DEFAULT_TTS_SPEECH_RATE = 1.0f
         const val DEFAULT_THEME_ID = "orange"
         const val DEFAULT_BLIND_FONT_SCALE = 1.0f
         const val DEFAULT_BLIND_CONTRAST_THEME = "BLACK"

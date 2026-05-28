@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
@@ -23,10 +24,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.guiderun.app.R
+import com.guiderun.app.ui.home.HomeViewModel
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
@@ -36,13 +45,24 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
     onNavigateToTheme: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel(),
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(uiState.loggedOut) {
+        if (uiState.loggedOut) {
+            viewModel.onNavigated()
+            onLogout()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "设置",
+                        text = "个人设置",
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
@@ -66,7 +86,6 @@ fun SettingsScreen(
             SettingsEntry(
                 icon = Icons.Default.Person,
                 title = "个人资料",
-                subtitle = "编辑昵称、性别、跑步能力等",
                 onClick = onNavigateToProfile,
             )
 
@@ -74,8 +93,15 @@ fun SettingsScreen(
             SettingsEntry(
                 icon = Icons.Default.Palette,
                 title = "主题配色",
-                subtitle = "切换应用配色方案",
                 onClick = onNavigateToTheme,
+            )
+
+            // 退出登录
+            SettingsEntry(
+                icon = Icons.AutoMirrored.Filled.Logout,
+                title = stringResource(R.string.btn_logout),
+                titleColor = MaterialTheme.colorScheme.error,
+                onClick = { viewModel.logout() },
             )
         }
     }
@@ -85,7 +111,8 @@ fun SettingsScreen(
 private fun SettingsEntry(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
-    subtitle: String,
+    subtitle: String = "",
+    titleColor: androidx.compose.ui.graphics.Color = Color.Unspecified,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -118,12 +145,15 @@ private fun SettingsEntry(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
+                    color = titleColor,
                 )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Icon(
                 imageVector = Icons.Default.ChevronRight,

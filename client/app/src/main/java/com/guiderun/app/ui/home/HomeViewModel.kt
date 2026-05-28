@@ -2,6 +2,9 @@ package com.guiderun.app.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import com.guiderun.app.R
+import com.guiderun.app.data.local.LastRequestPrefs
 import com.guiderun.app.data.local.RequestPreferences
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.domain.model.RunRequest
@@ -10,6 +13,7 @@ import com.guiderun.app.domain.repository.AuthRepository
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,10 +29,13 @@ data class HomeUiState(
     val activeRoleEnum: UserRole? = null,
     val isLoading: Boolean = false,
     val loggedOut: Boolean = false,
+    /** 上次订单摘要（用于一键发起 TTS 播报），null 表示无历史 */
+    val lastRequestSummary: String? = null,
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val userPreferences: UserPreferences,
@@ -57,8 +64,21 @@ class HomeViewModel @Inject constructor(
 
     private fun refreshQuickStartEnabled() {
         viewModelScope.launch {
-            _quickStartEnabled.value = requestPreferences.loadLast() != null
+            val last = requestPreferences.loadLast()
+            _quickStartEnabled.value = last != null
+            _uiState.update {
+                it.copy(lastRequestSummary = last?.toSummary())
+            }
         }
+    }
+
+    /** 将上次订单参数转为 TTS 可播报的摘要 */
+    private fun LastRequestPrefs.toSummary(): String {
+        val parts = mutableListOf<String>()
+        parts.add(context.getString(R.string.quick_start_summary_location, locationDesc))
+        parts.add(context.getString(R.string.quick_start_summary_duration, durationMinutes))
+        if (notes.isNotBlank()) parts.add(context.getString(R.string.quick_start_summary_notes, notes))
+        return parts.joinToString("，")
     }
 
     /**

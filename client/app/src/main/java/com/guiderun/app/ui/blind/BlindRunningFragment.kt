@@ -112,18 +112,17 @@ class BlindRunningFragment : Fragment() {
 
     /**
      * 返回键：服务端状态机禁止 RUNNING 状态 cancel，非破坏性最小化即可。
-     * 直接返回首页，跑步在后台继续；TTS 提示从首页横幅可恢复。
+     * 直接返回首页，跑步在后台继续；TTS 由 BlindHomeFragment.onResume 接力播报，
+     * 避免本页 onPause→ttsManager.release()→engine.stop() 把 INTERACTION 入队的提示吞掉。
      */
     private fun setupBackPressInterception() {
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    ttsManager.speak(
-                        getString(R.string.blind_tts_running_minimized_to_home),
-                        TtsManager.Priority.INTERACTION,
+                    (activity as? BlindActivity)?.navigateToHomeWithTts(
+                        R.string.blind_tts_running_minimized_to_home,
                     )
-                    (activity as? BlindActivity)?.navigateToHome()
                 }
             },
         )
@@ -226,8 +225,14 @@ class BlindRunningFragment : Fragment() {
                     val args = Bundle().apply { putString("requestId", event.requestId) }
                     findNavController().navigate(R.id.action_blindRunning_to_review, args)
                 }
-                BlindRunningNavEvent.ToHome ->
-                    (activity as? BlindActivity)?.navigateToHome()
+                is BlindRunningNavEvent.ToHome -> {
+                    val act = activity as? BlindActivity
+                    if (event.reasonRes != null) {
+                        act?.navigateToHomeWithTts(event.reasonRes)
+                    } else {
+                        act?.navigateToHome()
+                    }
+                }
             }
         }
     }

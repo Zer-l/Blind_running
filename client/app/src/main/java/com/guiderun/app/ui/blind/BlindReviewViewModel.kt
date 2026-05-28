@@ -17,8 +17,10 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 data class BlindReviewUiState(
@@ -63,34 +65,23 @@ class BlindReviewViewModel @Inject constructor(
     val navEvent: SharedFlow<BlindReviewNavEvent> = _navEvent.asSharedFlow()
 
     init {
+        // 仅加载数据，不在 init 内 speak —— TTS 由 onScreenResumed 串行播报：
+        // page name → intro（跑步数据摘要） → hint。
+        // 之前 init speak intro + onScreenResumed speakAndWait page 在两个协程并发跑，
+        // page 的 HIGH speakAndWait 会立即 FLUSH 已经开始播的 intro，导致用户听不到摘要。
         viewModelScope.launch {
-            val req = runRequestRepository.getRunRequest(requestId).getOrNull()
-            if (req != null) {
-                val distance = req.actualDistanceMeters ?: 0
-                val duration = req.actualDurationSeconds ?: 0
-                _uiState.update {
-                    it.copy(
-                        distanceMeters = distance,
-                        durationSeconds = duration,
-                        peerPhone = req.volunteer?.phone,
-                    )
-                }
-                ttsManager.speak(
-                    appContext.getString(
-                        R.string.blind_review_intro_format,
-                        distance / 1000.0,
-                        duration / 60,
-                    ),
-                    TtsManager.Priority.HIGH,
-                )
-            } else {
-                ttsManager.speak(
-                    appContext.getString(R.string.tts_hint_blind_review),
-                    TtsManager.Priority.HIGH,
+            val req = runRequestRepository.getRunRequest(requestId).getOrNull() ?: return@launch
+            _uiState.update {
+                it.copy(
+                    distanceMeters = req.actualDistanceMeters ?: 0,
+                    durationSeconds = req.actualDurationSeconds ?: 0,
+                    peerPhone = req.volunteer?.phone,
                 )
             }
         }
     }
+
+    private var hasAnnouncedPage = false
 
     /** 单击卡片：选择评分，TTS 朗读，震动反馈，但不提交。 */
     fun selectRating(rating: Int) {
@@ -161,8 +152,32 @@ class BlindReviewViewModel @Inject constructor(
 
     fun onScreenResumed() {
         ttsManager.acquire()
+        val firstTime = !hasAnnouncedPage
+        hasAnnouncedPage = true
         viewModelScope.launch {
-            ttsManager.speakAndWait(appContext.getString(R.string.tts_page_blind_review))
+            // 1) 页面名（每次 onResume 都播）
+            ttsManager.speakAndWait(
+                appContext.getString(R.string.tts_page_blind_review),
+                TtsManager.Priority.HIGH,
+            )
+            // 2) 首次入页：等 init 加载完跑步数据，串行播 intro + hint
+            if (firstTime) {
+                val state = withTimeoutOrNull(800L) {
+                    _uiState.first { it.distanceMeters > 0 || it.durationSeconds > 0 }
+                } ?: _uiState.value
+                if (state.distanceMeters > 0 || state.durationSeconds > 0) {
+                    val intro = appContext.getString(
+                        R.string.blind_review_intro_format,
+                        state.distanceMeters / 1000.0,
+                        state.durationSeconds / 60,
+                    )
+                    ttsManager.speakAndWait(intro, TtsManager.Priority.HIGH)
+                }
+                ttsManager.speak(
+                    appContext.getString(R.string.tts_hint_blind_review),
+                    TtsManager.Priority.HIGH,
+                )
+            }
         }
     }
 

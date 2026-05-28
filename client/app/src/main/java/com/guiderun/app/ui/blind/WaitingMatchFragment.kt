@@ -134,15 +134,25 @@ class WaitingMatchFragment : Fragment() {
                     val args = Bundle().apply { putString("requestId", event.requestId) }
                     findNavController().navigate(R.id.action_waitingMatch_to_matched, args)
                 }
-                WaitingMatchNavEvent.ToHome ->
-                    (activity as? BlindActivity)?.navigateToHome()
+                is WaitingMatchNavEvent.ToHome -> {
+                    val act = activity as? BlindActivity
+                    if (event.reasonRes != null) {
+                        act?.navigateToHomeWithTts(event.reasonRes)
+                    } else {
+                        act?.navigateToHome()
+                    }
+                }
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        viewModel.onScreenResumed()
+        // 接力 TTS：上游（MatchedViewModel MATCHING 分支）通过 setPendingWaitingTts 暂存原因。
+        // 把 string 透传给 VM，由它串行调度 pending → page title → hint，
+        // 避免后入队 HIGH speakAndWait 用 QUEUE_FLUSH 打断 pending。
+        val pending = (activity as? BlindActivity)?.consumePendingWaitingTts()?.let { getString(it) }
+        viewModel.onScreenResumed(pendingTts = pending)
         (activity as? BaseBlindActivity)?.activeRequestId = viewModel.requestId
     }
 

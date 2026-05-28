@@ -224,6 +224,25 @@
                         android:textColor="?attr/blindPrimary"
                         android:textSize="@dimen/blind_text_headline" />
                 </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/blindOnSurface" />
+
+                <!-- 退出登录（破坏性操作，红色文字） -->
+                <com.guiderun.app.ui.blind.widget.LongPressGestureView
+                    android:id="@+id/btn_logout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/blind_touch_min"
+                    android:paddingHorizontal="@dimen/blind_space_md"
+                    android:paddingVertical="@dimen/blind_space_sm"
+                    android:text="@string/blind_ui_home_btn_logout"
+                    android:textColor="?attr/blindWarning"
+                    android:textSize="@dimen/blind_text_body"
+                    app:backgroundTint="@android:color/transparent"
+                    app:cornerRadius="0dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

@@ -130,8 +130,14 @@ abstract class RunTrackingService : Service() {
 
         // 离群点阈值（按瞬时速度判断，比固定距离阈值更准）
         private const val MAX_SPEED_MPS = 12f         // ≈ 43 km/h
-        private const val MIN_DELTA_M = 2f            // 位移 < 2m 视为静止漂移
-        private const val MIN_DELTA_TIME_MS = 5_000L  // dt < 5s 内的微位移才屏蔽
+        // 位移 < 5m 视为静止漂移：实测视障端原地不动时 GPS 单帧漂移常见 3-6m，原来 2m 太低
+        private const val MIN_DELTA_M = 5f
+        // isMicroMove 的 dt 下限固定 5s；上限改为跟随采样间隔（见 handleLocation），
+        // 避免 30s 静止省电模式下 deltaTimeMs ≈ 30s 跌出窗口、微漂移直接入账
+        private const val MIN_DELTA_TIME_MS = 5_000L
+        // 相对精度门控：位移必须显著大于定位误差，否则一定是噪声
+        // accuracy * 0.5 经验值：accuracy=20m 的点要求位移 > 10m 才算真位移
+        private const val NOISE_ACCURACY_RATIO = 0.5f
 
         // 静止判定（用于采集间隔降频）
         private const val STATIONARY_SPEED_MPS = 0.5f
@@ -139,10 +145,12 @@ abstract class RunTrackingService : Service() {
         private const val STATIONARY_INTERVAL_MS = 30_000L
 
         // 自动暂停判定（用于距离/配速冻结）
-        private const val PAUSE_SPEED_MPS = 0.5f      // 持续低于该速度才入暂停
+        // 0.7 m/s ≈ 2.5 km/h：原 0.5 太接近 GPS 噪声速度（6m/5s=1.2m/s），导致原地噪声反复踢出暂停
+        private const val PAUSE_SPEED_MPS = 0.7f
         private const val PAUSE_DURATION_MS = 10_000L // 持续 10s 才入暂停
         private const val RESUME_SPEED_MPS = 1.0f     // 高于该速度即恢复
-        private const val RESUME_DURATION_MS = 0L     // 0 = 首帧高速即恢复（保留 RESUME_SPEED_MPS 门槛）
+        // 3s 高速持续才退出暂停：原来 0 单帧噪声就能恢复，造成静止时距离仍在涨
+        private const val RESUME_DURATION_MS = 3_000L
 
         // 速度→采集间隔自适应
         private const val SPEED_WALK = 2.0f
@@ -163,6 +171,15 @@ abstract class RunTrackingService : Service() {
         val requestId = intent?.getStringExtra(EXTRA_REQUEST_ID)
             ?: runBlocking { userPreferences.getActiveRequestId() }
             ?: run { stopSelf(); return START_NOT_STICKY }
+
+        // 幂等：同一 requestId + 已在跑的采集 Job 直接复用。
+        // ViewModel 重建会调 startForegroundService，若不拦截会重新触发 restoreFromPersistedStats，
+        // 把 startElapsedMs 前移而暂停状态字段仍残留旧绝对时间戳 → movingMs 变负 coerce 成 0（见 Bug A）。
+        if (currentRequestId == requestId && trackingJob?.isActive == true) {
+            startForeground(NOTIFICATION_ID, buildNotification(requestId))
+            return START_REDELIVER_INTENT
+        }
+
         currentRequestId = requestId
         startForeground(NOTIFICATION_ID, buildNotification(requestId))
         locationIntervalFlow.value = locationIntervalMs
@@ -183,14 +200,38 @@ abstract class RunTrackingService : Service() {
      * 关键技巧：把 [startElapsedMs] 倒推到 "现在 - 已跑时长"，
      * 后续 [flushStats] 用单调时钟差计算的 movingMs 自然含上恢复的时长。
      * pausedAccumMs 保持 0：已经把暂停时段视为合并进 totalDurationSeconds，不再单独还原。
+     *
+     * 必须重置所有暂停相关字段：[pauseStartedAtRealtimeMs] 是绝对 elapsedRealtime 时间戳，
+     * 若沿用上一次进程的值会与新 [startElapsedMs] 基线错位 ——
+     * 当 onStartCommand 在 service 已运行时被再次触发（ViewModel 重建调 startForegroundService），
+     * `ongoingPauseMs` 会远大于 `nowElapsed - startElapsedMs`，让 movingMs 变负 coerce 成 0，
+     * 进而把 totalDurationSeconds 写成 0，永久污染历史。
      */
     private suspend fun restoreFromPersistedStats(requestId: String) {
         val prev = sessionStatsDao.get(requestId, currentUserId)
+        val now = SystemClock.elapsedRealtime()
+        // 这些字段先全部归零；下面再按需恢复暂停态。
+        // 全部归零是因为 pauseStartedAtRealtimeMs / lowSpeedSinceRealtimeMs / pausedAccumMs
+        // 都是绝对 elapsedRealtime 或基于上次进程的累积，跨进程沿用会基线错位。
+        isPaused = false
+        pauseStartedAtRealtimeMs = -1L
+        pausedAccumMs = 0L
+        lowSpeedSinceRealtimeMs = -1L
+        pendingResumeSinceRealtimeMs = -1L
+
         if (prev != null) {
             accumulatedDistanceM = prev.totalDistanceMeters.toDouble()
-            startElapsedMs = SystemClock.elapsedRealtime() - prev.totalDurationSeconds * 1000L
+            startElapsedMs = now - prev.totalDurationSeconds * 1000L
+            // 关键：若上次会话退出时是暂停态，重进必须继承，避免 UI 短暂闪现"运行中"再切回"暂停"。
+            // 把 pauseStartedAt 锚到当下：等价于"从此刻开始暂停"——
+            // movingMs = now - startElapsedMs - 0 - (now - now) = totalDurationSeconds × 1000，timer 不变。
+            // 后续真实速度回升再正常退出暂停，pausedAccumMs 自动吃掉"在暂停态停留的时间"。
+            if (prev.isPaused) {
+                isPaused = true
+                pauseStartedAtRealtimeMs = now
+            }
         } else {
-            startElapsedMs = SystemClock.elapsedRealtime()
+            startElapsedMs = now
         }
     }
 
@@ -238,8 +279,13 @@ abstract class RunTrackingService : Service() {
         updatePauseState(nowRealtimeMs)
 
         // 6. 位移门控 + 暂停冻结：屏蔽静止漂移对距离的污染；暂停期间距离/配速完全不动
-        val isMicroMove = deltaM < MIN_DELTA_M && deltaTimeMs in 1..MIN_DELTA_TIME_MS
-        if (!isPaused && prevRawLat != null && prevRawLng != null && !isMicroMove) {
+        //   - isMicroMove：位移 < 5m 且 dt 在合理采样窗口内 → 微漂移（dt 上限跟随当前采样间隔的 1.5 倍，
+        //     兼容 30s 静止模式，否则 30s 间隔下漂移会跌出窗口被错误计入距离）
+        //   - isNoiseMove：位移小于定位误差的 0.5 倍 → 一定是噪声（accuracy=20m 时要求位移 > 10m）
+        val maxMicroDt = (locationIntervalFlow.value * 3 / 2).coerceAtLeast(MIN_DELTA_TIME_MS)
+        val isMicroMove = deltaM < MIN_DELTA_M && deltaTimeMs in 1..maxMicroDt
+        val isNoiseMove = deltaM < geo.accuracy * NOISE_ACCURACY_RATIO
+        if (!isPaused && prevRawLat != null && prevRawLng != null && !isMicroMove && !isNoiseMove) {
             accumulatedDistanceM += deltaM
             paceWindow.addSegment(deltaM, deltaTimeMs, nowRealtimeMs)
         }
@@ -287,8 +333,10 @@ abstract class RunTrackingService : Service() {
                 if (lowSpeedSinceRealtimeMs <= 0L) lowSpeedSinceRealtimeMs = nowRealtimeMs
                 if (nowRealtimeMs - lowSpeedSinceRealtimeMs >= PAUSE_DURATION_MS) {
                     isPaused = true
-                    // 暂停起点回溯到"开始低速"时刻，前 10s 静止也不计入运动时长
-                    pauseStartedAtRealtimeMs = lowSpeedSinceRealtimeMs
+                    // 暂停起点取"当下"而非回溯到低速起点：
+                    // 回溯虽然精确（前 10s 静止不入账），但会让入暂停瞬间 timer 倒减 ~10s，
+                    // UI 视觉不连贯。代价是每次入暂停多算 ~10s 运动时长（< 长跑总时长的 1%）。
+                    pauseStartedAtRealtimeMs = nowRealtimeMs
                     pendingResumeSinceRealtimeMs = -1L
                 }
             } else {

@@ -14,6 +14,7 @@ import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.speakPageEntry
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentProfileEditBinding
@@ -60,8 +61,7 @@ class ProfileEditFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        ttsManager.speak(getString(R.string.tts_page_profile_edit), TtsManager.Priority.INTERACTION)
-        ttsManager.speak(getString(R.string.tts_hint_profile_edit), TtsManager.Priority.INTERACTION)
+        speakPageEntry(ttsManager, R.string.tts_page_profile_edit, R.string.tts_hint_profile_edit)
     }
 
     override fun onPause() {

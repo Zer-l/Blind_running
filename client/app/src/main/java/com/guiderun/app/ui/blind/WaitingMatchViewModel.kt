@@ -1,5 +1,6 @@
 package com.guiderun.app.ui.blind
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -32,7 +33,11 @@ data class WaitingMatchUiState(
 
 sealed interface WaitingMatchNavEvent {
     data class ToMatched(val requestId: String) : WaitingMatchNavEvent
-    data object ToHome : WaitingMatchNavEvent
+    /**
+     * 返回首页。reasonRes 非空时由 BlindHomeFragment.onResume 接力播报，
+     * 避免本页 onPause→ttsManager.release()→engine.stop() 清队列吞掉。
+     */
+    data class ToHome(@StringRes val reasonRes: Int? = null) : WaitingMatchNavEvent
 }
 
 /**
@@ -109,9 +114,9 @@ class WaitingMatchViewModel @Inject constructor(
                         _navEvent.emit(WaitingMatchNavEvent.ToMatched(requestId))
                     }
                     RunRequestStatus.ABORTED -> {
+                        // TTS 由 BlindHomeFragment 接力播报，本页 release 不会吞掉提示
                         suppressAutoAnnounce()
-                        ttsManager.speak(context.getString(R.string.tts_request_aborted), TtsManager.Priority.HIGH)
-                        _navEvent.emit(WaitingMatchNavEvent.ToHome)
+                        _navEvent.emit(WaitingMatchNavEvent.ToHome(R.string.tts_request_aborted))
                     }
                     else -> Unit
                 }
@@ -119,11 +124,19 @@ class WaitingMatchViewModel @Inject constructor(
         }
     }
 
-    fun onScreenResumed() {
+    /**
+     * @param pendingTts 上游接力 TTS（如 Matched MATCHING 分支推过来的"志愿者放弃接单..."），
+     *                   若非空，先 speakAndWait 这条，再串行播页面 title/hint，
+     *                   避免后入队的 HIGH speakAndWait 用 QUEUE_FLUSH 打断 pending。
+     */
+    fun onScreenResumed(pendingTts: String? = null) {
         ttsManager.acquire()
-        if (!hasAnnouncedPage) {
-            hasAnnouncedPage = true
-            viewModelScope.launch {
+        viewModelScope.launch {
+            if (pendingTts != null) {
+                ttsManager.speakAndWait(pendingTts, TtsManager.Priority.HIGH)
+            }
+            if (!hasAnnouncedPage) {
+                hasAnnouncedPage = true
                 ttsManager.speakAndWait(context.getString(R.string.tts_page_waiting_match), TtsManager.Priority.HIGH)
                 ttsManager.speak(context.getString(R.string.tts_hint_waiting_match), TtsManager.Priority.HIGH)
             }
@@ -160,11 +173,12 @@ class WaitingMatchViewModel @Inject constructor(
             suppressAutoAnnounce()
             cancelRunRequest(requestId, reason = "用户主动取消")
                 .onSuccess {
-                    ttsManager.speak(context.getString(R.string.tts_cancel_success), TtsManager.Priority.HIGH)
+                    // 取消成功后即将切页，TTS 由 BlindHomeFragment 接力，避免 release 吞掉
                     hapticFeedback.confirm()
-                    _navEvent.emit(WaitingMatchNavEvent.ToHome)
+                    _navEvent.emit(WaitingMatchNavEvent.ToHome(R.string.tts_cancel_success))
                 }
                 .onFailure { e ->
+                    // 失败仍留本页，直接播
                     _uiState.update { it.copy(isCancelling = false) }
                     ttsManager.speak(context.getString(R.string.tts_cancel_failed, e.message ?: "请重试"))
                     hapticFeedback.error()

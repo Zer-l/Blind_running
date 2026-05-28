@@ -18,8 +18,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
@@ -53,6 +54,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.ui.common.CallPeerButton
 import com.guiderun.app.ui.common.InterruptDialog
+import com.guiderun.app.ui.shared.map.CameraTarget
+import com.guiderun.app.ui.shared.map.GuideRunMap
+import com.guiderun.app.ui.shared.map.GuideRunMapState
+import com.guiderun.app.ui.shared.map.PolylineConfig
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 import com.guiderun.app.util.PaceCalculator
@@ -118,10 +123,44 @@ fun VolunteerRunningScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = stringResource(R.string.volunteer_running_title),
-                        style = MaterialTheme.typography.titleLarge,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.volunteer_running_title),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        // 暂停提示嵌入标题和电话按钮之间
+                        AnimatedVisibility(
+                            visible = uiState.isPaused,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                        ) {
+                            Surface(
+                                shape = AppRadius.SmallShape,
+                                color = MaterialTheme.colorScheme.errorContainer,
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = AppSpacing.SM, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Pause,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.running_paused_label),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                    )
+                                }
+                            }
+                        }
+                    }
                 },
                 actions = {
                     CallPeerButton(phone = uiState.request?.blindRunner?.phone)
@@ -135,27 +174,63 @@ fun VolunteerRunningScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            // 距离大字
-            DistanceDisplay(
+            // 三个指标横排：距离、时长、配速
+            StatsRow(
                 distanceMeters = uiState.totalDistanceMeters,
-                isPaused = uiState.isPaused,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = AppSpacing.MD, vertical = AppSpacing.XL),
-            )
-
-            // 统计卡片
-            StatsCard(
                 durationSeconds = uiState.totalDurationSeconds,
                 currentPace = uiState.displayPaceSeconds,
-                avgPace = uiState.avgPaceSeconds,
                 isPaused = uiState.isPaused,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = AppSpacing.MD),
+                    .padding(horizontal = AppSpacing.MD, vertical = AppSpacing.SM),
             )
 
-            Spacer(Modifier.weight(1f))
+            // 地图实时渲染跑步轨迹
+            // cameraTarget 只在首次设置一次，避免每次刷新都重置相机
+            var initialCameraSet by remember { mutableStateOf(false) }
+            val initialLocation = uiState.initialLocation
+            val lastPoint = uiState.trackPoints.lastOrNull()
+
+            // 在 LaunchedEffect 中设置初始相机标记，避免在 remember 块内产生副作用
+            LaunchedEffect(lastPoint, initialLocation) {
+                if (!initialCameraSet && (lastPoint != null || initialLocation != null)) {
+                    initialCameraSet = true
+                }
+            }
+
+            val mapState = remember(uiState.trackPoints, initialLocation, initialCameraSet) {
+                val camera = when {
+                    initialCameraSet && lastPoint != null -> {
+                        CameraTarget(lastPoint.first, lastPoint.second, zoom = 17f)
+                    }
+                    initialCameraSet && initialLocation != null -> {
+                        CameraTarget(initialLocation.first, initialLocation.second, zoom = 17f)
+                    }
+                    else -> null
+                }
+                GuideRunMapState(
+                    cameraTarget = camera,
+                    polylines = if (uiState.trackPoints.size >= 2) {
+                        listOf(
+                            PolylineConfig(
+                                points = uiState.trackPoints,
+                                colorHex = "#2196F3",
+                                width = 12f,
+                            )
+                        )
+                    } else emptyList(),
+                    // 当前定位点图标
+                    animatedMarker = lastPoint,
+                )
+            }
+            GuideRunMap(
+                state = mapState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = AppSpacing.MD, vertical = AppSpacing.XS)
+                    .clip(RoundedCornerShape(AppRadius.Large)),
+            )
 
             // 等待视障端确认提示
             AnimatedVisibility(
@@ -183,14 +258,14 @@ fun VolunteerRunningScreen(
                 }
             }
 
-            // 结束按钮
+            // 申请结束按钮
             Button(
                 onClick = { showEndConfirm = true },
                 enabled = !uiState.endRequestPending,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .padding(horizontal = AppSpacing.MD),
+                    .padding(horizontal = AppSpacing.MD, vertical = AppSpacing.SM),
                 shape = AppRadius.LargeShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
@@ -204,7 +279,7 @@ fun VolunteerRunningScreen(
                     fontWeight = FontWeight.SemiBold,
                 )
             }
-            Spacer(Modifier.height(AppSpacing.MD))
+            Spacer(Modifier.height(AppSpacing.SM))
         }
     }
 
@@ -226,68 +301,10 @@ fun VolunteerRunningScreen(
 }
 
 @Composable
-private fun DistanceDisplay(
+private fun StatsRow(
     distanceMeters: Int,
-    isPaused: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        AnimatedVisibility(
-            visible = isPaused,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Surface(
-                shape = AppRadius.SmallShape,
-                color = MaterialTheme.colorScheme.errorContainer,
-                modifier = Modifier.padding(bottom = AppSpacing.MD),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = AppSpacing.MD, vertical = AppSpacing.SM),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Pause,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                    Text(
-                        text = stringResource(R.string.running_paused_label),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                }
-            }
-        }
-
-        Text(
-            text = "%.2f".format(distanceMeters / 1000.0),
-            style = MaterialTheme.typography.displayMedium,
-            fontWeight = FontWeight.Bold,
-            color = if (isPaused) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.primary
-            },
-        )
-        Text(
-            text = stringResource(R.string.volunteer_running_distance),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun StatsCard(
     durationSeconds: Int,
     currentPace: Int?,
-    avgPace: Int?,
     isPaused: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -301,25 +318,22 @@ private fun StatsCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = AppSpacing.LG),
+                .padding(AppSpacing.MD),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            RunningStatItem(
-                icon = Icons.Default.Timer,
+            StatItem(
+                label = stringResource(R.string.volunteer_running_distance),
+                value = "%.2f".format(distanceMeters / 1000.0),
+                dimmed = isPaused,
+            )
+            StatItem(
                 label = stringResource(R.string.volunteer_running_duration),
                 value = formatDuration(durationSeconds),
                 dimmed = isPaused,
             )
-            RunningStatItem(
-                icon = Icons.Default.Speed,
+            StatItem(
                 label = stringResource(R.string.volunteer_running_pace),
                 value = currentPace?.let { PaceCalculator.formatPace(it) } ?: "--'--\"",
-                dimmed = isPaused,
-            )
-            RunningStatItem(
-                icon = Icons.AutoMirrored.Filled.DirectionsRun,
-                label = stringResource(R.string.volunteer_running_avg_pace),
-                value = avgPace?.let { PaceCalculator.formatPace(it) } ?: "--'--\"",
                 dimmed = isPaused,
             )
         }
@@ -327,17 +341,11 @@ private fun StatsCard(
 }
 
 @Composable
-private fun RunningStatItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun StatItem(
     label: String,
     value: String,
     dimmed: Boolean = false,
 ) {
-    val accent = if (dimmed) {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
     val valueColor = if (dimmed) {
         MaterialTheme.colorScheme.onSurfaceVariant
     } else {
@@ -346,31 +354,19 @@ private fun RunningStatItem(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.XS),
     ) {
-        Surface(
-            shape = AppRadius.MediumShape,
-            color = accent.copy(alpha = 0.1f),
-            modifier = Modifier.size(44.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.padding(AppSpacing.SM),
-                tint = accent,
-            )
-        }
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            color = valueColor,
-        )
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = valueColor,
         )
     }
 }

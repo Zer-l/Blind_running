@@ -14,6 +14,7 @@ import androidx.navigation.fragment.findNavController
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.speakPageEntry
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentEmergencyContactEditBinding
@@ -56,10 +57,9 @@ class EmergencyContactEditFragment : Fragment() {
         isEditMode = index >= 0
         if (isEditMode) {
             viewModel.initEditMode(index)
-            binding.header.status = getString(R.string.blind_ui_emergency_contact_edit_status_edit)
-        } else {
-            binding.header.status = getString(R.string.blind_ui_emergency_contact_edit_status_add)
         }
+        // 头部不再显示"添加"/"编辑"小字状态——入页 TTS 已分别播报
+        // "添加紧急联系人页面" / "编辑紧急联系人页面"，视觉上不重复
 
         setupInputs()
         setupSaveButton()
@@ -75,8 +75,7 @@ class EmergencyContactEditFragment : Fragment() {
         } else {
             R.string.tts_page_emergency_contact_edit_add
         }
-        ttsManager.speak(getString(pageRes), TtsManager.Priority.INTERACTION)
-        ttsManager.speak(getString(R.string.tts_hint_emergency_contact_edit), TtsManager.Priority.INTERACTION)
+        speakPageEntry(ttsManager, pageRes, R.string.tts_hint_emergency_contact_edit)
     }
 
     override fun onPause() {

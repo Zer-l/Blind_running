@@ -142,28 +142,14 @@
                     android:paddingHorizontal="@dimen/blind_space_md"
                     android:paddingVertical="@dimen/blind_space_sm">
 
-                    <LinearLayout
+                    <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/blind_ui_home_history_title"
-                            android:textColor="?attr/blindOnSurface"
-                            android:textSize="@dimen/blind_text_body"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/blind_space_xs"
-                            android:text="@string/blind_ui_home_history_desc"
-                            android:textColor="?attr/blindOnSurface"
-                            android:textSize="@dimen/blind_text_label" />
-                    </LinearLayout>
+                        android:text="@string/home_btn_history"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -199,28 +185,14 @@
                     android:paddingHorizontal="@dimen/blind_space_md"
                     android:paddingVertical="@dimen/blind_space_sm">
 
-                    <LinearLayout
+                    <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/blind_ui_home_settings_title"
-                            android:textColor="?attr/blindOnSurface"
-                            android:textSize="@dimen/blind_text_body"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/blind_space_xs"
-                            android:text="@string/blind_ui_home_settings_desc"
-                            android:textColor="?attr/blindOnSurface"
-                            android:textSize="@dimen/blind_text_label" />
-                    </LinearLayout>
+                        android:text="@string/home_btn_settings"
+                        android:textColor="?attr/blindOnSurface"
+                        android:textSize="@dimen/blind_text_body"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -257,30 +229,16 @@
         android:textSize="@dimen/blind_text_hint"
         app:layout_constraintBottom_toTopOf="@id/footer_actions" />
 
-    <!-- 吸底操作区：发起跑步请求（主） + 一键发起（主，仅 prefs 时显示） + 退出登录（次） -->
+    <!-- 吸底操作区：发起跑步请求（主） + 一键发起（主，仅 prefs 时显示） -->
     <LinearLayout
         android:id="@+id/footer_actions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingHorizontal="@dimen/blind_space_md"
-        android:paddingTop="@dimen/blind_space_sm"
+        android:paddingTop="0dp"
         android:paddingBottom="@dimen/blind_space_lg"
         app:layout_constraintBottom_toBottomOf="parent">
-
-        <!-- 最上：退出登录（破坏性次操作，与其他页面"次按钮在上、主按钮在下"对齐） -->
-        <com.guiderun.app.ui.blind.widget.LongPressGestureView
-            android:id="@+id/btn_logout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="@dimen/blind_touch_primary"
-            android:paddingVertical="@dimen/blind_space_md"
-            android:text="@string/blind_ui_home_btn_logout"
-            android:textColor="?attr/blindOnPrimary"
-            android:textSize="@dimen/blind_text_headline"
-            android:textStyle="bold"
-            app:backgroundTint="?attr/blindWarning"
-            app:cornerRadius="@dimen/blind_radius_button" />
 
         <!-- 中间：一键发起（仅 prefs 时显示） -->
         <com.guiderun.app.ui.blind.widget.LongPressGestureView

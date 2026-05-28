@@ -98,7 +98,7 @@ fun VolunteerProfileEditScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "编辑志愿者资料",
+                        text = "个人资料",
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },

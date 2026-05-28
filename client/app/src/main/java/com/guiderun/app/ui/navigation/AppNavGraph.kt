@@ -107,6 +107,11 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 onNavigateToProfile = { navController.navigate(Screen.VolunteerProfileEdit.route) },
                 onNavigateToTheme = { navController.navigate(Screen.ThemeSelection.route) },
+                onLogout = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                },
             )
         }
 
@@ -120,7 +125,8 @@ fun AppNavGraph(
             VolunteerHistoryScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToTrackPlayback = { requestId ->
-                    navController.navigate(Screen.TrackPlayback.createRoute(requestId))
+                    // 志愿者侧入口固定 role=VOLUNTEER，只回放自己采集的轨迹
+                    navController.navigate(Screen.TrackPlayback.createRoute(requestId, "VOLUNTEER"))
                 },
                 onNavigateToReview = { requestId ->
                     navController.navigate(Screen.VolunteerReview.createRoute(requestId))
@@ -222,10 +228,14 @@ fun AppNavGraph(
 
         composable(
             route = Screen.TrackPlayback.route,
-            arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument("requestId") { type = NavType.StringType },
+                navArgument("role") { type = NavType.StringType },
+            ),
         ) {
             TrackPlaybackScreen(
                 requestId = it.arguments?.getString("requestId") ?: "",
+                role = it.arguments?.getString("role") ?: "VOLUNTEER",
                 onBack = { navController.popBackStack() },
             )
         }

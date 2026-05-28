@@ -27,7 +27,8 @@ sealed class Screen(val route: String) {
         fun createRoute(requestId: String) = "volunteer_review/$requestId"
     }
     data object VolunteerHistory : Screen("volunteer_history")
-    data object TrackPlayback : Screen("track_playback/{requestId}") {
-        fun createRoute(requestId: String) = "track_playback/$requestId"
+    data object TrackPlayback : Screen("track_playback/{requestId}/{role}") {
+        /** role 必填，区分 BLIND / VOLUNTEER；用于双端各自只看自己的轨迹 */
+        fun createRoute(requestId: String, role: String) = "track_playback/$requestId/$role"
     }
 }
