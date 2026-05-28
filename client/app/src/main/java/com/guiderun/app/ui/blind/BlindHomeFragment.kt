@@ -245,6 +245,8 @@ class BlindHomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        // 回首页即重算一键发起按钮：完成一次跑步返回后无需重启即可见
+        viewModel.refreshQuickStart()
         announceHomeOnce()
     }
 

@@ -56,6 +56,13 @@ class NavigatingViewModel @Inject constructor(
     private val _navEvent = MutableSharedFlow<NavigatingNavEvent>(replay = 0)
     val navEvent: SharedFlow<NavigatingNavEvent> = _navEvent.asSharedFlow()
 
+    /**
+     * 志愿者本人发起取消的标志。
+     * 志愿者自己 cancel/abandon 也会收到服务端广播的 ABORTED WS，若不区分会误弹"订单已取消"通知。
+     * 该弹窗仅用于"对方（视障端）/系统取消"时通知志愿者，本人取消应直接导航回首页。
+     */
+    private var selfAborting = false
+
     init {
         loadRequest()
         observeWs()
@@ -132,7 +139,12 @@ class NavigatingViewModel @Inject constructor(
                     RunRequestStatus.MET.name -> _navEvent.emit(NavigatingNavEvent.ToMet(requestId))
                     RunRequestStatus.ABORTED.name -> {
                         stopLocationService()
-                        _uiState.update { it.copy(showCancelledDialog = true) }
+                        if (selfAborting) {
+                            // 志愿者本人取消：interruptByUser 已负责导航回首页，不弹通知弹窗
+                            _navEvent.emit(NavigatingNavEvent.ToHome)
+                        } else {
+                            _uiState.update { it.copy(showCancelledDialog = true) }
+                        }
                     }
                     else -> {
                         val currentStatus = _uiState.value.request?.status?.name
@@ -222,11 +234,16 @@ class NavigatingViewModel @Inject constructor(
      */
     fun interruptByUser() {
         val status = _uiState.value.request?.status ?: return
+        // 先置标志：服务端转 ABORTED 后会广播 WS 回本端，避免误弹"订单已取消"通知
+        selfAborting = true
         viewModelScope.launch {
             val result = when (status) {
                 RunRequestStatus.ACCEPTED -> runRequestRepository.abandon(requestId)
                 RunRequestStatus.EN_ROUTE -> runRequestRepository.cancel(requestId, reason = "志愿者主动取消")
-                else                      -> return@launch
+                else                      -> {
+                    selfAborting = false
+                    return@launch
+                }
             }
             result
                 .onSuccess {
@@ -234,6 +251,8 @@ class NavigatingViewModel @Inject constructor(
                     _navEvent.emit(NavigatingNavEvent.ToHome)
                 }
                 .onFailure { e ->
+                    // 取消失败：复位标志，否则后续真·对方取消会被误判为本人取消而不弹通知
+                    selfAborting = false
                     Timber.e(e, "NavigatingVM: interruptByUser failed")
                     _uiState.update { it.copy(errorMessage = "取消失败：${e.message ?: "请重试"}") }
                 }

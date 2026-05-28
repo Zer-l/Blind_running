@@ -67,6 +67,12 @@ class LongPressGestureView @JvmOverloads constructor(
     private var onGestureStart: (() -> Unit)? = null
 
     /**
+     * 手势结束（手指抬起 / 取消，或 [reset] 主动复位）即触发，与 [onGestureStart] 配对。
+     * 用于让页面精确感知"是否正在长按"，例如跑步页据此屏蔽自动暂停的"已暂停"播报。
+     */
+    private var onGestureEnd: (() -> Unit)? = null
+
+    /**
      * 是否允许启动长按手势。返回 false 时，按下只读 contentDescription 状态提示、
      * 不进入 2s 阈值 / 5s 倒计时，避免在动作尚不可执行时播报误导性的阈值文案
      * （如志愿者未到达时按"确认汇合"却播"5秒后开始跑步"）。
@@ -152,6 +158,7 @@ class LongPressGestureView @JvmOverloads constructor(
         onCancel: () -> Unit = {},
         canStartGesture: () -> Boolean = { true },
         onGestureStart: () -> Unit = {},
+        onGestureEnd: () -> Unit = {},
     ) {
         this.scope = scope
         this.tts = ttsManager
@@ -163,6 +170,7 @@ class LongPressGestureView @JvmOverloads constructor(
         this.onCancel = onCancel
         this.canStartGesture = canStartGesture
         this.onGestureStart = onGestureStart
+        this.onGestureEnd = onGestureEnd
         setupListeners()
     }
 
@@ -280,6 +288,9 @@ class LongPressGestureView @JvmOverloads constructor(
             }
             State.IDLE -> Unit
         }
+        // 手指抬起/取消 = 长按结束（注意 commit 在倒计时走完时触发，此时手指可能仍按着，
+        // 故 end 只跟随物理抬手，确保"结束跑步播报"期间不被自动暂停播报打断）
+        onGestureEnd?.invoke()
     }
 
     /** 动态切换阈值播报文案（如按钮在"取消订单/确认汇合"间随状态切换）。 */
@@ -292,6 +303,7 @@ class LongPressGestureView @JvmOverloads constructor(
         job?.cancel()
         job = null
         state = State.IDLE
+        onGestureEnd?.invoke()
     }
 
     override fun onDetachedFromWindow() {

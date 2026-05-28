@@ -191,6 +191,13 @@ class RunRequestService(
         entity.isAbnormal = abnormal
         saveOrConflict(entity, "订单状态已被更新")
 
+        // 跑步结束即视为完成：在 FINISHED 时累加 totalRuns/totalHoursMinutes，
+        // 与"FINISHED 即已完成"语义及历史页统计口径一致，不再等 CLOSED 才计入。
+        // rating 仍在评价时累加（closeAndUpdateStats / accumulateRating）。
+        if (toStatus == RunRequestStatus.FINISHED) {
+            applyFinishStats(entity)
+        }
+
         writeEvent(requestId, prevStatus, toStatus, triggeredRole, userId)
         pushStatusChange(entity, triggeredRole)
         return buildResponse(entity)
@@ -549,6 +556,26 @@ class RunRequestService(
         userRepo.save(reviewee)
     }
 
+    /**
+     * 跑步结束（RUNNING → FINISHED）时累加完成次数与时长。
+     * totalRuns/totalHoursMinutes 在此一次性计入，CLOSED 不再重复累加，避免双计。
+     */
+    private fun applyFinishStats(entity: RunRequestEntity) {
+        val volunteerId = entity.volunteerId ?: return
+        val blindRunner = loadUser(entity.blindRunnerId)
+        val volunteer = loadUser(volunteerId)
+        blindRunner.totalRuns++
+        volunteer.totalRuns++
+        val runMinutes = (entity.actualDurationSeconds ?: 0) / 60
+        blindRunner.totalHoursMinutes += runMinutes
+        volunteer.totalHoursMinutes += runMinutes
+        userRepo.saveAll(listOf(blindRunner, volunteer))
+    }
+
+    /**
+     * 双方评价完成触发 FINISHED → CLOSED：仅累加 rating，
+     * totalRuns/totalHoursMinutes 已在 [applyFinishStats]（FINISHED 时）计入，此处不再动。
+     */
     private fun closeAndUpdateStats(entity: RunRequestEntity) {
         entity.status = RunRequestStatus.CLOSED
         entity.closedAt = Instant.now()
@@ -559,11 +586,6 @@ class RunRequestService(
         val reviews = reviewRepo.findByRequestId(entity.id)
         val blindRunner = loadUser(entity.blindRunnerId)
         val volunteer = loadUser(entity.volunteerId!!)
-        blindRunner.totalRuns++
-        volunteer.totalRuns++
-        val runMinutes = (entity.actualDurationSeconds ?: 0) / 60
-        volunteer.totalHoursMinutes += runMinutes
-        blindRunner.totalHoursMinutes += runMinutes
         reviews.forEach { review ->
             val reviewee = if (review.revieweeId == entity.blindRunnerId) blindRunner else volunteer
             reviewee.ratingSum += review.rating

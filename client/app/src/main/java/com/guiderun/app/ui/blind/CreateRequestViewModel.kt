@@ -13,6 +13,7 @@ import com.guiderun.app.data.location.ReverseGeocoder
 import com.guiderun.app.domain.model.GeoPoint
 import com.guiderun.app.domain.repository.LocationProvider
 import com.guiderun.app.domain.usecase.CreateRunRequestUseCase
+import com.guiderun.app.domain.usecase.LoadLastRequestUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -57,6 +58,7 @@ class CreateRequestViewModel @Inject constructor(
     private val reverseGeocoder: ReverseGeocoder,
     private val forwardGeocoder: ForwardGeocoder,
     private val requestPreferences: RequestPreferences,
+    private val loadLastRequest: LoadLastRequestUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateRequestUiState())
@@ -76,11 +78,21 @@ class CreateRequestViewModel @Inject constructor(
      */
     private var autoLocationDescription: String? = null
 
+    /**
+     * 最近一次已知坐标（GPS 定位成功 / 预填偏好携带的坐标）。
+     * 即使本次定位 [LocationStatus.Failed]，提交时仍用它给正向地理编码做 near 偏置，
+     * 让语音/手填的裸地名能稳定落到本市附近，不再依赖"本次"实时定位是否成功。
+     */
+    private var lastKnownLatLng: Pair<Double, Double>? = null
+
     init {
-        // 启动时预填上次成功提交的偏好（如果有）。
+        // 启动时预填上次请求参数（本地偏好优先，清数据后回退服务端最近订单）。
         viewModelScope.launch {
-            requestPreferences.loadLast()?.let { prefs ->
+            loadLastRequest()?.let { prefs ->
                 autoLocationDescription = prefs.locationDesc
+                if (prefs.lat != null && prefs.lng != null) {
+                    lastKnownLatLng = prefs.lat to prefs.lng
+                }
                 _uiState.update {
                     it.copy(
                         selectedDurationMinutes = prefs.durationMinutes,
@@ -151,6 +163,7 @@ class CreateRequestViewModel @Inject constructor(
         val displayAddress = address.ifBlank { "当前位置" }
 
         autoLocationDescription = displayAddress
+        lastKnownLatLng = point.lat to point.lng
         _uiState.update {
             it.copy(
                 locationStatus = LocationStatus.Located(point.lat, point.lng),
@@ -251,7 +264,10 @@ class CreateRequestViewModel @Inject constructor(
     /** HomeScreen "一键发起"路径：用上次偏好 + 当前定位（如已获取）。 */
     fun submitWithLastPrefs() {
         viewModelScope.launch {
-            val prefs = requestPreferences.loadLast() ?: return@launch
+            val prefs = loadLastRequest() ?: return@launch
+            if (prefs.lat != null && prefs.lng != null) {
+                lastKnownLatLng = prefs.lat to prefs.lng
+            }
             _uiState.update {
                 it.copy(
                     selectedDurationMinutes = prefs.durationMinutes,
@@ -298,7 +314,12 @@ class CreateRequestViewModel @Inject constructor(
             current.locationDescription != autoLocationDescription &&
             current.locationDescription.isNotBlank()
         ) {
-            val geocoded = forwardGeocoder.geocode(current.locationDescription)
+            // 偏置中心：优先本次定位坐标，否则回退最近一次已知坐标（即使本次 Failed），
+            // 把裸地名约束到本市附近，避免命中同名异地 / 解析失败回退实时坐标
+            val near = ((current.locationStatus as? LocationStatus.Located)
+                ?.let { it.lat to it.lng } ?: lastKnownLatLng)
+                ?.let { (lat, lng) -> GeoPoint(lat, lng, "") }
+            val geocoded = forwardGeocoder.geocode(current.locationDescription, near = near)
             if (geocoded != null) {
                 geocoded.lat to geocoded.lng
             } else {

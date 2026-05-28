@@ -108,7 +108,8 @@ class BlindHistoryFragment : Fragment() {
                     val isEmpty = !state.isLoading && !hasError && state.requests.isEmpty()
                     val hasData = state.requests.isNotEmpty()
 
-                    binding.refreshLayout.isVisible = hasData || state.isLoadingMore
+                    // refreshLayout 常驻可见：空态/错误态也在其内部 NestedScrollView 滚动区内，
+                    // 保证无历史记录时仍可下拉刷新（fillViewport 让空态撑满高度，下拉手势可触发）
                     binding.refreshLayout.isRefreshing = state.isLoading || state.isLoadingMore
                     binding.tvEmpty.isVisible = isEmpty
                     binding.layoutError.isVisible = hasError

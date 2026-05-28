@@ -5,13 +5,13 @@ import androidx.lifecycle.viewModelScope
 import android.content.Context
 import com.guiderun.app.R
 import com.guiderun.app.data.local.LastRequestPrefs
-import com.guiderun.app.data.local.RequestPreferences
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.UserRole
 import com.guiderun.app.domain.repository.AuthRepository
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.domain.repository.UserRepository
+import com.guiderun.app.domain.usecase.LoadLastRequestUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +39,7 @@ class HomeViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val userPreferences: UserPreferences,
-    private val requestPreferences: RequestPreferences,
+    private val loadLastRequest: LoadLastRequestUseCase,
     runRequestRepository: RunRequestRepository,
 ) : ViewModel() {
 
@@ -51,8 +51,9 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**
-     * 一键发起是否可用：依赖 RequestPreferences.loadLast() 是否非空。
-     * 在 init 和 refreshUser 时刷新（视障端用户发起一次后回到 Home 即可使用）。
+     * 一键发起是否可用：依赖 [LoadLastRequestUseCase] 是否能取到上次订单（本地偏好 → 服务端最近订单兜底）。
+     * 在 init / refreshUser / 回首页 onResume（[refreshQuickStart]）时刷新，
+     * 避免完成一次跑步后需重启才显示按钮。
      */
     private val _quickStartEnabled = MutableStateFlow(false)
     val quickStartEnabled: StateFlow<Boolean> = _quickStartEnabled.asStateFlow()
@@ -62,9 +63,12 @@ class HomeViewModel @Inject constructor(
         refreshQuickStartEnabled()
     }
 
+    /** 回首页 onResume 调用：重算一键发起按钮可见性与摘要。 */
+    fun refreshQuickStart() = refreshQuickStartEnabled()
+
     private fun refreshQuickStartEnabled() {
         viewModelScope.launch {
-            val last = requestPreferences.loadLast()
+            val last = loadLastRequest()
             _quickStartEnabled.value = last != null
             _uiState.update {
                 it.copy(lastRequestSummary = last?.toSummary())

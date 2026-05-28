@@ -48,7 +48,7 @@ class IflytekAsrEngine @Inject constructor(
         }
     }
 
-    override fun start(onResult: (AsrResult) -> Unit) {
+    override fun start(onResult: (AsrResult) -> Unit, eosMillis: Int) {
         if (BuildConfig.IFLYTEK_APPID.isBlank()) {
             onResult(AsrResult.Error(-1, context.getString(R.string.voice_input_init_failed)))
             onResult(AsrResult.Idle)
@@ -65,7 +65,7 @@ class IflytekAsrEngine @Inject constructor(
             onResult(AsrResult.Idle)
             return
         }
-        applyDefaultParams(r)
+        applyDefaultParams(r, eosMillis)
         val ret = r.startListening(recognizerListener)
         if (ret != ErrorCode.SUCCESS) {
             Timber.w("iflytek startListening failed: $ret")
@@ -91,7 +91,7 @@ class IflytekAsrEngine @Inject constructor(
         pendingCallback = null
     }
 
-    private fun applyDefaultParams(r: SpeechRecognizer) {
+    private fun applyDefaultParams(r: SpeechRecognizer, eosMillis: Int) {
         r.setParameter(SpeechConstant.PARAMS, null)
         r.setParameter(SpeechConstant.ENGINE_TYPE, SpeechConstant.TYPE_CLOUD)
         r.setParameter(SpeechConstant.RESULT_TYPE, "json")
@@ -99,8 +99,8 @@ class IflytekAsrEngine @Inject constructor(
         r.setParameter(SpeechConstant.ACCENT, "mandarin")
         // 静音超时：用户多久没说话视为超时
         r.setParameter(SpeechConstant.VAD_BOS, "4000")
-        // 后端点静音检测：说完多久后停止录音并出结果
-        r.setParameter(SpeechConstant.VAD_EOS, "1200")
+        // 后端点静音检测：说完多久后停止录音并出结果。批量录入放宽以容忍分段停顿。
+        r.setParameter(SpeechConstant.VAD_EOS, eosMillis.toString())
         // 1 表示带标点；指令场景标点会影响匹配，设为 0
         r.setParameter(SpeechConstant.ASR_PTT, "0")
     }

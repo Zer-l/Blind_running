@@ -1,6 +1,7 @@
 package com.guiderun.app.accessibility.voice
 
 import android.content.Context
+import androidx.annotation.StringRes
 import com.guiderun.app.R
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.TtsManager
@@ -49,13 +50,31 @@ class VoiceCommandManager @Inject constructor(
 
     private var contextHandler: VoiceCommandContextHandler? = null
 
-    fun registerContextHandler(handler: VoiceCommandContextHandler) {
+    /** 当前页自定义的提示语资源；null 时用默认"请说指令"。随 handler 一起注册/清空，防泄漏到下个页面。 */
+    @StringRes
+    private var promptOverrideRes: Int? = null
+
+    /**
+     * 原始识别文本拦截器：在 [CommandParser] 解析之前先交给当前页。
+     * 返回 true 表示已消费（如发起页的批量录入回填），不再走指令解析。
+     */
+    private var rawTextInterceptor: ((String) -> Boolean)? = null
+
+    fun registerContextHandler(
+        handler: VoiceCommandContextHandler,
+        @StringRes promptRes: Int? = null,
+        rawInterceptor: ((String) -> Boolean)? = null,
+    ) {
         contextHandler = handler
+        promptOverrideRes = promptRes
+        rawTextInterceptor = rawInterceptor
     }
 
     fun unregisterContextHandler(handler: VoiceCommandContextHandler) {
         if (contextHandler === handler) {
             contextHandler = null
+            promptOverrideRes = null
+            rawTextInterceptor = null
         }
     }
 
@@ -81,16 +100,24 @@ class VoiceCommandManager @Inject constructor(
         _state.value = State.Listening
         hapticFeedback.confirm()
         scope.launch {
-            // 先等 prompt 朗读完成，避免 prompt 和录音同时进行
+            // 先等 prompt 朗读完成，避免 prompt 和录音同时进行。
+            // timeoutMs 提到 10s（与按钮入口一致）：默认指令提示语很短、speakAndWait 播完即返回不受影响，
+            // 仅防止较长的批量录入提示语被 3s 上限截断后提前 beginAsr 抢录音。
             ttsManager.speakAndWait(
-                context.getString(R.string.voice_command_tts_prompt),
+                context.getString(promptOverrideRes ?: R.string.voice_command_tts_prompt),
                 TtsManager.Priority.INTERACTION,
-                timeoutMs = 3_000L,
+                timeoutMs = 10_000L,
             )
             // prompt 播完才静音 TTS：之后任何 NORMAL/HIGH（如倒计时、定位）都会被吞掉，
             // 防止扬声器声音污染麦克风录音
             ttsManager.beginAsr()
-            asrEngine.start(::onAsrResult)
+            // 注册了原始文本拦截器的页面（发起页批量录入）需放宽后端点静音，容忍分段口述停顿
+            val eos = if (rawTextInterceptor != null) {
+                AsrEngine.BATCH_EOS_MILLIS
+            } else {
+                AsrEngine.DEFAULT_EOS_MILLIS
+            }
+            asrEngine.start(::onAsrResult, eos)
         }
     }
 
@@ -105,6 +132,8 @@ class VoiceCommandManager @Inject constructor(
 
     private fun onAsrResult(result: AsrResult) {
         when (result) {
+            AsrResult.Ready -> hapticFeedback.tick()        // 录音开始：提示"可以说话了"
+            AsrResult.EndOfSpeech -> hapticFeedback.tick()  // 收音结束：提示"已收到，正在识别"
             is AsrResult.Final -> {
                 // 先解锁 TTS，下游反馈（speakExecuting / not_understood）才能播
                 ttsManager.endAsr()
@@ -134,6 +163,8 @@ class VoiceCommandManager @Inject constructor(
             hapticFeedback.warning()
             return
         }
+        // 当前页可抢先消费原始文本（如发起页批量录入）；消费后 IflytekAsrEngine 随即发 Idle 复位 state
+        if (rawTextInterceptor?.invoke(text) == true) return
         val command = parser.parse(text)
         if (command == null) {
             Timber.d("unrecognized voice text: '$text'")

@@ -18,6 +18,8 @@ import javax.inject.Inject
 data class VolunteerHistoryUiState(
     val requests: List<RunRequest> = emptyList(),
     val isLoading: Boolean = true,
+    /** 下拉刷新中：与 isLoading 区分，刷新时保留列表不显示整屏 loading。 */
+    val isRefreshing: Boolean = false,
     val errorMessage: String? = null,
     val totalRuns: Int = 0,
     val totalDistanceKm: Float = 0f,
@@ -38,9 +40,15 @@ class VolunteerHistoryViewModel @Inject constructor(
         loadHistory()
     }
 
-    fun loadHistory() {
+    /** 下拉刷新入口：保留列表，仅显示下拉指示器（isRefreshing），不切整屏 loading。 */
+    fun onRefresh() = loadHistory(isRefresh = true)
+
+    fun loadHistory(isRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update {
+                if (isRefresh) it.copy(isRefreshing = true, errorMessage = null)
+                else it.copy(isLoading = true, errorMessage = null)
+            }
             runRequestRepository.getMyRequests(role = "VOLUNTEER", page = 0)
                 .onSuccess { list ->
                     // "已完成"包含 FINISHED + CLOSED：跑步已结束的都计入累计
@@ -51,6 +59,7 @@ class VolunteerHistoryViewModel @Inject constructor(
                         it.copy(
                             requests = list,
                             isLoading = false,
+                            isRefreshing = false,
                             totalRuns = completed.size,
                             totalDistanceKm = totalDist / 1000f,
                             totalDurationHours = totalDur / 3600f,
@@ -58,7 +67,9 @@ class VolunteerHistoryViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                    _uiState.update {
+                        it.copy(isLoading = false, isRefreshing = false, errorMessage = e.message)
+                    }
                 }
             // 加载徽章
             userRepository.getVolunteerStats()

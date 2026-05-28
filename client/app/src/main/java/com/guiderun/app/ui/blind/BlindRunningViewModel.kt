@@ -82,6 +82,8 @@ class BlindRunningViewModel @Inject constructor(
     private var suppressAnnounceUntil = 0L
     /** 长按手势期间抑制周期播报（每公里 / 每5分钟）的截止时间，避免抢播打断阈值/倒计时提示。 */
     private var longPressSuppressUntil = 0L
+    /** 是否正在长按结束按钮：手指按下到抬起期间为 true，用于直接屏蔽自动暂停的"已暂停"播报。 */
+    private var isLongPressing = false
     private var lastAnnouncedKm: Int = 0
     /** 上次"每 5 分钟整点"播报的"分钟"刻度，避免同一分钟反复触发。 */
     private var lastAnnouncedMinuteBucket: Int = 0
@@ -161,6 +163,9 @@ class BlindRunningViewModel @Inject constructor(
 
     /** 检测 isPaused 翻转：进入暂停→警告震动+TTS "已暂停"；恢复→确认震动+TTS "继续跑步"。 */
     private fun announcePauseToggleIfChanged(nowPaused: Boolean) {
+        // 正在长按结束按钮时直接屏蔽："已暂停"会插进倒计时数字队列打乱节奏、warning 震动也与手势 tick 冲突。
+        // 不更新 lastIsPaused，手指抬起后状态仍不同则顺延补播（与每公里/周期播报一致）。
+        if (isLongPressing) return
         val prev = lastIsPaused
         lastIsPaused = nowPaused
         if (prev == null || prev == nowPaused) return
@@ -249,9 +254,15 @@ class BlindRunningViewModel @Inject constructor(
      * - 由 LongPressGestureView 长按 2s + 5s 倒计时结束后调用（手势路径）；
      * - 由语音指令 END_RUN 直接调用（语音路径，跳过倒计时）。
      */
-    /** 长按手势按下时调用：抑制每公里/每5分钟周期播报，避免抢播打断长按提示。 */
+    /** 长按手势按下时调用：抑制每公里/每5分钟周期播报，并直接屏蔽自动暂停播报，避免抢播打断长按提示。 */
     fun onLongPressStarted() {
+        isLongPressing = true
         longPressSuppressUntil = System.currentTimeMillis() + 8_000L
+    }
+
+    /** 长按手势结束（手指抬起 / 取消 / 页面 reset）时调用：解除"已暂停"播报屏蔽。 */
+    fun onLongPressEnded() {
+        isLongPressing = false
     }
 
     fun executeEndRun() {

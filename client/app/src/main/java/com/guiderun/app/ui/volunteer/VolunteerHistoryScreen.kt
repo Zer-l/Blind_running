@@ -38,6 +38,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -99,25 +100,31 @@ fun VolunteerHistoryScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        when {
-            uiState.isLoading -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-            ) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = viewModel::onRefresh,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            when {
+                uiState.isLoading -> Box(modifier = Modifier.fillMaxSize()) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                // 空态也放进 LazyColumn 并撑满高度：保证无记录时下拉手势仍能触发刷新
+                uiState.requests.isEmpty() -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    item { EmptyHistoryContent(modifier = Modifier.fillParentMaxSize()) }
+                }
+                else -> HistoryList(
+                    requests = uiState.requests,
+                    totalRuns = uiState.totalRuns,
+                    totalDistanceKm = uiState.totalDistanceKm,
+                    totalDurationHours = uiState.totalDurationHours,
+                    badges = uiState.badges.map { it.name },
+                    onItemClick = onNavigateToTrackPlayback,
+                    onReviewClick = onNavigateToReview,
+                )
             }
-            uiState.requests.isEmpty() -> EmptyHistoryContent(padding)
-            else -> HistoryList(
-                requests = uiState.requests,
-                totalRuns = uiState.totalRuns,
-                totalDistanceKm = uiState.totalDistanceKm,
-                totalDurationHours = uiState.totalDurationHours,
-                badges = uiState.badges.map { it.name },
-                onItemClick = onNavigateToTrackPlayback,
-                onReviewClick = onNavigateToReview,
-                padding = padding,
-            )
         }
     }
 }
@@ -131,10 +138,9 @@ private fun HistoryList(
     badges: List<String>,
     onItemClick: (String) -> Unit,
     onReviewClick: (String) -> Unit,
-    padding: PaddingValues,
 ) {
     LazyColumn(
-        modifier = Modifier.padding(padding),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = AppSpacing.XL),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.SM),
     ) {
@@ -310,11 +316,9 @@ private fun StatsItem(
 }
 
 @Composable
-private fun EmptyHistoryContent(padding: PaddingValues) {
+private fun EmptyHistoryContent(modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
+        modifier = modifier
             .padding(AppSpacing.XXL),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

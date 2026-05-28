@@ -32,6 +32,7 @@ class SpeechRecognizerManager(
     interface AsrEngineEntryPoint {
         fun asrEngine(): AsrEngine
         fun ttsManager(): TtsManager
+        fun hapticFeedback(): HapticFeedback
     }
 
     private val entryPoint by lazy {
@@ -42,6 +43,7 @@ class SpeechRecognizerManager(
     }
     private val asrEngine: AsrEngine by lazy { entryPoint.asrEngine() }
     private val ttsManager: TtsManager by lazy { entryPoint.ttsManager() }
+    private val hapticFeedback: HapticFeedback by lazy { entryPoint.hapticFeedback() }
 
     private var listening: Boolean = false
 
@@ -55,7 +57,11 @@ class SpeechRecognizerManager(
      * 监听结束（Final / Error / Idle）后再 [TtsManager.endAsr] 解锁，允许业务方在回调里
      * 立即朗读"已识别 xxx"作为回放——此时 mute 已解除。
      */
-    fun start() {
+    /**
+     * @param eosMillis 后端点静音时长。批量录入传 [AsrEngine.BATCH_EOS_MILLIS] 容忍分段停顿，
+     *        默认沿用指令听写的 [AsrEngine.DEFAULT_EOS_MILLIS]。
+     */
+    fun start(eosMillis: Int = AsrEngine.DEFAULT_EOS_MILLIS) {
         if (!isAvailable) {
             onError(context.getString(R.string.voice_input_unavailable))
             return
@@ -63,9 +69,17 @@ class SpeechRecognizerManager(
         if (listening) return
         listening = true
         ttsManager.beginAsr()
-        asrEngine.start { result ->
+        asrEngine.start({ result ->
             when (result) {
-                AsrResult.Ready -> onStartListening()
+                AsrResult.Ready -> {
+                    // 录音开始：震动提示用户"可以说话了"
+                    hapticFeedback.tick()
+                    onStartListening()
+                }
+                AsrResult.EndOfSpeech -> {
+                    // 收音结束（进入识别）：震动提示用户"已收到，正在识别"
+                    hapticFeedback.tick()
+                }
                 is AsrResult.Final -> {
                     // 先解锁 TTS，再回调；调用方可在 onResult 内立即朗读回放
                     ttsManager.endAsr()
@@ -82,9 +96,9 @@ class SpeechRecognizerManager(
                     ttsManager.endAsr()
                     listening = false
                 }
-                else -> Unit  // partial / endOfSpeech 当前不暴露
+                else -> Unit  // partial 当前不暴露
             }
-        }
+        }, eosMillis)
     }
 
     fun stop() {

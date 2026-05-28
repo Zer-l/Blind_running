@@ -19,6 +19,7 @@ import com.guiderun.app.accessibility.BlindFeedback
 import com.guiderun.app.accessibility.HapticFeedback
 import com.guiderun.app.accessibility.SpeechRecognizerManager
 import com.guiderun.app.accessibility.TtsManager
+import com.guiderun.app.accessibility.asr.AsrEngine
 import com.guiderun.app.accessibility.voice.RequestVoiceParser
 import com.guiderun.app.accessibility.voice.VoiceCommand
 import com.guiderun.app.accessibility.voice.bindVoiceCommands
@@ -120,7 +121,11 @@ class CreateRequestFragment : Fragment() {
         )
     }
 
-    private fun setupVoiceCommands() = bindVoiceCommands { cmd ->
+    private fun setupVoiceCommands() = bindVoiceCommands(
+        // 长按音量键语音入口与"语音输入按钮"完全一致：同一提示语 + 同一批量解析回填
+        promptRes = R.string.blind_tts_voice_input_prompt,
+        rawTextInterceptor = { text -> fillFromVoice(text) },
+    ) { cmd ->
         when (cmd) {
             VoiceCommand.CONFIRM, VoiceCommand.SAVE -> {
                 // 语音指令为明确意图，跳过 2s+5s 渐进确认，直接提交
@@ -202,7 +207,16 @@ class CreateRequestFragment : Fragment() {
 
         val manager = voiceInputManager ?: SpeechRecognizerManager(
             context = requireContext(),
-            onResult = { text -> handleBatchVoiceResult(text) },
+            onResult = { text ->
+                if (!fillFromVoice(text)) {
+                    // 完全不匹配关键字 → 提示重说，不污染任何字段
+                    ttsManager.speak(
+                        getString(R.string.blind_tts_voice_input_not_recognized),
+                        TtsManager.Priority.INTERACTION,
+                    )
+                    hapticFeedback.warning()
+                }
+            },
             onError = { msg -> blindFeedback.error(msg) },
             onStartListening = { blindFeedback.info(R.string.voice_input_listening) },
         ).also { voiceInputManager = it }
@@ -221,21 +235,19 @@ class CreateRequestFragment : Fragment() {
                 TtsManager.Priority.INTERACTION,
                 timeoutMs = 10_000L,
             )
-            manager.start()
+            // 批量录入：放宽后端点静音，容忍"地点…时长…备注…"分段口述间的停顿
+            manager.start(AsrEngine.BATCH_EOS_MILLIS)
         }
     }
 
-    private fun handleBatchVoiceResult(text: String) {
-        val parsed = RequestVoiceParser.parse(text)
-        if (parsed == null) {
-            // 完全不匹配关键字 → 提示重说，不污染任何字段
-            ttsManager.speak(
-                getString(R.string.blind_tts_voice_input_not_recognized),
-                TtsManager.Priority.INTERACTION,
-            )
-            hapticFeedback.warning()
-            return
-        }
+    /**
+     * 批量语音解析回填：两条语音入口（语音输入按钮 / 长按音量键）共用，确保解析、回填、回放完全一致。
+     *
+     * @return true = 解析命中至少一个字段，已回填并 TTS 回放；
+     *         false = 完全不匹配关键字（调用方决定播"未识别"提示或回落到指令解析）。
+     */
+    private fun fillFromVoice(text: String): Boolean {
+        val parsed = RequestVoiceParser.parse(text) ?: return false
         viewModel.onBatchVoiceParsed(parsed)
         hapticFeedback.confirm()
 
@@ -248,6 +260,7 @@ class CreateRequestFragment : Fragment() {
             append(getString(R.string.blind_tts_voice_input_readback_suffix))
         }
         ttsManager.speak(readback, TtsManager.Priority.INTERACTION)
+        return true
     }
 
     private suspend fun collectUiState() {

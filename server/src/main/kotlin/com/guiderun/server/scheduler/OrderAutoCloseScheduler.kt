@@ -6,7 +6,6 @@ import com.guiderun.server.entity.RunRequestEventEntity
 import com.guiderun.server.repository.ReviewJpaRepository
 import com.guiderun.server.repository.RunRequestEventJpaRepository
 import com.guiderun.server.repository.RunRequestJpaRepository
-import com.guiderun.server.repository.UserJpaRepository
 import com.guiderun.server.websocket.GuideRunWebSocketHandler
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
@@ -20,7 +19,6 @@ class OrderAutoCloseScheduler(
     private val requestRepo: RunRequestJpaRepository,
     private val eventRepo: RunRequestEventJpaRepository,
     private val reviewRepo: ReviewJpaRepository,
-    private val userRepo: UserJpaRepository,
     private val wsHandler: GuideRunWebSocketHandler,
 ) {
 
@@ -56,15 +54,8 @@ class OrderAutoCloseScheduler(
             val recipients = listOfNotNull(entity.blindRunnerId, entity.volunteerId)
             wsHandler.pushStatusChanged(entity.id, RunRequestStatus.CLOSED, entity.version, recipients, TriggeredRole.SYSTEM.name)
 
-            // 仍更新 totalRuns，但不更新 rating（超时未评价不补）
-            val blindRunner = userRepo.findById(entity.blindRunnerId).orElse(null) ?: return@forEach
-            val volunteer = entity.volunteerId?.let { userRepo.findById(it).orElse(null) } ?: return@forEach
-            blindRunner.totalRuns++
-            volunteer.totalRuns++
-            val runMinutes = (entity.actualDurationSeconds ?: 0) / 60
-            blindRunner.totalHoursMinutes += runMinutes
-            volunteer.totalHoursMinutes += runMinutes
-            userRepo.saveAll(listOf(blindRunner, volunteer))
+            // totalRuns/totalHoursMinutes 已在 FINISHED 时（RunRequestService.applyFinishStats）计入，
+            // 24h 兜底关单不再重复累加；超时未评价同样不补 rating。
 
             log.info("autoClose: closed requestId={}", entity.id)
         }

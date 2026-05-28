@@ -148,12 +148,14 @@
                     android:nestedScrollingEnabled="false"
                     android:paddingHorizontal="@dimen/blind_space_md" />
 
+                <!-- 空态：weight=1 + NestedScrollView fillViewport 使其占满剩余视口高度，
+                     gravity=center 让文字居于屏幕中心；有数据时本视图 GONE 不占空间，列表仍顶部对齐 -->
                 <TextView
                     android:id="@+id/tv_empty"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
                     android:gravity="center"
-                    android:minHeight="@dimen/blind_touch_primary"
                     android:paddingHorizontal="@dimen/blind_space_md"
                     android:paddingVertical="@dimen/blind_space_lg"
                     android:text="@string/blind_history_empty"
