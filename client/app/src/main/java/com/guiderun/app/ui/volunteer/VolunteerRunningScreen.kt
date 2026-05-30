@@ -52,8 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
-import com.guiderun.app.ui.common.CallPeerButton
-import com.guiderun.app.ui.common.InterruptDialog
+import com.guiderun.app.ui.volunteer.CallPeerButton
+import com.guiderun.app.ui.volunteer.InterruptDialog
 import com.guiderun.app.ui.shared.map.CameraTarget
 import com.guiderun.app.ui.shared.map.GuideRunMap
 import com.guiderun.app.ui.shared.map.GuideRunMapState

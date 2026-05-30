@@ -20,14 +20,16 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 @Singleton
 class UserPreferences @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val tokenCipher: TokenCipher,
 ) {
     private val store = context.dataStore
 
+    // token 在磁盘上以 KeyStore AES/GCM 密文存储；读出后解密，解密失败（旧明文 / 损坏）返回 null 触发重新登录。
     suspend fun getAccessToken(): String? =
-        store.data.map { it[Keys.ACCESS_TOKEN] }.first()
+        store.data.map { it[Keys.ACCESS_TOKEN] }.first()?.let { tokenCipher.decrypt(it) }
 
     suspend fun getRefreshToken(): String? =
-        store.data.map { it[Keys.REFRESH_TOKEN] }.first()
+        store.data.map { it[Keys.REFRESH_TOKEN] }.first()?.let { tokenCipher.decrypt(it) }
 
     suspend fun getCurrentUserId(): String? =
         store.data.map { it[Keys.USER_ID] }.first()
@@ -36,9 +38,12 @@ class UserPreferences @Inject constructor(
         store.data.map { it[Keys.ACTIVE_ROLE] }.first()
 
     suspend fun saveTokens(accessToken: String, refreshToken: String) {
+        // 先加密再写入：加密阶段（KeyStore 异常）失败时不会留下半套数据
+        val encryptedAccess = tokenCipher.encrypt(accessToken)
+        val encryptedRefresh = tokenCipher.encrypt(refreshToken)
         store.edit {
-            it[Keys.ACCESS_TOKEN] = accessToken
-            it[Keys.REFRESH_TOKEN] = refreshToken
+            it[Keys.ACCESS_TOKEN] = encryptedAccess
+            it[Keys.REFRESH_TOKEN] = encryptedRefresh
         }
     }
 

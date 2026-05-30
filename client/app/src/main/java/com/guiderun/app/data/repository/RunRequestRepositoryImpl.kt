@@ -103,7 +103,7 @@ class RunRequestRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createRunRequest(params: CreateRunRequestParams, idempotencyKey: String?): Result<RunRequest> =
-        execute(idempotencyKey = idempotencyKey) {
+        execute {
             api.createRunRequest(
                 dto = CreateRunRequestRequestDto(
                     meetingLocation = GeoPointRequestDto(params.meetingLat, params.meetingLng, params.meetingDescription),
@@ -222,8 +222,10 @@ class RunRequestRepositoryImpl @Inject constructor(
 
     // ── 辅助方法 ──────────────────────────────────────────────────────────
 
-    private inline fun <T> execute(idempotencyKey: String? = null, block: () -> T): Result<T> =
-        runCatching { block() }.recoverCatching { mapException(it) }
+    private inline fun <T> execute(block: () -> T): Result<T> =
+        runCatching { block() }
+            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+            .recoverCatching { mapException(it) }
 
     private fun mapException(e: Throwable): Nothing {
         throw when (e) {

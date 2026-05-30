@@ -23,7 +23,7 @@
     <!-- UI-3：发起请求（EditRequest 已并入本页） -->
     <fragment
         android:id="@+id/blindCreateRequestFragment"
-        android:name="com.guiderun.app.ui.blind.CreateRequestFragment"
+        android:name="com.guiderun.app.ui.blind.BlindCreateRequestFragment"
         android:label="发起跑步请求">
         <action
             android:id="@+id/action_createRequest_to_waitingMatch"
@@ -33,7 +33,7 @@
     <!-- UI-4：匹配等待 -->
     <fragment
         android:id="@+id/blindWaitingMatchFragment"
-        android:name="com.guiderun.app.ui.blind.WaitingMatchFragment"
+        android:name="com.guiderun.app.ui.blind.BlindWaitingMatchFragment"
         android:label="等待匹配">
         <argument
             android:name="requestId"
@@ -52,7 +52,7 @@
     <!-- UI-5：已匹配 -->
     <fragment
         android:id="@+id/blindMatchedFragment"
-        android:name="com.guiderun.app.ui.blind.MatchedFragment"
+        android:name="com.guiderun.app.ui.blind.BlindMatchedFragment"
         android:label="已匹配志愿者">
         <argument
             android:name="requestId"
@@ -130,7 +130,7 @@
     <!-- 轨迹回放 -->
     <fragment
         android:id="@+id/blindTrackPlaybackFragment"
-        android:name="com.guiderun.app.ui.blind.TrackPlaybackFragment"
+        android:name="com.guiderun.app.ui.blind.BlindTrackPlaybackFragment"
         android:label="轨迹回放">
         <argument
             android:name="requestId"
@@ -144,7 +144,7 @@
     <!-- 紧急联系人列表 -->
     <fragment
         android:id="@+id/emergencyContactListFragment"
-        android:name="com.guiderun.app.ui.profile.EmergencyContactListFragment"
+        android:name="com.guiderun.app.ui.blind.BlindEmergencyContactListFragment"
         android:label="紧急联系人">
         <action
             android:id="@+id/action_contactList_to_contactEdit"
@@ -154,7 +154,7 @@
     <!-- 编辑紧急联系人 -->
     <fragment
         android:id="@+id/emergencyContactEditFragment"
-        android:name="com.guiderun.app.ui.profile.EmergencyContactEditFragment"
+        android:name="com.guiderun.app.ui.blind.BlindEmergencyContactEditFragment"
         android:label="编辑紧急联系人">
         <argument
             android:name="index"
@@ -165,13 +165,13 @@
     <!-- 编辑个人资料 -->
     <fragment
         android:id="@+id/profileEditFragment"
-        android:name="com.guiderun.app.ui.profile.ProfileEditFragment"
+        android:name="com.guiderun.app.ui.blind.BlindProfileEditFragment"
         android:label="编辑个人资料" />
 
     <!-- 设置主页 -->
     <fragment
         android:id="@+id/settingsFragment"
-        android:name="com.guiderun.app.ui.profile.SettingsFragment"
+        android:name="com.guiderun.app.ui.blind.BlindSettingsFragment"
         android:label="设置">
         <action
             android:id="@+id/action_settings_to_profileEdit"
@@ -190,13 +190,13 @@
     <!-- 跑步统计 -->
     <fragment
         android:id="@+id/blindStatsFragment"
-        android:name="com.guiderun.app.ui.profile.BlindStatsFragment"
+        android:name="com.guiderun.app.ui.blind.BlindStatsFragment"
         android:label="跑步统计" />
 
     <!-- 无障碍设置 -->
     <fragment
         android:id="@+id/accessibilitySettingsFragment"
-        android:name="com.guiderun.app.ui.profile.AccessibilitySettingsFragment"
+        android:name="com.guiderun.app.ui.blind.BlindAccessibilitySettingsFragment"
         android:label="无障碍设置" />
 
 </navigation>

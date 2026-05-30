@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import timber.log.Timber
 import javax.inject.Inject
 
 data class BlindReviewUiState(
@@ -43,7 +44,7 @@ sealed interface BlindReviewNavEvent {
 /**
  * 视障端评价 ViewModel（推广重构第二波）。
  *
- * 手势模型：长按 2s+5s 由 footer 的 LongPressGestureView 接管，
+ * 手势模型：长按 2s+5s 由 footer 的 BlindLongPressGestureView 接管，
  * 本 VM 只暴露 [executeSubmit] 作为"已经确认提交"的执行入口（手势/语音统一调用）。
  * 单击评分卡用 [selectRating] 改变选择。
  */
@@ -107,7 +108,7 @@ class BlindReviewViewModel @Inject constructor(
 
     /**
      * 真正执行提交评价：来自三个入口
-     * 1. footer LongPressGestureView 长按 2s+5s 后 onCountdownCommitted
+     * 1. footer BlindLongPressGestureView 长按 2s+5s 后 onCountdownCommitted
      * 2. 语音指令 CONFIRM/SAVE
      */
     fun executeSubmit() {
@@ -126,9 +127,10 @@ class BlindReviewViewModel @Inject constructor(
                 hapticFeedback.confirm()
                 _navEvent.emit(BlindReviewNavEvent.ToHome)
             }.onFailure { e ->
+                // 不向 TTS 透传原始异常，统一用友好兜底文案；细节记日志
+                Timber.e(e, "BlindReviewVM: executeSubmit failed")
                 _uiState.update { it.copy(isSubmitting = false) }
-                val reason = e.message
-                    ?: appContext.getString(R.string.blind_review_submit_default_error)
+                val reason = appContext.getString(R.string.blind_review_submit_default_error)
                 ttsManager.speak(
                     appContext.getString(R.string.blind_review_submit_failed_format, reason),
                     TtsManager.Priority.HIGH,

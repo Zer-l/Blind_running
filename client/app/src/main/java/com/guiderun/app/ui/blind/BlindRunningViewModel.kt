@@ -251,7 +251,7 @@ class BlindRunningViewModel @Inject constructor(
 
     /**
      * 统一的"申请结束跑步"入口：
-     * - 由 LongPressGestureView 长按 2s + 5s 倒计时结束后调用（手势路径）；
+     * - 由 BlindLongPressGestureView 长按 2s + 5s 倒计时结束后调用（手势路径）；
      * - 由语音指令 END_RUN 直接调用（语音路径，跳过倒计时）。
      */
     /** 长按手势按下时调用：抑制每公里/每5分钟周期播报，并直接屏蔽自动暂停播报，避免抢播打断长按提示。 */
@@ -281,12 +281,15 @@ class BlindRunningViewModel @Inject constructor(
         val minutes = state.totalDurationSeconds / 60
         val seconds = state.totalDurationSeconds % 60
         val paceText = state.displayPaceSeconds?.let { p ->
-            val pm = p / 60
-            val ps = p % 60
-            "${pm}分${ps}秒每公里"
-        } ?: "暂无配速"
-        val msg =
-            "已跑${"%.2f".format(distanceKm)}公里，用时${minutes}分${seconds}秒，配速${paceText}"
+            context.getString(R.string.tts_running_pace_format, p / 60, p % 60)
+        } ?: context.getString(R.string.tts_running_pace_unknown)
+        val msg = context.getString(
+            R.string.tts_running_status,
+            "%.2f".format(distanceKm),
+            minutes,
+            seconds,
+            paceText,
+        )
         suppressAndSpeak(msg, TtsManager.Priority.HIGH)
     }
 
@@ -304,7 +307,8 @@ class BlindRunningViewModel @Inject constructor(
             _navEvent.send(BlindRunningNavEvent.ToReview(requestId))
         }.onFailure { e ->
             Timber.e(e, "endRun failed")
-            suppressAndSpeak(context.getString(R.string.tts_running_end_failed, e.message ?: "请重试"), TtsManager.Priority.HIGH)
+            // 不向 TTS 透传原始异常，改用通用重试提示
+            suppressAndSpeak(context.getString(R.string.tts_running_end_failed, context.getString(R.string.common_retry)), TtsManager.Priority.HIGH)
             hapticFeedback.error()
         }
     }

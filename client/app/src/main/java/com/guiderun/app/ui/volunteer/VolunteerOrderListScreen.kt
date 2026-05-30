@@ -82,7 +82,6 @@ import com.guiderun.app.ui.theme.AppSpacing
 @Composable
 fun VolunteerOrderListScreen(
     onNavigateToDetail: (String) -> Unit,
-    onNavigateToHistory: () -> Unit = {},
     onResumeActiveOrder: (RunRequest) -> Unit = {},
     onBack: () -> Unit = {},
     viewModel: VolunteerOrderListViewModel = hiltViewModel(),

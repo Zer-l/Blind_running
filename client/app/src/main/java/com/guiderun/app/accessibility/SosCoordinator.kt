@@ -44,10 +44,10 @@ class SosCoordinator @Inject constructor(
                         ttsManager.speak(context.getString(R.string.tts_sos_no_contacts), TtsManager.Priority.CRITICAL)
                         return@onSuccess
                     }
-                    contacts.forEach { contact ->
-                        // TODO: 实际发送通知给紧急联系人
+                    contacts.forEach { _ ->
+                        // TODO: 接入推送/短信后在此发送通知；实装前不播报成功
                     }
-                    ttsManager.speak(context.getString(R.string.tts_sos_notified, contacts.size), TtsManager.Priority.CRITICAL)
+                    ttsManager.speak(context.getString(R.string.tts_sos_contacts_pending), TtsManager.Priority.CRITICAL)
                 }
                 .onFailure { e ->
                     Timber.w(e, "SOS: Failed to load emergency contacts")

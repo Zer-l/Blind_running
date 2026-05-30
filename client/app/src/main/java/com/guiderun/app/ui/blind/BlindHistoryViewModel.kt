@@ -80,7 +80,7 @@ class BlindHistoryViewModel @Inject constructor(
                 }
                 .onFailure {
                     _uiState.update {
-                        it.copy(isLoading = false, errorMessage = "加载失败，请重试")
+                        it.copy(isLoading = false, errorMessage = context.getString(R.string.blind_history_load_failed))
                     }
                     if (speakResult) {
                         ttsManager.speak(context.getString(R.string.error_network), TtsManager.Priority.HIGH)

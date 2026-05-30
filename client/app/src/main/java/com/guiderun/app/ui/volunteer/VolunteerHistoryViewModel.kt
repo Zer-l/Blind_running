@@ -1,18 +1,22 @@
 package com.guiderun.app.ui.volunteer
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.domain.model.Badge
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 data class VolunteerHistoryUiState(
@@ -29,6 +33,7 @@ data class VolunteerHistoryUiState(
 
 @HiltViewModel
 class VolunteerHistoryViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val runRequestRepository: RunRequestRepository,
     private val userRepository: UserRepository,
 ) : ViewModel() {
@@ -67,8 +72,14 @@ class VolunteerHistoryViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
+                    // 不向 UI 透传原始异常（IOException 文本含 ip/port 等内部细节）；细节记日志
+                    Timber.e(e, "VolunteerHistoryVM: loadHistory failed")
                     _uiState.update {
-                        it.copy(isLoading = false, isRefreshing = false, errorMessage = e.message)
+                        it.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            errorMessage = context.getString(R.string.error_load_failed),
+                        )
                     }
                 }
             // 加载徽章
@@ -76,6 +87,7 @@ class VolunteerHistoryViewModel @Inject constructor(
                 .onSuccess { stats ->
                     _uiState.update { it.copy(badges = stats.badges) }
                 }
+                .onFailure { Timber.w(it, "VolunteerHistoryVM: getVolunteerStats failed") }
         }
     }
 

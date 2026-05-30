@@ -31,11 +31,11 @@ import javax.inject.Inject
  * ```
  * BlindConfirmDialogFragment.newInstance(
  *     requestKey = REQ_KEY,
- *     titleRes = R.string.interrupt_title_leave_create,
- *     messageRes = R.string.interrupt_message_leave_create,
- *     primaryLabelRes = R.string.interrupt_btn_discard,
- *     primaryHintRes = R.string.blind_hint_confirm_discard,
- * ).show(parentFragmentManager, "discard")
+ *     titleRes = R.string.interrupt_title_leave_waiting,
+ *     messageRes = R.string.interrupt_message_leave_waiting,
+ *     primaryLabelRes = R.string.interrupt_btn_cancel_order,
+ *     primaryHintRes = R.string.blind_hint_cancel_order_long_press,
+ * ).show(parentFragmentManager, "cancel")
  *
  * setFragmentResultListener(REQ_KEY) { _, bundle ->
  *     if (bundle.getBoolean(KEY_CONFIRMED)) doDestructiveAction()
@@ -116,7 +116,7 @@ class BlindConfirmDialogFragment : DialogFragment() {
                 emitResult(confirmed = true)
                 dismiss()
             },
-            // 5 秒倒计时内松开 = 撤销，留在调用方页面；LongPressGestureView 自身已播"已取消"，
+            // 5 秒倒计时内松开 = 撤销，留在调用方页面；BlindLongPressGestureView 自身已播"已取消"，
             // 再补播页面身份，避免视障用户在"已取消"后不知道自己在哪
             onCancel = { speakStayedOnHostPage() },
         )

@@ -6,7 +6,6 @@ import android.os.Bundle
 import androidx.activity.addCallback
 import androidx.annotation.IdRes
 import androidx.annotation.StringRes
-import androidx.core.os.bundleOf
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.guiderun.app.R
@@ -38,7 +37,7 @@ class BlindActivity : BaseBlindActivity() {
 
         /**
          * HomeScreen 视障入口长按 2 秒触发的"一键发起"路径标志。
-         * CreateRequestFragment.onViewCreated 检测此标志即调用 ViewModel.submitWithLastPrefs()，
+         * BlindCreateRequestFragment.onViewCreated 检测此标志即调用 ViewModel.submitWithLastPrefs()，
          * 跳过手势确认直接用上次偏好提交。
          */
         const val EXTRA_QUICK_START = "quick_start"
@@ -167,8 +166,12 @@ class BlindActivity : BaseBlindActivity() {
             else -> null
         }
         val pageText = pageRes?.let { getString(it) } ?: getString(R.string.app_name)
-        val orderText = activeRequestId?.let { "，正在进行订单" } ?: "，当前没有进行中的订单"
-        return "当前在$pageText$orderText"
+        val orderText = if (activeRequestId != null) {
+            getString(R.string.voice_status_has_order)
+        } else {
+            getString(R.string.voice_status_no_order)
+        }
+        return getString(R.string.voice_status_format, pageText, orderText)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -196,7 +199,7 @@ class BlindActivity : BaseBlindActivity() {
             val (startDestId, startArgs) = when {
                 recoveryDestId != null && recoveryRequestId != null -> {
                     isStartDestination = false
-                    recoveryDestId to bundleOf("requestId" to recoveryRequestId)
+                    recoveryDestId to Bundle().apply { putString("requestId", recoveryRequestId) }
                 }
                 else -> {
                     val destination = intent.getStringExtra(EXTRA_DESTINATION) ?: DEST_HOME
@@ -272,7 +275,7 @@ class BlindActivity : BaseBlindActivity() {
         val newGraph = controller.navInflater.inflate(R.navigation.blind_nav_graph).apply {
             setStartDestination(destId)
         }
-        controller.setGraph(newGraph, bundleOf("requestId" to recoveryRequestId))
+        controller.setGraph(newGraph, Bundle().apply { putString("requestId", recoveryRequestId) })
         isStartDestination = false
     }
 }

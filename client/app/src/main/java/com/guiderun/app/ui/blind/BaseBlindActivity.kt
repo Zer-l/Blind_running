@@ -53,7 +53,7 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
 
     /**
      * 当前页面对应志愿者的手机号；非 null 时启用音量+键连按 3 次拨号。
-     * MatchedFragment / BlindRunningFragment / BlindReviewFragment 在 onResume 注入，onPause 清空。
+     * BlindMatchedFragment / BlindRunningFragment / BlindReviewFragment 在 onResume 注入，onPause 清空。
      */
     var activeCallPeerPhone: String? = null
 
@@ -109,7 +109,7 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
      * 字号缩放通过 Configuration.fontScale 注入到 Activity 的 base context，
      * 让所有 TextView 通过系统的 sp→px 转换自动放大；
      * 避免手动 walk View 树修改 textSize 的脆弱方案（在 Fragment 切换 / Material 控件状态变化时会失效）。
-     * 字号变化需 recreate() 才能生效（AccessibilitySettingsViewModel 已发 RecreateRequired 事件）。
+     * 字号变化需 recreate() 才能生效（BlindAccessibilitySettingsViewModel 已发 RecreateRequired 事件）。
      */
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(newBase)

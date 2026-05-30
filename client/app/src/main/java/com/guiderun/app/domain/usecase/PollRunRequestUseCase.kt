@@ -8,6 +8,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
+import timber.log.Timber
 import javax.inject.Inject
 
 class PollRunRequestUseCase @Inject constructor(
@@ -32,6 +33,7 @@ class PollRunRequestUseCase @Inject constructor(
                     if (request.status != RunRequestStatus.MATCHING) return@flow
                 }
                 .onFailure {
+                    Timber.w(it, "PollRunRequest: poll failed, backoff=%dms", backoffMs)
                     backoffMs = minOf(backoffMs * 2, maxBackoffMs)
                 }
             delay(backoffMs)

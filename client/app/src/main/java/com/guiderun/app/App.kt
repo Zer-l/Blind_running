@@ -26,7 +26,7 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Timber.plant(Timber.DebugTree())
+        if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
 
         // 高德地图隐私合规 - 必须在任何地图SDK调用之前
         MapsInitializer.updatePrivacyShow(this, true, true)

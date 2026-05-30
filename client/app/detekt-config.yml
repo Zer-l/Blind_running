@@ -1,0 +1,65 @@
+# Detekt 自定义配置：基于 buildUponDefaultConfig = true，仅覆盖以下规则。
+#
+# 设计原则：保留"真死代码 / 真隐患"类规则（UnusedPrivateMember / UnusedParameter /
+# UnreachableCode / Empty*Block 等），关闭"风格审美"类规则——它们对业务项目（含 GPS
+# 物理常数 / Compose @Composable PascalCase / 长链 / 多 callback 参数）噪音过大。
+
+build:
+  maxIssues: 0  # 0 = warnings 不让构建失败，但仍写报告
+
+style:
+  # 物理常数（米 → 公里 1000、Kalman 系数、卡尔曼增益等）天然带魔法数，按"业务可读"判断更合适
+  MagicNumber:
+    active: false
+  # 长字符串 / 链式调用合理
+  MaxLineLength:
+    active: false
+  # Compose icons 通配 import 是社区惯例
+  WildcardImport:
+    active: false
+  # SosCoordinator 等含有意保留的 TODO 占位
+  ForbiddenComment:
+    active: false
+  # 状态机式 when 多 return 是简洁写法
+  ReturnCount:
+    active: false
+  # ASR 解析循环中 break/continue 多次是状态机自然写法
+  LoopWithTooManyJumpStatements:
+    active: false
+
+naming:
+  # Compose @Composable 函数 PascalCase 是 Jetpack 规范
+  FunctionNaming:
+    active: false
+
+complexity:
+  # GPS 平滑 / 暂停状态机 / 配速复刻等业务逻辑天然长方法
+  LongMethod:
+    active: false
+  TooManyFunctions:
+    active: false
+  # Compose Screen 多 callback 参数正常
+  LongParameterList:
+    active: false
+  CyclomaticComplexMethod:
+    active: false
+  NestedBlockDepth:
+    active: false
+  ComplexCondition:
+    active: false
+
+exceptions:
+  # catch (e: Exception) 在 service / interop 处是兜底必要写法
+  TooGenericExceptionCaught:
+    active: false
+
+performance:
+  SpreadOperator:
+    active: false
+  ForEachOnRange:
+    active: false
+
+empty-blocks:
+  EmptyFunctionBlock:
+    # UtteranceProgressListener.onStart 等平台 listener override 必须空实现
+    ignoreOverridden: true

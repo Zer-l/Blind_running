@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.data.local.dao.RunSessionStatsDao
 import com.guiderun.app.data.local.dao.RunTrackBufferDao
@@ -114,7 +115,11 @@ class VolunteerRunningViewModel @Inject constructor(
                 _uiState.update { it.copy(request = req, isLoading = false) }
             }
             .onFailure { e ->
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                // 不向 UI 透传原始异常，统一用友好文案；细节记日志
+                Timber.e(e, "VolunteerRunningVM: loadRequest failed")
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = getApplication<Application>().getString(R.string.volunteer_load_failed))
+                }
             }
     }
 
@@ -201,8 +206,9 @@ class VolunteerRunningViewModel @Inject constructor(
             _uiState.update { it.copy(endRequestPending = true) }
             runRequestRepository.requestEndRun(requestId)
                 .onFailure { e ->
+                    Timber.e(e, "VolunteerRunningVM: requestEndRun failed")
                     _uiState.update {
-                        it.copy(endRequestPending = false, errorMessage = e.message ?: "申请结束失败")
+                        it.copy(endRequestPending = false, errorMessage = getApplication<Application>().getString(R.string.volunteer_end_request_failed))
                     }
                 }
         }

@@ -17,7 +17,8 @@ class CreateRunRequestUseCase @Inject constructor(
         params = CreateRunRequestParams(
             meetingLat = location.lat,
             meetingLng = location.lng,
-            meetingDescription = location.description.ifBlank { "当前位置" },
+            // 描述兜底由 UI 层（持有资源）保证非空，domain 层不引用 Android 资源
+            meetingDescription = location.description,
             expectedDurationMinutes = durationMinutes,
             notes = notes,
         )

@@ -8,6 +8,20 @@ val baseUrl: String = localProps.getProperty("BASE_URL", "http://10.0.2.2:8080/"
 val amapKey: String = localProps.getProperty("AMAP_KEY", "")
 val iflytekAppId: String = localProps.getProperty("IFLYTEK_APPID", "")
 
+// 发布签名配置：从 client/keystore.properties 读（该文件 .gitignore，绝不进仓库）。
+// 缺省时 release 构建沿用 debug 签名，不阻断本地构建；正式发布前必须配置真签名。
+//
+// 一次性生成密钥（在 client/ 目录执行）：
+//   keytool -genkeypair -v \
+//     -keystore keystore/release.jks \
+//     -keyalg RSA -keysize 2048 -validity 10000 \
+//     -alias guiderun
+// 然后按 keystore.properties.example 模板创建 client/keystore.properties。
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps: Properties? = if (keystorePropsFile.exists()) {
+    Properties().apply { load(keystorePropsFile.inputStream()) }
+} else null
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -15,6 +29,16 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.detekt)
+}
+
+detekt {
+    // 基于内置默认规则集 + 项目 yml 覆盖；只扫主源码，跳过构建产物 / generated 代码
+    buildUponDefaultConfig = true
+    autoCorrect = false
+    source.setFrom("src/main/java")
+    config.setFrom("$projectDir/detekt-config.yml")
+    // 不设 baseline：首次跑出全部问题供清理；如要锁住已有问题再生成 baseline
 }
 
 android {
@@ -45,13 +69,40 @@ android {
         }
     }
 
+    signingConfigs {
+        // 仅当 keystore.properties 存在时注册 release 签名；缺省时 release 用 debug 签名兜底
+        keystoreProps?.let { props ->
+            create("release") {
+                storeFile = rootProject.file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+                // V1/V2/V3 全启用（兼容 API 26→34）
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 全量优化 + 混淆 + 死代码剔除
+            isMinifyEnabled = true
+            // 同步压缩未使用资源（依赖 isMinifyEnabled = true 才生效）
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 配置存在则用真签名；否则 AGP 默认 fallback 到 debug 签名，构建仍可通过（但无法上架）
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
+        }
+        debug {
+            // debug 关闭混淆方便调试 + 加快构建
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 

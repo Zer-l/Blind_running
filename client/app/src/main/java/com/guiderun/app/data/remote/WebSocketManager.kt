@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.coroutines.Job
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -62,6 +63,7 @@ class WebSocketManager @Inject constructor(private val json: Json) {
     private var currentToken: String? = null
     private var socket: WebSocket? = null
     private var isIntentionalDisconnect = false
+    private var reconnectJob: Job? = null
 
     private val wsBaseUrl = BuildConfig.BASE_URL
         .replace("https://", "wss://")
@@ -82,6 +84,8 @@ class WebSocketManager @Inject constructor(private val json: Json) {
 
     fun disconnect() {
         isIntentionalDisconnect = true
+        reconnectJob?.cancel()
+        reconnectJob = null
         socket?.close(1000, "user disconnected")
         socket = null
         _connectionState.value = WsConnectionState.DISCONNECTED
@@ -131,7 +135,9 @@ class WebSocketManager @Inject constructor(private val json: Json) {
     private fun scheduleReconnect() {
         if (isIntentionalDisconnect) return
         val token = currentToken ?: return
-        scope.launch {
+        // 取消上一个重连循环，避免多次调用（onFailure + onClosed）叠加并行重连
+        reconnectJob?.cancel()
+        reconnectJob = scope.launch {
             var delayMs = 1_000L
             while (!isIntentionalDisconnect) {
                 delay(delayMs)

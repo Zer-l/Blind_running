@@ -10,7 +10,6 @@ import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import com.guiderun.app.data.local.UserPreferences
-import kotlinx.coroutines.runBlocking
 import com.guiderun.app.data.local.dao.RunSessionStatsDao
 import com.guiderun.app.data.local.dao.RunTrackBufferDao
 import com.guiderun.app.data.local.entity.RunSessionStatsEntity
@@ -161,12 +160,6 @@ abstract class RunTrackingService : Service() {
         private const val RESUME_SPEED_MPS = 1.0f     // 高于该速度才恢复
         private const val RESUME_DURATION_MS = 3_000L // 持续 3s 才退出暂停
 
-        // 速度→采集间隔自适应
-        private const val SPEED_WALK = 2.0f
-        private const val SPEED_JOG = 4.0f
-        private const val INTERVAL_WALK_MS = 5_000L
-        private const val INTERVAL_JOG_MS = 3_000L
-        private const val INTERVAL_RUN_MS = 2_000L
     }
 
     override fun onCreate() {
@@ -175,20 +168,29 @@ abstract class RunTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // START_REDELIVER_INTENT 通常会重传原 intent，但极端情况（进程未启动 + 系统拉起）可能丢失。
-        // 此时降级读 ACTIVE_REQUEST_ID，确保前台服务仍能恢复采集而不是 stopSelf。
-        val requestId = intent?.getStringExtra(EXTRA_REQUEST_ID)
-            ?: runBlocking { userPreferences.getActiveRequestId() }
-            ?: run { stopSelf(); return START_NOT_STICKY }
-
-        // 幂等：同一 requestId + 已在跑的采集 Job 直接复用。
-        // ViewModel 重建会调 startForegroundService，若不拦截会重新触发 restoreFromPersistedStats，
-        // 把 startElapsedMs 前移而暂停状态字段仍残留旧绝对时间戳 → movingMs 变负 coerce 成 0（见 Bug A）。
-        if (currentRequestId == requestId && trackingJob?.isActive == true) {
-            startForeground(NOTIFICATION_ID, buildNotification(requestId))
-            return START_REDELIVER_INTENT
+        val requestIdFromIntent = intent?.getStringExtra(EXTRA_REQUEST_ID)
+        if (requestIdFromIntent != null) {
+            // 幂等：同一 requestId + 已在跑的采集 Job 直接复用。
+            // ViewModel 重建会调 startForegroundService，若不拦截会重新触发 restoreFromPersistedStats，
+            // 把 startElapsedMs 前移而暂停状态字段仍残留旧绝对时间戳 → movingMs 变负 coerce 成 0（见 Bug A）。
+            if (currentRequestId == requestIdFromIntent && trackingJob?.isActive == true) {
+                startForeground(NOTIFICATION_ID, buildNotification(requestIdFromIntent))
+                return START_REDELIVER_INTENT
+            }
+            initTracking(requestIdFromIntent)
+        } else {
+            // START_REDELIVER_INTENT 极端情况下 intent 丢失（进程被杀 + 系统重拉起）：
+            // 立即 startForeground 避免主线程阻塞 / ANR，再异步从 DataStore 读 requestId 恢复采集。
+            startForeground(NOTIFICATION_ID, buildNotification(""))
+            scope.launch {
+                val id = userPreferences.getActiveRequestId() ?: run { stopSelf(); return@launch }
+                initTracking(id)
+            }
         }
+        return START_REDELIVER_INTENT
+    }
 
+    private fun initTracking(requestId: String) {
         currentRequestId = requestId
         startForeground(NOTIFICATION_ID, buildNotification(requestId))
         locationIntervalFlow.value = locationIntervalMs
@@ -200,7 +202,6 @@ abstract class RunTrackingService : Service() {
             startStatsTicker(requestId)
             startPeriodicUpload(requestId)
         }
-        return START_REDELIVER_INTENT
     }
 
     /**
@@ -339,15 +340,12 @@ abstract class RunTrackingService : Service() {
      * 检测期间也返回位置差分，确保移动不被丢失（不会卡在暂停态出不来）。
      */
     private fun resolveSpeed(geo: com.guiderun.app.domain.model.GeoPoint, posDiffSpeed: Float): Float {
-        val doppler = geo.speedMps
+        val doppler = geo.speedMps ?: return posDiffSpeed
         val acc = geo.speedAccuracyMps
-        val dopplerTrusted = !dopplerUnavailable && doppler != null &&
-            (acc == null || acc <= SPEED_ACCURACY_THRESHOLD_MPS)
-
-        if (!dopplerTrusted) return posDiffSpeed
+        if (dopplerUnavailable || (acc != null && acc > SPEED_ACCURACY_THRESHOLD_MPS)) return posDiffSpeed
 
         // 多普勒报 ~0 但位置在明显移动 → 计一帧；连续累计超阈值则判定多普勒不可用
-        if (doppler!! < DOPPLER_ZERO_EPS_MPS && posDiffSpeed > DOPPLER_HEALTH_SPEED_MPS) {
+        if (doppler < DOPPLER_ZERO_EPS_MPS && posDiffSpeed > DOPPLER_HEALTH_SPEED_MPS) {
             dopplerZeroMovingFrames++
             if (dopplerZeroMovingFrames >= DOPPLER_HEALTH_FRAMES) dopplerUnavailable = true
             return posDiffSpeed

@@ -26,7 +26,7 @@
         app:strokeColor="?attr/blindOnSurface" />
 
     <!-- 主按钮：始终在 footer 最底部，单手最易触达的位置 -->
-    <com.guiderun.app.ui.blind.widget.LongPressGestureView
+    <com.guiderun.app.ui.blind.widget.BlindLongPressGestureView
         android:id="@+id/btn_footer_primary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

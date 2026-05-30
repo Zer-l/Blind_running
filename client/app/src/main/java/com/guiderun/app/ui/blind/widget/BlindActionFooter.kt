@@ -25,7 +25,7 @@ class BlindActionFooter @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : LinearLayout(context, attrs, defStyleAttr) {
 
-    val primaryGesture: LongPressGestureView
+    val primaryGesture: BlindLongPressGestureView
     val secondaryButton: MaterialButton
 
     init {

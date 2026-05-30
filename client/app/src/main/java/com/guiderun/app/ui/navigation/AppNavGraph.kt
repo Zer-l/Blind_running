@@ -9,28 +9,34 @@ import androidx.navigation.navArgument
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.ui.auth.LoginScreen
 import com.guiderun.app.ui.auth.RoleSelectScreen
-import com.guiderun.app.ui.home.HomeScreen
-import com.guiderun.app.ui.volunteer.MetScreen
-import com.guiderun.app.ui.volunteer.NavigatingScreen
-import com.guiderun.app.ui.volunteer.RequestDetailScreen
-import com.guiderun.app.ui.volunteer.TrackPlaybackScreen
+import com.guiderun.app.ui.volunteer.VolunteerHomeScreen
+import com.guiderun.app.ui.volunteer.VolunteerMetScreen
+import com.guiderun.app.ui.volunteer.VolunteerNavigatingScreen
+import com.guiderun.app.ui.volunteer.VolunteerRequestDetailScreen
+import com.guiderun.app.ui.volunteer.VolunteerTrackPlaybackScreen
 import com.guiderun.app.ui.volunteer.VolunteerHistoryScreen
-import com.guiderun.app.ui.profile.VolunteerProfileEditScreen
-import com.guiderun.app.ui.settings.SettingsScreen
-import com.guiderun.app.ui.settings.ThemeSelectionScreen
+import com.guiderun.app.ui.volunteer.VolunteerProfileEditScreen
+import com.guiderun.app.ui.volunteer.VolunteerSettingsScreen
+import com.guiderun.app.ui.volunteer.VolunteerThemeSelectionScreen
 import com.guiderun.app.ui.volunteer.VolunteerOrderListScreen
 import com.guiderun.app.ui.volunteer.VolunteerReviewScreen
 import com.guiderun.app.ui.volunteer.VolunteerRunningScreen
 
+/**
+ * 志愿者侧 + 公共（Login / RoleSelect）的 Compose 导航图。
+ *
+ * 视障端**不**挂在本图里：[com.guiderun.app.MainActivity] 在 [com.guiderun.app.ui.StartTarget.BlindHome]
+ * 分支会直接启动 [com.guiderun.app.ui.blind.BlindActivity] 并 finish 自身，
+ * 视障流程完全在 BlindActivity 的 `blind_nav_graph.xml` 内。
+ *
+ * @param onLoginCompleted Login / RoleSelect 完成后调用：由 MainActivity 重新解析 token+role，
+ *   按新角色直接分派（视障 → 启动 BlindActivity 并 finish；志愿者 → navigate VolunteerHome）。
+ */
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
     startDestination: String,
-    onEnterBlindHome: () -> Unit,
-    onEnterBlindFlow: () -> Unit,
-    onEnterBlindSettings: () -> Unit = {},
-    onEnterBlindHistory: () -> Unit = {},
-    onQuickStartBlindFlow: () -> Unit = {},
+    onLoginCompleted: () -> Unit,
     onResumeActiveOrder: (RunRequest) -> Unit = {},
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
@@ -42,36 +48,23 @@ fun AppNavGraph(
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
-                onNavigateToHome = {
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
-                    }
-                },
+                onNavigateToHome = onLoginCompleted,
             )
         }
 
         composable(Screen.RoleSelect.route) {
             RoleSelectScreen(
-                onNavigateToHome = {
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.RoleSelect.route) { inclusive = true }
-                    }
-                }
+                onNavigateToHome = onLoginCompleted,
             )
         }
 
-        composable(Screen.Home.route) {
-            HomeScreen(
+        composable(Screen.VolunteerHome.route) {
+            VolunteerHomeScreen(
                 onLoggedOut = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onEnterBlindHome = onEnterBlindHome,
-                onEnterBlindFlow = onEnterBlindFlow,
-                onEnterBlindSettings = onEnterBlindSettings,
-                onEnterBlindHistory = onEnterBlindHistory,
-                onQuickStartBlindFlow = onQuickStartBlindFlow,
                 onEnterVolunteerFlow = {
                     navController.navigate(Screen.OrderList.route)
                 },
@@ -98,25 +91,24 @@ fun AppNavGraph(
         composable(Screen.VolunteerProfileEdit.route) {
             VolunteerProfileEditScreen(
                 onSaved = { navController.popBackStack() },
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
             )
         }
 
         composable(Screen.Settings.route) {
-            SettingsScreen(
+            VolunteerSettingsScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToProfile = { navController.navigate(Screen.VolunteerProfileEdit.route) },
                 onNavigateToTheme = { navController.navigate(Screen.ThemeSelection.route) },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                        popUpTo(Screen.VolunteerHome.route) { inclusive = true }
                     }
                 },
             )
         }
 
         composable(Screen.ThemeSelection.route) {
-            ThemeSelectionScreen(
+            VolunteerThemeSelectionScreen(
                 onBack = { navController.popBackStack() },
             )
         }
@@ -138,7 +130,7 @@ fun AppNavGraph(
             route = Screen.RequestDetail.route,
             arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
         ) {
-            RequestDetailScreen(
+            VolunteerRequestDetailScreen(
                 onNavigateToNavigating = { requestId ->
                     navController.navigate(Screen.Navigating.createRoute(requestId)) {
                         popUpTo(Screen.RequestDetail.route) { inclusive = true }
@@ -152,15 +144,15 @@ fun AppNavGraph(
             route = Screen.Navigating.route,
             arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
         ) {
-            NavigatingScreen(
+            VolunteerNavigatingScreen(
                 onNavigateToMet = { requestId ->
                     navController.navigate(Screen.Met.createRoute(requestId)) {
                         popUpTo(Screen.Navigating.route) { inclusive = true }
                     }
                 },
                 onNavigateToHome = {
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                    navController.navigate(Screen.VolunteerHome.route) {
+                        popUpTo(Screen.VolunteerHome.route) { inclusive = true }
                     }
                 },
             )
@@ -170,10 +162,10 @@ fun AppNavGraph(
             route = Screen.Met.route,
             arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
         ) {
-            MetScreen(
+            VolunteerMetScreen(
                 onNavigateToHome = {
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                    navController.navigate(Screen.VolunteerHome.route) {
+                        popUpTo(Screen.VolunteerHome.route) { inclusive = true }
                     }
                 },
                 onNavigateToRunning = { requestId ->
@@ -196,8 +188,8 @@ fun AppNavGraph(
                     }
                 },
                 onNavigateToHome = {
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                    navController.navigate(Screen.VolunteerHome.route) {
+                        popUpTo(Screen.VolunteerHome.route) { inclusive = true }
                     }
                 },
             )
@@ -218,8 +210,8 @@ fun AppNavGraph(
                     if (cameFromHistory) {
                         navController.popBackStack()
                     } else {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
+                        navController.navigate(Screen.VolunteerHome.route) {
+                            popUpTo(Screen.VolunteerHome.route) { inclusive = true }
                         }
                     }
                 },
@@ -233,7 +225,7 @@ fun AppNavGraph(
                 navArgument("role") { type = NavType.StringType },
             ),
         ) {
-            TrackPlaybackScreen(
+            VolunteerTrackPlaybackScreen(
                 requestId = it.arguments?.getString("requestId") ?: "",
                 role = it.arguments?.getString("role") ?: "VOLUNTEER",
                 onBack = { navController.popBackStack() },

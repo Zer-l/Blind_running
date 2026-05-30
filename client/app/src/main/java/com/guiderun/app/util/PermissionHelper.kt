@@ -1,6 +1,7 @@
 package com.guiderun.app.util
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.result.ActivityResultLauncher
@@ -53,6 +54,7 @@ object AppPermissions {
     const val COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION
     const val RECORD_AUDIO = Manifest.permission.RECORD_AUDIO
     const val CALL_PHONE = Manifest.permission.CALL_PHONE
+    @SuppressLint("InlinedApi")
     const val POST_NOTIFICATIONS = Manifest.permission.POST_NOTIFICATIONS
 
     val LOCATION = arrayOf(FINE_LOCATION, COARSE_LOCATION)

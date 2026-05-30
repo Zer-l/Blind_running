@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
-import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -21,7 +20,7 @@ import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentBlindHomeBinding
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus
-import com.guiderun.app.ui.home.HomeViewModel
+import com.guiderun.app.ui.shared.HomeViewModel
 import com.guiderun.app.ui.navigation.ActiveOrderRouter
 import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -33,7 +32,7 @@ import javax.inject.Inject
  * 权限批量申请 / 音量键语音 / SOS 三连击）。
  *
  * 关键交互：
- * - 主按钮 btn_start（长按 2s+5s）→ 进入 CreateRequestFragment
+ * - 主按钮 btn_start（长按 2s+5s）→ 进入 BlindCreateRequestFragment
  * - 主按钮 btn_quick_start（长按 2s+5s，仅 quickStartEnabled 时显示）→ 进入 CreateRequest 并自动提交上次设置
  * - 历史记录 / 设置卡片（单击）→ 跳对应 Fragment
  * - 进行中订单横幅（visible 时单击）→ ActiveOrderRouter.blindFragmentId 直接跳对应业务 Fragment
@@ -182,14 +181,14 @@ class BlindHomeFragment : Fragment() {
     }
 
     private fun navigateToCreateRequest(quickStart: Boolean) {
-        val args = if (quickStart) bundleOf(BlindActivity.EXTRA_QUICK_START to true) else null
+        val args = if (quickStart) Bundle().apply { putBoolean(BlindActivity.EXTRA_QUICK_START, true) } else null
         findNavController().navigate(R.id.blindCreateRequestFragment, args)
     }
 
     private fun navigateToActiveOrder(request: RunRequest) {
         if (request.status.isTerminal()) return
         val destId = ActiveOrderRouter.blindFragmentId(request.status) ?: return
-        findNavController().navigate(destId, bundleOf("requestId" to request.id))
+        findNavController().navigate(destId, Bundle().apply { putString("requestId", request.id) })
     }
 
     private suspend fun collectActiveRequest() {
@@ -247,6 +246,9 @@ class BlindHomeFragment : Fragment() {
         super.onResume()
         // 回首页即重算一键发起按钮：完成一次跑步返回后无需重启即可见
         viewModel.refreshQuickStart()
+        // 与志愿者端 LaunchedEffect(RESUMED) { refreshUser() } 对齐：冷启动时拉失败的 nickname/role
+        // 在切前后台 / 子页返回时也能补上，不必等 WS 重连或杀进程
+        viewModel.refreshUser()
         announceHomeOnce()
     }
 

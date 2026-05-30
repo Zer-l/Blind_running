@@ -19,13 +19,11 @@
     <dimen name="blind_space_sm">12dp</dimen>
     <dimen name="blind_space_md">16dp</dimen>
     <dimen name="blind_space_lg">24dp</dimen>
-    <dimen name="blind_space_xl">32dp</dimen>
     <dimen name="blind_space_xxl">48dp</dimen>
 
     <!-- 触摸目标（dp） -->
     <dimen name="blind_touch_min">64dp</dimen>
     <dimen name="blind_touch_primary">96dp</dimen>
-    <dimen name="blind_touch_emergency">128dp</dimen>
 
     <!-- 描边 / 圆角（dp） -->
     <dimen name="blind_stroke_card">2dp</dimen>

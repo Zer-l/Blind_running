@@ -52,15 +52,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
-import com.guiderun.app.ui.common.CallPeerButton
-import com.guiderun.app.ui.common.InterruptDialog
+import com.guiderun.app.ui.volunteer.CallPeerButton
+import com.guiderun.app.ui.volunteer.InterruptDialog
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun VolunteerReviewScreen(
-    requestId: String,
+    // requestId 由 ViewModel 通过 SavedStateHandle 读取；保留参数让 AppNavGraph 调用方在编译期就必须传值
+    @Suppress("UNUSED_PARAMETER") requestId: String,
     onNavigateToHome: () -> Unit,
     viewModel: VolunteerReviewViewModel = hiltViewModel(),
 ) {

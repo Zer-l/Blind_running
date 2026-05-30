@@ -3,7 +3,7 @@
     视障端自定义属性：
     - 主题色 attr：用于三套对比度主题切换（黑底/白底/黄底），styles_blind.xml 各主题覆盖具体值；
                 布局中用 ?attr/blindXxx 而非 @color/blind_xxx 引用，主题切换时自动生效。
-    - 组件 attr：LongPressGestureView / BlindMetricCard 等自定义控件的属性。
+    - 组件 attr：BlindLongPressGestureView / BlindMetricCard 等自定义控件的属性。
 -->
 <resources>
 
@@ -17,8 +17,8 @@
     <attr name="blindError" format="color" />
     <attr name="blindFocusRing" format="color" />
 
-    <!-- ====== LongPressGestureView ====== -->
-    <declare-styleable name="LongPressGestureView">
+    <!-- ====== BlindLongPressGestureView ====== -->
+    <declare-styleable name="BlindLongPressGestureView">
         <attr name="thresholdMs" format="integer" />
         <attr name="countdownMs" format="integer" />
         <attr name="tickHapticEnabled" format="boolean" />

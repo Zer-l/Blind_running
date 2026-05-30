@@ -1,14 +1,18 @@
 package com.guiderun.app.ui.volunteer
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guiderun.app.R
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.data.remote.WebSocketManager
 import com.guiderun.app.domain.model.AvailableRunRequest
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.repository.LocationProvider
 import com.guiderun.app.domain.repository.RunRequestRepository
+import com.guiderun.app.util.runCatchingCancellable
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,6 +35,7 @@ data class VolunteerOrderListUiState(
 
 @HiltViewModel
 class VolunteerOrderListViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val runRequestRepository: RunRequestRepository,
     private val locationProvider: LocationProvider,
     private val userPreferences: UserPreferences,
@@ -64,10 +69,10 @@ class VolunteerOrderListViewModel @Inject constructor(
         if (!_uiState.value.isOnline) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            val location = runCatching { locationProvider.getLastLocation() }.getOrNull()
+            val location = runCatchingCancellable { locationProvider.getLastLocation() }.getOrNull()
             if (location == null) {
                 // 保持在线，启动位置监听，获取到位置后自动加载
-                _uiState.update { it.copy(isLoading = false, errorMessage = "正在获取位置…") }
+                _uiState.update { it.copy(isLoading = false, errorMessage = context.getString(R.string.volunteer_locating)) }
                 startLocationListening()
                 return@launch
             }
@@ -79,9 +84,9 @@ class VolunteerOrderListViewModel @Inject constructor(
         if (!_uiState.value.isOnline) return
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
-            val location = runCatching { locationProvider.getLastLocation() }.getOrNull()
+            val location = runCatchingCancellable { locationProvider.getLastLocation() }.getOrNull()
             if (location == null) {
-                _uiState.update { it.copy(isRefreshing = false, errorMessage = "正在获取位置…") }
+                _uiState.update { it.copy(isRefreshing = false, errorMessage = context.getString(R.string.volunteer_locating)) }
                 startLocationListening()
                 return@launch
             }
@@ -92,13 +97,13 @@ class VolunteerOrderListViewModel @Inject constructor(
     private fun startLocationListening() {
         locationJob?.cancel()
         locationJob = viewModelScope.launch {
-            val geoPoint = runCatching {
+            val geoPoint = runCatchingCancellable {
                 locationProvider.locationUpdates(5_000L).first()
             }.getOrNull()
             if (geoPoint != null) {
                 fetchAvailable(geoPoint.lat, geoPoint.lng)
             } else {
-                _uiState.update { it.copy(isOnline = false, errorMessage = "无法获取位置，请检查GPS开关") }
+                _uiState.update { it.copy(isOnline = false, errorMessage = context.getString(R.string.volunteer_location_failed)) }
             }
         }
     }
@@ -112,10 +117,10 @@ class VolunteerOrderListViewModel @Inject constructor(
                     else it.copy(availableRequests = list, isLoading = false)
                 }
             }
-            .onFailure { e ->
+            .onFailure {
                 _uiState.update {
-                    if (isRefresh) it.copy(isRefreshing = false, errorMessage = "刷新失败：${e.message}")
-                    else it.copy(isLoading = false, errorMessage = "加载失败：${e.message}")
+                    if (isRefresh) it.copy(isRefreshing = false, errorMessage = context.getString(R.string.volunteer_refresh_failed))
+                    else it.copy(isLoading = false, errorMessage = context.getString(R.string.volunteer_load_failed))
                 }
             }
     }
@@ -139,13 +144,13 @@ class VolunteerOrderListViewModel @Inject constructor(
             _uiState.update { it.copy(isOnline = false, availableRequests = emptyList()) }
             // 下线时若有活跃订单，提示用户但不阻止
             if (activeRequest.value != null) {
-                _uiState.update { it.copy(errorMessage = "你有进行中的陪跑订单，上线后可继续处理") }
+                _uiState.update { it.copy(errorMessage = context.getString(R.string.volunteer_active_order_offline_hint)) }
             }
         }
     }
 
     fun onLocationPermissionDenied() {
-        _uiState.update { it.copy(isLoading = false, isOnline = false, errorMessage = "需要位置权限才能查看附近的跑步请求") }
+        _uiState.update { it.copy(isLoading = false, isOnline = false, errorMessage = context.getString(R.string.volunteer_location_permission_required)) }
     }
 
     fun onErrorShown() {

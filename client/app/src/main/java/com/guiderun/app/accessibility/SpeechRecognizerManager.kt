@@ -12,7 +12,7 @@ import timber.log.Timber
 
 /**
  * 兼容包装：保留旧的 `SpeechRecognizerManager` 类签名，内部已切换到讯飞 [AsrEngine]，
- * 调用方 (CreateRequestFragment 的批量语音输入按钮 / 其他单字段录入入口) 无需改动。
+ * 调用方 (BlindCreateRequestFragment 的批量语音输入按钮 / 其他单字段录入入口) 无需改动。
  *
  * 与原系统 `android.speech.SpeechRecognizer` 版本相比：
  * - [isAvailable] 由讯飞 SDK 状态决定，不再因国产 ROM 缺识别服务而失败

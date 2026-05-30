@@ -25,14 +25,28 @@ build/
 logs/
 log/
 
-# ========== 配置文件（敏感信息） ==========
+# ========== 配置文件 ==========
+# 主 application.yml 与 application-dev.yml 用 ${ENV:default} 占位敏感字段，
+# 默认值仅用于本地开发，可安全提交以保证仓库开箱可启动。
+# 真生产/本地覆盖配置（含真实 DB 密码、JWT secret、第三方密钥）应仅在部署环境注入：
 application-local.yml
 application-local.properties
-application.yml
-application-dev.yml
-application-dev.properties
+application-prod.yml
+application-prod.properties
+application-staging.yml
+application-staging.properties
 *.env
 .env
+
+# ========== 证书 / 密钥 ==========
+*.pem
+*.p12
+*.jks
+*.keystore
+keystore.properties
+
+# IntelliJ HTTP Client 私有环境（约定俗成的本地 token 文件）
+http-client.private.env.json
 
 # ========== 系统文件 ==========
 .DS_Store

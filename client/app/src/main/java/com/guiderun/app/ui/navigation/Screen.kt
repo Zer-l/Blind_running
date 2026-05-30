@@ -3,7 +3,9 @@ package com.guiderun.app.ui.navigation
 sealed class Screen(val route: String) {
     data object Login : Screen("login")
     data object RoleSelect : Screen("role_select")
-    data object Home : Screen("home")
+
+    /** 志愿者侧 Compose 首页路由。视障端走独立 [com.guiderun.app.ui.blind.BlindActivity]，不挂在 Compose 图里。 */
+    data object VolunteerHome : Screen("volunteer_home")
 
     // Volunteer flow
     /** 志愿者接单列表（"志愿者主战场"，不是欢迎页；欢迎页是 [Home]）。 */

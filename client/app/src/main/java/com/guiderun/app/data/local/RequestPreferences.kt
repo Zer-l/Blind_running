@@ -18,7 +18,7 @@ import javax.inject.Singleton
  * 视障端发起跑步请求的偏好持久化。
  *
  * 用途：
- * - CreateRequestViewModel 在 init 时预填上次成功提交的参数；
+ * - BlindCreateRequestViewModel 在 init 时预填上次成功提交的参数；
  * - HomeScreen 长按 2 秒"一键发起"快捷入口的数据源。
  *
  * 独立于 UserPreferences 的 DataStore（"request_prefs"），避免与认证 / 主题等配置混在一起。

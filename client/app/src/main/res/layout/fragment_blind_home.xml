@@ -241,7 +241,7 @@
         app:layout_constraintBottom_toBottomOf="parent">
 
         <!-- 中间：一键发起（仅 prefs 时显示） -->
-        <com.guiderun.app.ui.blind.widget.LongPressGestureView
+        <com.guiderun.app.ui.blind.widget.BlindLongPressGestureView
             android:id="@+id/btn_quick_start"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -258,7 +258,7 @@
             tools:visibility="visible" />
 
         <!-- 最底：发起跑步请求（主按钮，与其他视障端页面"主按钮在最底"一致） -->
-        <com.guiderun.app.ui.blind.widget.LongPressGestureView
+        <com.guiderun.app.ui.blind.widget.BlindLongPressGestureView
             android:id="@+id/btn_start"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
