@@ -3,17 +3,17 @@
     UI-3 发起跑步请求（EditRequest 已并入本页）。
 
     结构：
-      [BlindPageHeader] 顶部独立标题
-      [divider_top]    上分割线
-      [ScrollView]
+      [BlindPageHeader]   顶部独立标题
+      [divider_top]       上分割线
+      [ScrollView]        可滚动表单区
         - 集合地点（TextInputLayout，可手改/语音改）
-        - 时长 4 按钮 (30/60/90/120)
+        - 时长 4 按钮 (30/60/90/120，大字号档位自适应竖排)
         - 备注（TextInputLayout）
-        - 独立语音输入大按钮（批量录入 地点/时长/备注）
         - tv_error
-      [divider_bottom] 下分割线
-      [tv_action_hint] 长按手势提示
-      [footer]         吸底主操作（长按 2s+5s 提交）
+      [divider_bottom]    下分割线
+      [tv_action_hint]    长按手势提示（置于操作区顶部，同时覆盖语音按钮与确认按钮）
+      [btn_voice_input]   语音输入大按钮（常驻，不被 ScrollView 内容推走，大字号下无需滚动）
+      [footer]            吸底主操作（长按 2s+5s 提交）
 -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -217,27 +217,6 @@
                     android:textSize="@dimen/blind_text_body" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- 独立的批量语音录入大按钮：触发后用户一次说出地点/时长/备注 -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_voice_input"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/blind_space_md"
-                android:background="@drawable/bg_blind_voice_button"
-                android:contentDescription="@string/blind_ui_create_request_voice_input_desc"
-                android:minHeight="@dimen/blind_touch_primary"
-                android:paddingHorizontal="@dimen/blind_space_md"
-                android:paddingVertical="@dimen/blind_space_md"
-                android:text="@string/blind_ui_create_request_voice_input"
-                android:textColor="?attr/blindOnPrimary"
-                android:textSize="@dimen/blind_text_headline"
-                android:textStyle="bold"
-                app:cornerRadius="@dimen/blind_radius_button"
-                app:icon="@drawable/ic_mic"
-                app:iconGravity="textStart"
-                app:iconTint="?attr/blindOnPrimary" />
-
             <!-- 错误提示（默认 GONE，assertive） -->
             <TextView
                 android:id="@+id/tv_error"
@@ -261,7 +240,7 @@
         android:background="?attr/blindPrimary"
         app:layout_constraintBottom_toTopOf="@id/tv_action_hint" />
 
-    <!-- 手势提示区 -->
+    <!-- 手势提示区（置于操作区顶部，统领下方语音 + 确认两个按钮） -->
     <TextView
         android:id="@+id/tv_action_hint"
         android:layout_width="match_parent"
@@ -273,6 +252,29 @@
         android:text="@string/blind_hint_create_request_primary"
         android:textColor="?attr/blindOnSurface"
         android:textSize="@dimen/blind_text_hint"
+        app:layout_constraintBottom_toTopOf="@id/btn_voice_input" />
+
+    <!-- 语音输入大按钮（移出 ScrollView 常驻底部，避免大字号档位被表单内容推走需要滚动才能触达） -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_voice_input"
+        style="@style/Widget.Material3.Button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/blind_space_md"
+        android:layout_marginBottom="@dimen/blind_space_sm"
+        android:background="@drawable/bg_blind_voice_button"
+        android:contentDescription="@string/blind_ui_create_request_voice_input_desc"
+        android:minHeight="@dimen/blind_touch_primary"
+        android:paddingHorizontal="@dimen/blind_space_md"
+        android:paddingVertical="@dimen/blind_space_md"
+        android:text="@string/blind_ui_create_request_voice_input"
+        android:textColor="?attr/blindOnPrimary"
+        android:textSize="@dimen/blind_text_headline"
+        android:textStyle="bold"
+        app:cornerRadius="@dimen/blind_radius_button"
+        app:icon="@drawable/ic_mic"
+        app:iconGravity="textStart"
+        app:iconTint="?attr/blindOnPrimary"
         app:layout_constraintBottom_toTopOf="@id/footer" />
 
     <!-- 吸底操作热区（无次按钮 — EditRequest 已并入本页） -->

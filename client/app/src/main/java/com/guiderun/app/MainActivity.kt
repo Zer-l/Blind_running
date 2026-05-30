@@ -139,8 +139,10 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             when (viewModel.reresolveAfterLogin()) {
                 StartTarget.BlindHome -> {
-                    BlindActivity.start(this@MainActivity, BlindActivity.DEST_HOME)
-                    finish()
+                    // 不显式 start：reresolveAfterLogin 已更新 _startTarget，
+                    // Compose 外层 when 切到 BlindHome 分支后 LaunchedEffect 会负责 start + finish()。
+                    // 之前在此处再调一次 start 会导致 standard launchMode 下压入两个 BlindActivity 实例
+                    // → BlindHomeFragment 双重 onResume → 欢迎语播两次。
                 }
                 StartTarget.VolunteerHome -> {
                     navController.navigate(Screen.VolunteerHome.route) {

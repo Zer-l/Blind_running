@@ -27,6 +27,7 @@ import com.guiderun.app.databinding.FragmentCreateRequestBinding
 import com.guiderun.app.util.AppPermissions
 import com.guiderun.app.util.EdgeToEdgeHelper
 import com.guiderun.app.util.PermissionHelper
+import com.guiderun.app.util.applyAdaptiveOrientation
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -158,6 +159,8 @@ class BlindCreateRequestFragment : Fragment() {
     }
 
     private fun setupDurationToggle() {
+        // 大字号档位（≥150%）切换为竖排，避免选项文字被 autoSize 截断为省略号
+        binding.toggleDuration.applyAdaptiveOrientation(resources.configuration.fontScale)
         binding.toggleDuration.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             val minutes = when (checkedId) {
@@ -315,7 +318,14 @@ class BlindCreateRequestFragment : Fragment() {
                         args,
                     )
                 }
-                BlindCreateRequestNavEvent.Back -> requireActivity().finish()
+                BlindCreateRequestNavEvent.Back -> {
+                    // 优先回退到栈中上一页（通常是 BlindHome）；
+                    // 仅在栈空（一键发起 / 历史 DEST_CREATE_REQUEST 入口把本页作为起点）时才 finish Activity。
+                    // 之前无脑 finish() 会跨过 BlindHome 直接退出整个应用（MainActivity 启动后已 finish）。
+                    if (!findNavController().popBackStack()) {
+                        requireActivity().finish()
+                    }
+                }
             }
         }
     }

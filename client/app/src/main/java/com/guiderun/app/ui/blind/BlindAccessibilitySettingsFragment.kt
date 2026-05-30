@@ -20,6 +20,7 @@ import com.guiderun.app.accessibility.voice.bindVoiceCommands
 import com.guiderun.app.databinding.FragmentAccessibilitySettingsBinding
 import com.guiderun.app.ui.theme.BlindDesignTokens
 import com.guiderun.app.util.EdgeToEdgeHelper
+import com.guiderun.app.util.applyAdaptiveOrientation
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -75,6 +76,8 @@ class BlindAccessibilitySettingsFragment : Fragment() {
     }
 
     private fun setupFontScaleToggle() {
+        // 大字号档位（≥150%）切换为竖排，避免选项文字被 autoSize 截断为省略号
+        binding.toggleFontScale.applyAdaptiveOrientation(resources.configuration.fontScale)
         binding.toggleFontScale.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             val scale = when (checkedId) {
@@ -88,6 +91,7 @@ class BlindAccessibilitySettingsFragment : Fragment() {
     }
 
     private fun setupContrastToggle() {
+        binding.toggleContrast.applyAdaptiveOrientation(resources.configuration.fontScale)
         binding.toggleContrast.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             val theme = when (checkedId) {
@@ -100,6 +104,7 @@ class BlindAccessibilitySettingsFragment : Fragment() {
     }
 
     private fun setupHapticToggle() {
+        binding.toggleHaptic.applyAdaptiveOrientation(resources.configuration.fontScale)
         binding.toggleHaptic.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             val strength = when (checkedId) {
