@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.guiderun.app.R
 import com.guiderun.app.domain.model.RunRequest
-import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.repository.RunRequestRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext

@@ -15,7 +15,6 @@ import com.guiderun.app.accessibility.TtsManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 /**
  * 视障端通用长按手势组件，统一"长按阈值 + 倒计时撤销"双段确认模型。

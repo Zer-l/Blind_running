@@ -35,6 +35,7 @@ plugins {
 detekt {
     // 基于内置默认规则集 + 项目 yml 覆盖；只扫主源码，跳过构建产物 / generated 代码
     buildUponDefaultConfig = true
+    // CI 默认关闭 autoCorrect 防止误改；本地需要批量修复时临时改 true 跑一次再复位
     autoCorrect = false
     source.setFrom("src/main/java")
     config.setFrom("$projectDir/detekt-config.yml")
@@ -183,6 +184,9 @@ dependencies {
 
     // Logging
     implementation(libs.timber)
+
+    // Detekt formatting 子规则（ktlint 包装），用于补 UnusedImports 等格式化检查
+    detektPlugins(libs.detekt.formatting)
 
     // TRTC (voice call) - disabled for now due to Maven repo TLS issues
     // TODO: uncomment when repo is accessible

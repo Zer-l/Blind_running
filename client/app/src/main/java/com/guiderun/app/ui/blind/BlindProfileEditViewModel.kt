@@ -7,7 +7,6 @@ import com.guiderun.app.R
 import com.guiderun.app.domain.model.BlindProfileUpdate
 import com.guiderun.app.domain.model.Gender
 import com.guiderun.app.domain.model.UpdateProfileParams
-import com.guiderun.app.domain.model.User
 import com.guiderun.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext

@@ -9,7 +9,6 @@ import com.guiderun.app.R
 import com.guiderun.app.data.local.UserPreferences
 import com.guiderun.app.data.local.dao.RunSessionStatsDao
 import com.guiderun.app.data.local.dao.RunTrackBufferDao
-import com.guiderun.app.data.local.entity.RunSessionStatsEntity
 import com.guiderun.app.data.remote.WebSocketManager
 import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.model.RunRequestStatus

@@ -96,6 +96,9 @@ amap-map3d = { group = "com.amap.api", name = "3dmap", version.ref = "amapMap3d"
 # Logging
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 
+# Detekt formatting 子规则集（基于 ktlint）— 用于补齐 detekt 默认规则集中已 deprecated 的 UnusedImports 等格式化检查
+detekt-formatting = { group = "io.gitlab.arturbosch.detekt", name = "detekt-formatting", version.ref = "detekt" }
+
 # TRTC (voice call)
 trtc = { group = "com.tencent.liteav", name = "LiteAVSDK_TRTC", version.ref = "trtc" }
 

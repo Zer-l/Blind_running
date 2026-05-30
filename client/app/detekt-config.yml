@@ -63,3 +63,106 @@ empty-blocks:
   EmptyFunctionBlock:
     # UtteranceProgressListener.onStart 等平台 listener override 必须空实现
     ignoreOverridden: true
+
+# Formatting 子规则集（ktlint 包装）：默认 detekt 主规则集已废弃 UnusedImports，
+# 由本组的 NoUnusedImports 接替。整组开启后，绝大多数 ktlint 风格规则会一起触发——
+# 本项目只关心"真死代码"风险，其余风格规则暂时关闭，仅保留 unused / wildcard 类。
+formatting:
+  active: true
+  android: true
+  autoCorrect: false
+
+  # 我们要保留的：unused import 检查
+  NoUnusedImports:
+    active: true
+
+  # 以下风格规则对存量代码噪声过大，统一关闭（与主 style 配置的取舍一致）
+  Indentation:
+    active: false
+  MaximumLineLength:
+    active: false
+  ParameterListWrapping:
+    active: false
+  ArgumentListWrapping:
+    active: false
+  FunctionSignature:
+    active: false
+  Wrapping:
+    active: false
+  NoWildcardImports:
+    active: false
+  ImportOrdering:
+    active: false
+  AnnotationOnSeparateLine:
+    active: false
+  AnnotationSpacing:
+    active: false
+  TrailingCommaOnDeclarationSite:
+    active: false
+  TrailingCommaOnCallSite:
+    active: false
+  Filename:
+    active: false
+  ChainWrapping:
+    active: false
+  CommentSpacing:
+    active: false
+  EnumEntryNameCase:
+    active: false
+  MultiLineIfElse:
+    active: false
+  NoBlankLineBeforeRbrace:
+    active: false
+  NoConsecutiveBlankLines:
+    active: false
+  NoEmptyFirstLineInMethodBlock:
+    active: false
+  NoLineBreakAfterElse:
+    active: false
+  NoLineBreakBeforeAssignment:
+    active: false
+  NoMultipleSpaces:
+    active: false
+  NoSemicolons:
+    active: false
+  NoTrailingSpaces:
+    active: false
+  NoUnitReturn:
+    active: false
+  PackageName:
+    active: false
+  SpacingAroundAngleBrackets:
+    active: false
+  SpacingAroundColon:
+    active: false
+  SpacingAroundComma:
+    active: false
+  SpacingAroundCurly:
+    active: false
+  SpacingAroundDot:
+    active: false
+  SpacingAroundDoubleColon:
+    active: false
+  SpacingAroundKeyword:
+    active: false
+  SpacingAroundOperators:
+    active: false
+  SpacingAroundParens:
+    active: false
+  SpacingAroundRangeOperator:
+    active: false
+  SpacingAroundUnaryOperator:
+    active: false
+  SpacingBetweenDeclarationsWithAnnotations:
+    active: false
+  SpacingBetweenDeclarationsWithComments:
+    active: false
+  StringTemplate:
+    active: false
+  FinalNewline:
+    active: false
+  ModifierOrdering:
+    active: false
+  # /* inclusive = */ 这类命名参数内联注释是项目偏好的"工程化提示"，禁用风格强制
+  CommentWrapping:
+    active: false

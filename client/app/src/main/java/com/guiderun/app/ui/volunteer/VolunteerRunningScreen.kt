@@ -2,8 +2,6 @@ package com.guiderun.app.ui.volunteer
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandVertically
@@ -22,8 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -52,8 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
-import com.guiderun.app.ui.volunteer.CallPeerButton
-import com.guiderun.app.ui.volunteer.InterruptDialog
 import com.guiderun.app.ui.shared.map.CameraTarget
 import com.guiderun.app.ui.shared.map.GuideRunMap
 import com.guiderun.app.ui.shared.map.GuideRunMapState

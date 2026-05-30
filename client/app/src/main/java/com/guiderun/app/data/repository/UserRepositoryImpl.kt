@@ -7,10 +7,8 @@ import com.guiderun.app.data.mapper.toEntity
 import com.guiderun.app.data.remote.api.UserApi
 import com.guiderun.app.data.remote.dto.BlindProfileUpdateDto
 import com.guiderun.app.data.remote.dto.EmergencyContactDto
-import com.guiderun.app.data.remote.dto.ReviewResponseDto
 import com.guiderun.app.data.remote.dto.UpdateUserRequestDto
 import com.guiderun.app.data.remote.dto.VolunteerProfileUpdateDto
-import com.guiderun.app.data.remote.dto.VolunteerStatsDto
 import com.guiderun.app.domain.model.BlindStats
 import com.guiderun.app.domain.model.EmergencyContact
 import com.guiderun.app.domain.model.Review

@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.guiderun.app.R
 import com.guiderun.app.domain.model.Badge
 import com.guiderun.app.domain.model.RunRequest
-import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

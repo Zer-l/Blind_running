@@ -47,8 +47,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.domain.model.RunRequestStatus
-import com.guiderun.app.ui.volunteer.CallPeerButton
-import com.guiderun.app.ui.volunteer.InterruptDialog
 import com.guiderun.app.ui.shared.map.GuideRunMap
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
