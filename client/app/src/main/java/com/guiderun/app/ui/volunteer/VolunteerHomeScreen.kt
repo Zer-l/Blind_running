@@ -271,6 +271,12 @@ private fun ActiveOrderBanner(
     }
 }
 
+/**
+ * 统一卡片结构：圆形图标容器 + 标题/副标题 + ChevronRight。
+ * 主次仅靠颜色区分（primary=填充实心，secondary=Outlined 描边），
+ * 保证"开始跑步"与下方"历史/设置"对齐方式、间距、图标尺寸完全一致，
+ * 文字天然左对齐（Column.weight(1f) 撑满左侧 + 默认 Start 对齐）。
+ */
 @Composable
 private fun HomeMenuItem(
     icon: ImageVector,
@@ -280,85 +286,95 @@ private fun HomeMenuItem(
     isPrimary: Boolean = false,
     enabled: Boolean = true,
 ) {
-    if (isPrimary) {
-        Button(
-            onClick = onClick,
-            enabled = enabled,
+    val containerColor = if (isPrimary) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+    val contentColor = if (isPrimary) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val iconBg = if (isPrimary) {
+        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f)
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
+    }
+    val iconTint = if (isPrimary) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val subtitleColor = if (isPrimary) {
+        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val chevronTint = contentColor.copy(alpha = 0.6f)
+
+    val cardModifier = Modifier
+        .fillMaxWidth()
+        .heightIn(min = if (isPrimary) 72.dp else 64.dp)
+
+    val rowContent: @Composable () -> Unit = {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 72.dp),
-            shape = AppRadius.LargeShape,
+                .padding(AppSpacing.MD),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-            )
-            Spacer(Modifier.width(AppSpacing.SM))
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.Start,
+            Surface(
+                shape = AppRadius.MediumShape,
+                color = iconBg,
+                modifier = Modifier.size(44.dp),
             ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(AppSpacing.SM),
+                    tint = iconTint,
+                )
+            }
+            Spacer(Modifier.width(AppSpacing.MD))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
+                    color = contentColor,
                 )
                 if (subtitle.isNotBlank()) {
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                        color = subtitleColor,
                     )
                 }
             }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = chevronTint,
+            )
         }
+    }
+
+    if (isPrimary) {
+        Card(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = cardModifier,
+            shape = AppRadius.LargeShape,
+            colors = CardDefaults.cardColors(containerColor = containerColor),
+        ) { rowContent() }
     } else {
         OutlinedCard(
             onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+            modifier = cardModifier,
             shape = AppRadius.LargeShape,
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(AppSpacing.MD),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Surface(
-                    shape = AppRadius.MediumShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(44.dp),
-                ) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        modifier = Modifier.padding(AppSpacing.SM),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                Spacer(Modifier.width(AppSpacing.MD))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    if (subtitle.isNotBlank()) {
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        ) { rowContent() }
     }
 }
 

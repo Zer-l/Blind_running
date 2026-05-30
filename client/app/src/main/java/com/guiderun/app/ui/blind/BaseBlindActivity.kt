@@ -4,11 +4,13 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Color
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.MotionEvent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +24,7 @@ import com.guiderun.app.accessibility.voice.VoiceCommandHost
 import com.guiderun.app.accessibility.voice.VoiceCommandManager
 import com.guiderun.app.accessibility.voice.VolumeKeyDispatcher
 import com.guiderun.app.data.local.UserPreferences
+import com.guiderun.app.ui.theme.BlindDesignTokens
 import com.guiderun.app.ui.theme.BlindThemeResolver
 import com.guiderun.app.util.PhoneDialer
 import dagger.hilt.EntryPoint
@@ -135,7 +138,18 @@ abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
         val themeId = runBlocking { prefs.getBlindContrastThemeOnce() }
         setTheme(BlindThemeResolver.resolve(themeId))
 
-        enableEdgeToEdge()
+        // 按对比度主题显式指定 system bar 风格，避免 DayNight 默认按系统暗黑模式决定
+        // 导致黑底主题（深背景）下状态栏内容为黑色不可见。
+        // dark style：内容浅色（白），适合深背景；light style：内容深色（黑），适合浅背景。
+        val systemBarStyle = when (themeId) {
+            BlindDesignTokens.ContrastTheme.White,
+            BlindDesignTokens.ContrastTheme.Yellow -> SystemBarStyle.light(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
+            )
+            else -> SystemBarStyle.dark(Color.TRANSPARENT)
+        }
+        enableEdgeToEdge(statusBarStyle = systemBarStyle, navigationBarStyle = systemBarStyle)
         super.onCreate(savedInstanceState)
         requestBaseBlindPermissionsIfNeeded()
     }
