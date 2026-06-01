@@ -24,6 +24,12 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 视障端个人资料编辑页 Fragment。
+ *
+ * 使用 isUpdatingFromState 标志防止 UI 回填触发 ViewModel 重复更新（避免 setState→collect→setText→doAfterTextChanged→setState 无限循环）。
+ * 主按钮长按 2s+5s 保存，与视障端其他 Primary 按钮统一。
+ */
 @AndroidEntryPoint
 class BlindProfileEditFragment : Fragment() {
 

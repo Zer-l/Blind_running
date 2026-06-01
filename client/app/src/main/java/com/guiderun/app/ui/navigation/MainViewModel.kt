@@ -32,6 +32,15 @@ sealed interface StartTarget {
     data object BlindHome : StartTarget
 }
 
+/**
+ * MainActivity 的 ViewModel，负责应用启动路由决策。
+ *
+ * 设计意图：
+ * - startTarget 在 init 中异步解析（读 DataStore），解析完成前 UI 显示 Loading 不抖动
+ * - 视障角色（BLIND_RUNNER）走 BlindActivity（XML Fragment），避免 Compose NavHost 闪屏后再 launch
+ * - authEvents 订阅 AuthEventBus：AuthInterceptor 拦截到 401 时广播登出信号，MainActivity 响应后清栈跳登录
+ * - themeId 驱动 Compose MaterialTheme 动态切换（志愿者端主题，4 套预设）
+ */
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val userPreferences: UserPreferences,

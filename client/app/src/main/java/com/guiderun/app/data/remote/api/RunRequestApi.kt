@@ -3,6 +3,17 @@ package com.guiderun.app.data.remote.api
 import com.guiderun.app.data.remote.dto.*
 import retrofit2.http.*
 
+/**
+ * 跑步请求核心 Retrofit 接口，覆盖 RunRequest 状态机的全部 9 个状态转移操作。
+ *
+ * 状态转移路径：CREATED → MATCHING → ACCEPTED → EN_ROUTE → MET → RUNNING → FINISHED → CLOSED
+ * 异常路径可跳转到 ABORTED。
+ *
+ * 设计说明：
+ * - [createRunRequest] 携带幂等键（Idempotency-Key），防止网络重试时重复创建订单；
+ * - [requestEndRun] / [endRun] 实现协商式结束：志愿者申请，视障端长按确认才真正结束；
+ * - [pushPeerMetrics] 由志愿者端每 5 秒推送，服务端再通过 WS 转发给视障端，实现跨设备配速同步。
+ */
 interface RunRequestApi {
 
     @POST("api/v1/run-requests")

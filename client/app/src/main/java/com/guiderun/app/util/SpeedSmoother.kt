@@ -51,6 +51,7 @@ class SpeedSmoother(
         return secPerKm.coerceIn(MIN_PACE_SEC_PER_KM, MAX_PACE_SEC_PER_KM).toInt()
     }
 
+    /** 清空历史样本（跑步结束 / 服务重启时调用，避免旧数据污染新会话配速）。 */
     fun reset() {
         samples.clear()
         sumSpeed = 0.0

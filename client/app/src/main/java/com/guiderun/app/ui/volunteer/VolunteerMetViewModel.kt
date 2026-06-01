@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** 已汇合页 UI 状态。 */
 data class VolunteerMetUiState(
     val request: RunRequest? = null,
     val isLoading: Boolean = false,
@@ -31,11 +32,21 @@ data class VolunteerMetUiState(
     val showCancelledDialog: Boolean = false,
 )
 
+/** 已汇合页导航事件：回首页 或 进跑步页。 */
 sealed interface VolunteerMetNavEvent {
     data object ToHome : VolunteerMetNavEvent
     data class ToRunning(val requestId: String) : VolunteerMetNavEvent
 }
 
+/**
+ * 已汇合页 ViewModel（AndroidViewModel，持有 Application 以启停 LocationUpdateService）。
+ *
+ * 数据流：
+ * - loadRequest 加载订单详情，首次下发 CameraTarget 聚焦集合点；
+ * - observeVolunteerPosition 每 15s 刷新志愿者实时位置（更新地图蓝点）；
+ * - observeWs 监听 WS：RUNNING → 跳跑步页；ABORTED → 弹通知弹窗后回首页。
+ * 页面离开（onCleared）时停止前台位置上报服务。
+ */
 @HiltViewModel
 class VolunteerMetViewModel @Inject constructor(
     application: Application,

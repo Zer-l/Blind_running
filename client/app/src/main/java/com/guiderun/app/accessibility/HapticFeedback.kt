@@ -16,6 +16,17 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 视障端触觉反馈管理器（Singleton）。
+ *
+ * 对外提供语义化的震动方法（tick / confirm / warning / error / emergency），
+ * 内部根据用户偏好的震动强度（0=关/1=标准/2=强）和 Android 版本自动适配。
+ *
+ * Android 13+ 使用 VibrationAttributes（更好的勿扰/省电兼容性）；
+ * 低版本降级到 AudioAttributes 方案。
+ *
+ * emergency() 是安全关键功能，不受强度开关影响，始终以最大强度触发。
+ */
 @Singleton
 class HapticFeedback @Inject constructor(
     @ApplicationContext private val context: Context,

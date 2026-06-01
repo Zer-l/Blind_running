@@ -1,5 +1,12 @@
 package com.guiderun.app.domain.model
 
+/**
+ * 当前登录用户的完整信息（Domain 层）。
+ *
+ * 同一用户可同时持有 BLIND_RUNNER 和 VOLUNTEER 两个角色（roles 是集合）。
+ * blindProfile / volunteerProfile 仅在对应角色存在时非 null。
+ * rating 是该用户收到的所有评价均分，null 表示尚无评价记录。
+ */
 data class User(
     val id: String,
     val phone: String,
@@ -29,6 +36,9 @@ data class VolunteerProfile(
 
 enum class Gender { MALE, FEMALE, OTHER }
 
+/**
+ * 用户可持有的角色枚举。displayName 供 UI/TTS 使用中文展示，避免在各处硬编码中文字符串。
+ */
 enum class UserRole {
     BLIND_RUNNER,
     VOLUNTEER;
@@ -41,6 +51,9 @@ enum class UserRole {
 
 enum class ProvisioningStatus { PENDING_ROLE, ACTIVE }
 
+/**
+ * 登录接口返回值。isNewUser 用于埋点统计；provisioningStatus 决定登录后路由（新用户 → 角色选择页）。
+ */
 data class LoginResult(
     val user: User,
     val isNewUser: Boolean,

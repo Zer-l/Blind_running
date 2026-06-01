@@ -16,6 +16,12 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
+/**
+ * 用户资料 Retrofit 接口。
+ *
+ * 涵盖：个人信息读写、视障/志愿者统计、紧急联系人 CRUD、历史评价查询。
+ * 紧急联系人以 index（0-based）定位，服务端维护有序列表，客户端不存本地副本。
+ */
 interface UserApi {
     @GET("api/v1/users/me")
     suspend fun getMe(): ApiResponse<UserDto>

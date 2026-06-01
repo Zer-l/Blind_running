@@ -36,6 +36,14 @@ import com.guiderun.app.ui.shared.HomeViewModel
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
+/**
+ * 志愿者端首页（HomeScreen）。
+ *
+ * 职责：展示欢迎信息、进行中订单横幅（点击恢复流程）、三个功能入口（接单/历史/设置）。
+ * 生命周期感知：repeatOnLifecycle(RESUMED) 刷新用户信息，保证从后台回来昵称始终最新。
+ * 权限策略：首次 UI 加载完成后一次性请求定位+通知权限（rememberSaveable 防重复弹）；
+ * 视障端不进此页，由 BaseBlindActivity.onCreate 批量申请。
+ */
 @Composable
 fun VolunteerHomeScreen(
     onLoggedOut: () -> Unit,

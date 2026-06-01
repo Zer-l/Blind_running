@@ -1,18 +1,27 @@
 package com.guiderun.app.accessibility
 
+import android.content.Context
 import com.guiderun.app.R
 import com.guiderun.app.domain.repository.RunRequestRepository
 import com.guiderun.app.domain.repository.UserRepository
-import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * SOS 紧急求助协调器（Singleton）。
+ *
+ * trigger() 的两条处理路径：
+ * 1. 跑步中（requestId != null）→ 调用后端 emergency API，服务端通知志愿者和紧急联系人
+ * 2. 非跑步中（requestId == null）→ 仅本地通知已配置的紧急联系人（TODO: 接入短信/推送）
+ *
+ * 触发来源：音量-键三连击（VolumeKeyDispatcher）或语音指令 SOS（CommandExecutor）。
+ */
 @Singleton
 class SosCoordinator @Inject constructor(
     @ApplicationContext private val context: Context,

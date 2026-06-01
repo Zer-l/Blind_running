@@ -13,6 +13,15 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * 定位提供者依赖注入模块。
+ *
+ * 运行时检测 Google Play Services 是否可用：
+ * - 可用 → 注入 [FusedLocationProviderImpl]（精度高、省电，GMS 设备标配）
+ * - 不可用（国内纯 AOSP / 部分厂商 ROM）→ 注入 [LegacyLocationProviderImpl]（原生 LocationManager）
+ *
+ * 调用方（Service / ViewModel）只依赖 [LocationProvider] 接口，无需关心底层实现。
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object LocationModule {

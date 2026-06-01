@@ -3,6 +3,15 @@ package com.guiderun.app.data.mapper
 import com.guiderun.app.data.remote.dto.*
 import com.guiderun.app.domain.model.*
 
+/**
+ * DTO → Domain Model 映射层（RunRequest 及相关对象）。
+ *
+ * 设计决策：
+ * - status 字段用 runCatching valueOf 容错：服务端可能新增枚举值，旧客户端不能崩溃，
+ *   降级为 MATCHING 作为"未知活跃状态"的安全兜底
+ * - abortBy 同理：服务端新增 role 不影响旧版客户端（getOrNull → null 表示未知）
+ * - Mapper 函数设计为扩展函数（接收者 DTO），利用 Kotlin 的作用域避免 static util 类
+ */
 fun RunRequestResponseDto.toDomain() = RunRequest(
     id = id,
     status = runCatching { RunRequestStatus.valueOf(status) }.getOrDefault(RunRequestStatus.MATCHING),

@@ -18,6 +18,15 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
+/**
+ * Hilt 网络层依赖注入模块。
+ *
+ * 依赖链：Json → OkHttpClient（含 AuthInterceptor + 可选 LoggingInterceptor）→ Retrofit → Api 接口
+ *
+ * - [Json] 配置 ignoreUnknownKeys / coerceInputValues，容忍服务端字段增减，避免因字段缺失崩溃
+ * - [OkHttpClient] 仅 Debug 包开启 BODY 级日志，Release 包不暴露请求内容
+ * - Retrofit 使用 kotlinx.serialization 转换器，与 suspend 函数配合实现非阻塞网络调用
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {

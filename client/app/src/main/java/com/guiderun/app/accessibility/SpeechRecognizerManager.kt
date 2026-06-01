@@ -56,8 +56,7 @@ class SpeechRecognizerManager(
      * 调用前会先 [TtsManager.beginAsr] 关闭 TTS 输出，避免扬声器声音被麦克风录入污染识别结果。
      * 监听结束（Final / Error / Idle）后再 [TtsManager.endAsr] 解锁，允许业务方在回调里
      * 立即朗读"已识别 xxx"作为回放——此时 mute 已解除。
-     */
-    /**
+     *
      * @param eosMillis 后端点静音时长。批量录入传 [AsrEngine.BATCH_EOS_MILLIS] 容忍分段停顿，
      *        默认沿用指令听写的 [AsrEngine.DEFAULT_EOS_MILLIS]。
      */

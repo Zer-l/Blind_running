@@ -58,6 +58,13 @@ import com.guiderun.app.ui.shared.map.GuideRunMap
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
+/**
+ * 志愿者接单详情页。
+ *
+ * 地图显示集合点位置 + 志愿者当前位置（蓝色直线指引距离感）；
+ * 底部卡片展示跑友信息/地址/时长/备注，接单按钮带 loading 防重复点击。
+ * 已有活跃订单时用 AnimatedVisibility 展示警告横幅并禁用接单按钮（前端兜底 + 服务端并发保护双层）。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerRequestDetailScreen(

@@ -29,6 +29,18 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 视障端跑步中页 Fragment。
+ *
+ * 主要职责：
+ * - onResume 调暗屏幕（防止视障用户误触亮屏）+申请后台定位权限（Android 11+）
+ * - 展示距离/时长/配速三个 BlindMetricCard，数据由 BlindRunningViewModel 从 Room 读取（服务写入）
+ * - 主按钮长按 2s+5s 发起结束跑步申请（协商式终止）；志愿者申请结束时 tv_status 显示提示
+ * - 返回键 = 最小化到首页（后台跑步），TTS 接力避免被 onPause→release 吞掉提示语
+ *
+ * 屏幕调暗策略：视障用户跑步中无需看屏幕，亮屏既耗电也可能意外解锁；
+ * 最低亮度（0.01f）而非完全关闭，避免某些机型 0f 时触摸事件被系统丢弃。
+ */
 @AndroidEntryPoint
 class BlindRunningFragment : Fragment() {
 

@@ -15,6 +15,14 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+/**
+ * 应用入口。
+ *
+ * 职责：
+ * - 触发 Hilt 依赖图初始化（@HiltAndroidApp）
+ * - 初始化第三方 SDK（高德地图、讯飞 MSC、TTS）
+ * - 已登录用户冷启动时建立 WebSocket 长连接，确保订单状态实时推送不丢失
+ */
 @HiltAndroidApp
 class App : Application() {
 

@@ -25,6 +25,14 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 视障端设置页 Fragment。
+ *
+ * 复用 HomeViewModel（activityViewModels）获取 logout 逻辑，与首页共享同一 VM 实例，
+ * 避免 logout 后需要额外跨 Activity 通信。
+ * 退出登录采用长按 2s+5s 防误触；成功后启动全新 MainActivity 任务栈（视障路径下 MainActivity 已 finish 自身）。
+ * 语音指令：OPEN_xxx 跳子页，LOGOUT 直接登出，CANCEL 退回。
+ */
 @AndroidEntryPoint
 class BlindSettingsFragment : Fragment() {
 

@@ -14,6 +14,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 import com.guiderun.app.domain.model.UserRole
 
+/**
+ * 角色选择页（新用户注册必经步骤）。
+ *
+ * BackHandler 强制拦截返回键：注册流程必须完成，防止用户在未选角色状态下回到上层导致状态不一致。
+ * 弹 AlertDialog 而非直接 finish，提供更友好的用户反馈。
+ */
 @Composable
 fun RoleSelectScreen(
     onNavigateToHome: () -> Unit,

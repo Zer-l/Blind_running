@@ -1,5 +1,9 @@
 package com.guiderun.server.dto
 
+/**
+ * 全局 API 响应包装：`code=0` 表示成功，非 0 时 `errorCode` 字符串供客户端做分支处理。
+ * 错误响应由 [com.guiderun.server.exception.GlobalExceptionHandler] 构造。
+ */
 data class ApiResponse<T>(
     val code: Int,
     val message: String,

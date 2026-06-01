@@ -18,6 +18,13 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 视障端跑步统计页 Fragment。
+ *
+ * 纯展示：总次数、总距离、总时长、本月次数、平均时长（仅有跑步记录时显示）。
+ * 数据由 BlindStatsViewModel 从全量历史记录客户端计算，无服务端聚合接口。
+ * 状态变化时 TTS 自动播报统计摘要（lastAnnouncedState 去重，避免重复播报）。
+ */
 @AndroidEntryPoint
 class BlindStatsFragment : Fragment() {
 

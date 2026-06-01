@@ -21,6 +21,14 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
+/**
+ * 鉴权业务：短信发码 / 登录 / 刷新 token / 登出。
+ *
+ * - 短信验证码固定 Mock 为 `123456`（[sendSms] 仅打日志，未集成真实短信服务）
+ * - 首次登录自动创建 [UserEntity]，状态置 PENDING_ROLE，等待客户端选角色
+ * - refreshToken 自管随机字符串，落库存哈希（[sha256]），不签发 JWT 形式避免被解码
+ * - 登出 = 撤销该用户所有 refreshToken（accessToken 因短期有效不主动失效）
+ */
 @Service
 @Transactional
 class AuthService(
@@ -31,10 +39,12 @@ class AuthService(
 ) {
     private val log = LoggerFactory.getLogger(AuthService::class.java)
 
+    /** Mock 短信发码：仅打日志，验证码固定 123456。 */
     fun sendSms(phone: String) {
         log.info("Mock SMS → {}: 123456", phone)
     }
 
+    /** 登录：校验验证码 → 查/建 User → 签发 access + refresh token。 */
     fun login(phone: String, smsCode: String): LoginResponse {
         if (smsCode != "123456") {
             throw AppException(ErrorCode.INVALID_SMS_CODE, "验证码错误")
@@ -62,6 +72,7 @@ class AuthService(
         )
     }
 
+    /** 刷新 accessToken：校验 refreshToken 哈希存在 + 未撤销 + 未过期，更新 lastUsedAt。 */
     fun refresh(rawToken: String): RefreshResponse {
         val hash = sha256(rawToken)
         val entity = tokenRepo.findByTokenHash(hash)

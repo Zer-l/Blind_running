@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** 联系人列表 UI 状态；isLoaded 标志避免首次空列表触发"无联系人"播报。 */
 data class BlindEmergencyContactListUiState(
     val contacts: List<EmergencyContact> = emptyList(),
     val isLoading: Boolean = true, // 初始为 true，避免初始空列表触发空状态播报
@@ -22,6 +23,12 @@ data class BlindEmergencyContactListUiState(
     val error: String? = null,
 )
 
+/**
+ * 紧急联系人列表 ViewModel。
+ *
+ * loadContacts 在 init 和 onResume 各调一次，保证从编辑页返回时数据同步。
+ * deleteContact 成功后服务端直接返回最新列表，不需要重新 loadContacts。
+ */
 @HiltViewModel
 class BlindEmergencyContactListViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

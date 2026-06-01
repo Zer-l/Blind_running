@@ -12,7 +12,10 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * 根据 [AppColorScheme] 生成 Light ColorScheme
+ * 根据 [AppColorScheme] 生成 Light ColorScheme。
+ *
+ * surfaceVariant / onSurfaceVariant 使用暖色调（#F5EDE4），与品牌橙色系统一风格，
+ * 区别于 Material3 默认的冷灰色，使界面整体更温暖。
  */
 fun lightColorSchemeFrom(app: AppColorScheme) = lightColorScheme(
     primary = app.primary,
@@ -71,6 +74,13 @@ fun darkColorSchemeFrom(app: AppColorScheme) = darkColorScheme(
     outlineVariant = Color(0xFF52443B),
 )
 
+/**
+ * 志愿者端顶层 Compose 主题。
+ *
+ * appColorScheme 由 MainViewModel.themeId（DataStore 持久化）驱动，
+ * 支持 4 套预设主题动态切换。SideEffect 更新系统状态栏图标颜色（浅主题深色图标）。
+ * 视障端主题使用独立的 XML style（BlindTheme_*），不经过此函数。
+ */
 @Composable
 fun GuideRunTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

@@ -2,6 +2,12 @@ package com.guiderun.app.data.remote.dto
 
 import kotlinx.serialization.Serializable
 
+/**
+ * 用户完整信息响应 DTO（GET /users/me 返回）。
+ *
+ * [roles] 以字符串列表传输，mapper 层用 runCatching valueOf 容错旧客户端。
+ * [blindProfile] / [volunteerProfile] 按角色选填，角色不符时为 null。
+ */
 @Serializable
 data class UserDto(
     val id: String,
@@ -33,6 +39,10 @@ data class VolunteerProfileDto(
     val hasGuideExperience: Boolean = false,
 )
 
+/**
+ * 更新用户资料请求体，所有字段可选（PATCH 语义）。
+ * 仅传入需要修改的字段，服务端忽略 null 字段。
+ */
 @Serializable
 data class UpdateUserRequestDto(
     val nickname: String? = null,

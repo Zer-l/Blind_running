@@ -10,6 +10,12 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
+/**
+ * JWT 鉴权过滤器：每个请求执行一次。
+ *
+ * 从 `Authorization: Bearer <token>` 头解析 Claims，将 userId（subject）和 roles 填入
+ * SecurityContext。token 缺失或解析失败时静默放行，由下游 `authorizeHttpRequests` 决定是否 401。
+ */
 @Component
 class JwtAuthFilter(private val jwtUtil: JwtUtil) : OncePerRequestFilter() {
 

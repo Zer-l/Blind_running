@@ -13,6 +13,10 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
+/**
+ * 视障端跑步统计聚合：总次数 / 总距离 / 总时长 / 本月次数 / 平均时长。
+ * 距离从 RunTrack 聚合，时长以 [UserEntity.totalHoursMinutes]（FINISHED 时累加）为准。
+ */
 @Service
 @Transactional(readOnly = true)
 class BlindStatsService(

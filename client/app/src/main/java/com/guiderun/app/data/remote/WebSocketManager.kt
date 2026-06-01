@@ -29,6 +29,18 @@ import kotlin.math.min
 
 enum class WsConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
+/**
+ * 全局 WebSocket 管理器（Singleton）。
+ *
+ * 职责：
+ * - 维护单条 OkHttp WebSocket 长连接（用户登录后建立，登出时断开）
+ * - 按消息 type 字段分发到对应的 SharedFlow（状态变更 / 运动数据 / 评价 / 紧急 / 结束申请）
+ * - 连接断开时自动指数退避重连（1s → 2s → 4s … 最大 60s），主动断开时跳过重连
+ * - 通过 [reconnected] 信号通知上层（ViewModel / HomeViewModel）在网络恢复后刷新数据
+ *
+ * 分层说明：本类属于 data 层，UI/ViewModel 只订阅暴露出去的 SharedFlow，
+ * 不直接感知 WebSocket 连接细节。
+ */
 @Singleton
 class WebSocketManager @Inject constructor(private val json: Json) {
 

@@ -2,7 +2,7 @@ package com.guiderun.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// 语义色（所有主题通用）
+// 语义色（所有主题通用，不随主题切换而变化）
 val SuccessGreen = Color(0xFF4CAF50)
 val WarningAmber = Color(0xFFFFA726)
 val ErrorRed = Color(0xFFE53935)
@@ -19,8 +19,11 @@ val NeutralGray800 = Color(0xFF424242)
 val NeutralGray900 = Color(0xFF212121)
 
 /**
- * 主题配色方案数据类
- * 包含 Material3 ColorScheme 所需的所有品牌色
+ * 品牌主题配色方案。
+ *
+ * 包含 primary / secondary 各三档（light / mid / dark），由 [Theme.kt] 的
+ * lightColorSchemeFrom / darkColorSchemeFrom 映射到 Material3 ColorScheme 角色。
+ * 一套 AppColorScheme 可同时生成 Light 和 Dark 两个 Material3 ColorScheme。
  */
 data class AppColorScheme(
     val id: String,

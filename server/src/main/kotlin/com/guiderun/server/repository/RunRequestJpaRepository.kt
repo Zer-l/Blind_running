@@ -5,6 +5,10 @@ import com.guiderun.server.entity.RunRequestEntity
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 
+/**
+ * 跑步请求数据访问：覆盖按状态扫描（定时关单）、双端历史分页、活跃订单恢复等查询。
+ * `findFirst*StatusIn*` 系列用于冷启动恢复——按角色筛选最近一条非终态订单。
+ */
 interface RunRequestJpaRepository : JpaRepository<RunRequestEntity, String> {
 
     fun findByStatus(status: RunRequestStatus): List<RunRequestEntity>

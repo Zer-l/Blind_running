@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+/** 志愿者历史记录页 UI 状态。 */
 data class VolunteerHistoryUiState(
     val requests: List<RunRequest> = emptyList(),
     val isLoading: Boolean = true,
@@ -30,6 +31,13 @@ data class VolunteerHistoryUiState(
     val badges: List<Badge> = emptyList(),
 )
 
+/**
+ * 志愿者历史记录页 ViewModel。
+ *
+ * 职责：拉取自己作为志愿者参与的所有跑步请求，并聚合统计（完成次数、总距离、总时长）
+ * 和徽章数据。[isRefreshing] 与 [isLoading] 分开，保证下拉刷新时列表不闪烁。
+ * 错误信息只暴露友好文案，原始异常仅记 Timber。
+ */
 @HiltViewModel
 class VolunteerHistoryViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

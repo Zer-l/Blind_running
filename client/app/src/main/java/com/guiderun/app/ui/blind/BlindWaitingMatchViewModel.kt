@@ -26,6 +26,7 @@ import android.content.Context
 import timber.log.Timber
 import javax.inject.Inject
 
+/** 等待匹配页 UI 状态；waitingMessage 由 WaitingMessageGenerator 每 15s 生成换样式的安抚文案。 */
 data class BlindWaitingMatchUiState(
     val elapsedSeconds: Long = 0L,
     val waitingMessage: String = "",
@@ -42,10 +43,15 @@ sealed interface BlindWaitingMatchNavEvent {
 }
 
 /**
- * 等待匹配 ViewModel（推广重构第二波）。
+ * 视障端等待匹配页 ViewModel。
  *
- * 手势模型：长按 2s+5s 由 footer 的 BlindLongPressGestureView 接管，
- * 本 VM 只暴露 [executeCancel] 作为"已经确认取消"的执行入口（手势/语音/返回键统一调用）。
+ * 核心逻辑：
+ * - 计时器每秒 +1，每 15 秒用 WaitingMessageGenerator 生成换样式的等候文案并播报（避免用户焦虑）
+ * - 状态轮询：PollRunRequestUseCase 5s 一次（WS 兜底），检测到 ACCEPTED/EN_ROUTE/MET → ToMatched；ABORTED → ToHome
+ * - 取消入口三合一（长按手势 / 语音 CANCEL / 返回键弹窗）→ executeCancel，内部去重（isCancelling 标志）
+ * - suppressAutoAnnounceUntil：长按手势触发时抑制周期播报，防止"已等待 X 秒"和手势 TTS 抢播
+ *
+ * TTS 接力：ABORTED 路径不在本页播，存入 pendingTts 由 BlindHomeFragment.onResume 消费。
  */
 @HiltViewModel
 class BlindWaitingMatchViewModel @Inject constructor(

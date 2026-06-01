@@ -30,6 +30,13 @@ import com.guiderun.app.util.EdgeToEdgeHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+/**
+ * 视障端历史记录页 Fragment。
+ *
+ * 支持分页加载（NestedScrollView 底部触发）、下拉刷新、筛选 Chip（全部/已完成/已取消）。
+ * 点击历史条目 → 轨迹回放；有"补评"标志时显示评价入口按钮。
+ * TTS 由 ViewModel 的 onScreenResumed/onScreenPaused 串行控制（见 BlindHistoryViewModel 注释）。
+ */
 @AndroidEntryPoint
 class BlindHistoryFragment : Fragment() {
 

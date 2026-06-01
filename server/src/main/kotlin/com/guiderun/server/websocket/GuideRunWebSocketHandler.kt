@@ -10,6 +10,18 @@ import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * WebSocket 业务处理器：维护 userId → Session 映射，承担服务端→客户端推送。
+ *
+ * 推送类型：
+ * - status_changed：订单状态变化（含 23h 待评价提醒 isReminder=true）
+ * - peer_location：双方实时位置同步
+ * - peer_metrics：跑步指标（距离/时长/配速）双向同步
+ * - emergency / end_run_requested：紧急求助 + 视障端结束跑步确认请求
+ *
+ * 连接管理：握手通过 [WebSocketHandshakeInterceptor] 注入 userId，断线后从 `sessions` 移除。
+ * 单点部署假设：多实例需引入 Redis Pub/Sub 跨实例广播。
+ */
 @Component
 class GuideRunWebSocketHandler(
     private val objectMapper: ObjectMapper,

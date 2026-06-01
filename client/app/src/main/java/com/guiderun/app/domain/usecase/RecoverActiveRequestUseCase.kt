@@ -5,6 +5,10 @@ import com.guiderun.app.domain.model.RunRequest
 import com.guiderun.app.domain.repository.RunRequestRepository
 import javax.inject.Inject
 
+/**
+ * 冷启动订单恢复结果。
+ * [None] 表示无需恢复；[Resume] 携带需要路由回的订单及当前角色字符串。
+ */
 sealed interface ActiveRecovery {
     data object None : ActiveRecovery
     data class Resume(val request: RunRequest, val role: String) : ActiveRecovery

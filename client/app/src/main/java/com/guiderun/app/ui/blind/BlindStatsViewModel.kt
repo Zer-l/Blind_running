@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
 
+/** 跑步统计 UI 状态；统计以"已完成"订单（FINISHED+CLOSED）为口径，与历史页对齐。 */
 data class BlindStatsUiState(
     val totalRuns: Int = 0,
     val totalDistanceMeters: Long = 0,
@@ -26,6 +27,12 @@ data class BlindStatsUiState(
     val error: String? = null,
 )
 
+/**
+ * 跑步统计 ViewModel。
+ *
+ * 拉取全量历史（page=0，服务端返回所有记录），在客户端计算聚合统计。
+ * 本月统计以 closedAt 优先，runEndedAt 兜底（FINISHED 无 closedAt）。
+ */
 @HiltViewModel
 class BlindStatsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

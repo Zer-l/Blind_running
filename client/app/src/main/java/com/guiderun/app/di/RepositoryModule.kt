@@ -12,6 +12,13 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Repository 接口与实现的绑定模块。
+ *
+ * Domain 层只依赖接口（AuthRepository / UserRepository / RunRequestRepository），
+ * 此处通过 @Binds 将 data 层的实现类注入进来，实现依赖倒置。
+ * 切换数据源（如 Mock → 真实 API）只需修改此模块，业务逻辑层无感知。
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {

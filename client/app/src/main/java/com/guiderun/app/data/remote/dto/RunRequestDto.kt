@@ -2,6 +2,16 @@ package com.guiderun.app.data.remote.dto
 
 import kotlinx.serialization.Serializable
 
+/**
+ * 跑步请求相关 DTO 集合（请求体 + 响应体）。
+ *
+ * 命名约定：
+ * - XxxRequestDto  →  HTTP 请求体（发送给服务端）
+ * - XxxResponseDto →  HTTP 响应体（从服务端接收）
+ *
+ * 所有 DTO 均为纯数据结构，不含业务逻辑；domain 层 Model 的转换由 mapper 包负责。
+ */
+
 // ── 请求体 ────────────────────────────────────────────────────────────────
 
 @Serializable

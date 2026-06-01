@@ -1,5 +1,6 @@
 package com.guiderun.server.dto.user
 
+/** 用户完整信息：基础字段 + 双端资料子结构 + 跑步统计快照。 */
 data class UserDto(
     val id: String,
     val phone: String,
@@ -14,6 +15,7 @@ data class UserDto(
     val volunteerProfile: VolunteerProfileDto? = null,
 )
 
+/** 视障端资料展示用 DTO。 */
 data class BlindProfileDto(
     val visionLevel: String? = null,
     val preferredPaceSeconds: Int? = null,
@@ -22,6 +24,7 @@ data class BlindProfileDto(
     val visualDescription: String? = null,
 )
 
+/** 志愿者端资料展示用 DTO。 */
 data class VolunteerProfileDto(
     val averagePaceSeconds: Int? = null,
     val runningLevel: String? = null,

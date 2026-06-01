@@ -2,12 +2,17 @@ package com.guiderun.server.exception
 
 import org.springframework.http.HttpStatus
 
+/**
+ * 业务异常：携带 [errorCode] 字符串和 [httpStatus]，由 [GlobalExceptionHandler] 转 [ApiResponse.error]。
+ * 客户端可凭 errorCode 做分支处理（如 PROVISIONING_INCOMPLETE → 跳角色选择页）。
+ */
 class AppException(
     val errorCode: String,
     override val message: String,
     val httpStatus: HttpStatus = HttpStatus.BAD_REQUEST,
 ) : RuntimeException(message)
 
+/** 业务错误码常量集合，保持字符串形式便于跨语言对齐。 */
 object ErrorCode {
     // Auth
     const val INVALID_SMS_CODE = "INVALID_SMS_CODE"

@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
+/**
+ * 鉴权接口：发码 / 登录 / 刷新 / 登出。
+ * 登录默认使用手机号 + Mock 短信验证码（固定 123456，详见 [AuthService]）。
+ */
 @RestController
 @RequestMapping("/api/v1/auth")
 class AuthController(private val authService: AuthService) {

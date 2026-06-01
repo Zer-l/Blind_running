@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+/** 跑步中页 UI 状态；配速字段由 Service 的 SpeedSmoother 预处理，UI 不再叠加第二层平滑。 */
 data class BlindRunningUiState(
     val totalDistanceMeters: Int = 0,
     val totalDurationSeconds: Int = 0,
@@ -57,6 +58,18 @@ sealed interface BlindRunningNavEvent {
     data class ToHome(@StringRes val reasonRes: Int? = null) : BlindRunningNavEvent
 }
 
+/**
+ * 视障端跑步中页 ViewModel（AndroidViewModel，持有 Application 引用以启停前台 Service）。
+ *
+ * 数据驱动：
+ * - 跑步指标（距离/时长/配速）由 [BlindRunTrackingService] 写入 Room [RunSessionStatsDao]，
+ *   本 ViewModel 通过 observe Flow 驱动 UI，不直接操作 GPS。
+ * - 志愿者申请结束：WS endRunRequested → uiState.endRequestedByVolunteer = true → UI 显示确认引导
+ * - FINISHED WS → 停止 Service → NavEvent.ToReview；ABORTED WS → ToHome + TTS 接力
+ *
+ * 生命周期设计：onCleared 故意不停 Service。视障端可从跑步中页返回首页（后台跑步），
+ * Service 应继续运行；终态（FINISHED/ABORTED/doEndRun 成功）才由对应分支显式 stopService。
+ */
 @HiltViewModel
 class BlindRunningViewModel @Inject constructor(
     application: Application,

@@ -11,6 +11,14 @@ import org.hibernate.annotations.Type
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * 用户实体（`users` 表）。
+ *
+ * - `roles` 以 JSON 列存储（同一 User 可同时持有 BLIND_RUNNER + VOLUNTEER）
+ * - `blindProfile` / `volunteerProfile` 嵌入 JSON 列，避免多表 join
+ * - rating 字段拆为 `ratingSum` + `ratingCount`，按需求即时算平均（避免浮点累计误差）
+ * - 软删字段 `deletedAt` 预留，当前未启用
+ */
 @Entity
 @Table(name = "users")
 class UserEntity(

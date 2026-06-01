@@ -2,6 +2,7 @@ package com.guiderun.server.dto.user
 
 import jakarta.validation.constraints.Size
 
+/** 视障端资料 PATCH 子结构，所有字段可选（保持已有值用 null）。 */
 data class BlindProfileUpdateDto(
     @field:Size(max = 20, message = "视障级别最多20个字符")
     val visionLevel: String? = null,

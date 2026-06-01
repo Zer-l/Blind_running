@@ -32,6 +32,18 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 视障端发起跑步请求页 Fragment。
+ *
+ * 支持两条进入路径：
+ * 1. 正常进入：onResume 申请定位权限→获取 GPS→逆地理编码填充集合点
+ * 2. 一键发起（EXTRA_QUICK_START）：跳过页面渲染直接调 submitWithLastPrefs()，成功后导航到 WaitingMatch
+ *
+ * 语音输入（批量模式）：btnVoiceInput 或音量键长按 → SpeechRecognizerManager → RequestVoiceParser
+ * 解析出地点/时长/备注，回填字段并 TTS 朗读确认；解析失败提示重说不污染已有数据。
+ *
+ * 返回键直接 popBackStack（取消无破坏性），不弹确认弹窗。
+ */
 @AndroidEntryPoint
 class BlindCreateRequestFragment : Fragment() {
 

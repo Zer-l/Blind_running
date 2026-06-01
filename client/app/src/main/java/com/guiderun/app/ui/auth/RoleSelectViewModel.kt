@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** 角色选择页 UI 状态。showBackWarning 触发"必须选择角色"提示 Dialog。 */
 data class RoleSelectUiState(
     val selectedRole: UserRole? = null,
     val isLoading: Boolean = false,
@@ -19,6 +20,13 @@ data class RoleSelectUiState(
     val showBackWarning: Boolean = false,
 )
 
+/**
+ * 角色选择 ViewModel。
+ *
+ * confirm() 调用 UserRepository.updateRoles，将所选角色写入服务端，
+ * 成功后触发 success 标志驱动导航至首页。
+ * 由于角色选择只发生一次，此 ViewModel 仅执行单次写操作，无订阅/轮询逻辑。
+ */
 @HiltViewModel
 class RoleSelectViewModel @Inject constructor(
     private val userRepository: UserRepository,

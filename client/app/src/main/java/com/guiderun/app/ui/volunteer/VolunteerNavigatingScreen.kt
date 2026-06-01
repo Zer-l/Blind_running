@@ -51,6 +51,14 @@ import com.guiderun.app.ui.shared.map.GuideRunMap
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
+/**
+ * 志愿者前往集合点页（状态：EN_ROUTE）。
+ *
+ * 上半部分：高德地图（志愿者蓝点 + 集合点标记 + 蓝色直线方向指引）。
+ * 下半部分：跑友信息/集合地址/时长/备注卡片 + "我到了"按钮（调 confirmMet）。
+ * 按返回键可取消订单（ACCEPTED→abandon 或 EN_ROUTE→cancel）或留在此页/回首页。
+ * WS MET → 跳已汇合页；WS ABORTED → 弹通知弹窗后回首页。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerNavigatingScreen(

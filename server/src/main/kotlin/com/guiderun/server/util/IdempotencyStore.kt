@@ -4,6 +4,12 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * 进程内幂等键缓存：相同 key 在 TTL 内返回上次结果，避免重复创单/重复扣款。
+ *
+ * - 实现：`ConcurrentHashMap`，TTL=24h，定时清理 6h 前条目
+ * - 适用范围：单机；多实例部署需替换为 Redis（接口语义保留）
+ */
 @Component
 class IdempotencyStore {
 

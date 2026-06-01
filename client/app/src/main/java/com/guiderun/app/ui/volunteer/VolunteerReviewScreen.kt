@@ -49,6 +49,14 @@ import com.guiderun.app.R
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
+/**
+ * 志愿者评价页。
+ *
+ * 星级（1-5）+ 标签多选（FlowRow）+ 文字评论三个区块。
+ * 按返回键弹 InterruptDialog 提示可跳过；右上角也有跳过按钮。
+ * 提交前校验：rating > 0 才启用按钮；提交中 loading 防重复点击。
+ * requestId 由 ViewModel 通过 SavedStateHandle 读取，Screen 参数仅用于编译期强制传值。
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun VolunteerReviewScreen(

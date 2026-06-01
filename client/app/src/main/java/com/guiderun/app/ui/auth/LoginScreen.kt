@@ -50,6 +50,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guiderun.app.R
 
+/**
+ * 登录页根 Composable，管理"输入手机号 → 输入验证码"两步切换。
+ *
+ * 导航策略：
+ * - 登录成功且 needsRoleSelect == true → 角色选择页（新用户首次注册）
+ * - 登录成功且 needsRoleSelect == false → 首页（已有角色的老用户）
+ *
+ * LaunchedEffect(loginSuccess) 仅在 loginSuccess 变 true 时触发一次导航，
+ * viewModel.onNavigated() 在导航后立即重置，防止旋屏重订阅时重复触发。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -69,6 +79,7 @@ fun LoginScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = uiState.step,
+            // 前进（PHONE → CODE）：新内容从右侧滑入；后退（CODE → PHONE）：新内容从左侧滑入
             transitionSpec = {
                 if (targetState == LoginStep.CODE) {
                     (slideInHorizontally { it } + fadeIn()).togetherWith(

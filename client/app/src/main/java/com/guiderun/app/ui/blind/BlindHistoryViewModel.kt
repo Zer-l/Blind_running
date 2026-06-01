@@ -21,8 +21,10 @@ import javax.inject.Inject
 
 private const val PAGE_SIZE = 20
 
+/** 历史记录筛选器：ALL=全部，CLOSED=已完成（含 FINISHED+CLOSED），ABORTED=已取消。 */
 enum class HistoryFilter { ALL, CLOSED, ABORTED }
 
+/** 历史记录页 UI 状态；统计字段在客户端从 allRequests 计算，无服务端聚合接口依赖。 */
 data class BlindHistoryUiState(
     val requests: List<RunRequest> = emptyList(),
     val isLoading: Boolean = true,
@@ -36,6 +38,17 @@ data class BlindHistoryUiState(
     val statusFilter: HistoryFilter = HistoryFilter.ALL,
 )
 
+/**
+ * 视障端历史记录页 ViewModel。
+ *
+ * 分页策略：首屏加载 page 0，下拉刷新重置到 page 0，上滑加载更多追加。
+ * 数据统计（totalRuns / totalDistanceKm / totalDurationHours）在客户端从全量 allRequests 计算，
+ * 避免依赖服务端聚合接口，减少网络请求数量。
+ * 筛选（HistoryFilter）纯本地过滤，不发新请求，响应即时。
+ *
+ * TTS 串行设计：init 路径不 speak（避免与 onScreenResumed 的 speakAndWait 竞争互相 FLUSH）；
+ * loadHistory 完成后的摘要播报由 onScreenResumed 等待加载完成后串行播出。
+ */
 @HiltViewModel
 class BlindHistoryViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

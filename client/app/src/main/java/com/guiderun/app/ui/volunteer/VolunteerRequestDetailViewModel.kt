@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+/** 接单详情页 UI 状态。 */
 data class VolunteerRequestDetailUiState(
     val request: RunRequest? = null,
     val isLoading: Boolean = false,
@@ -32,10 +33,18 @@ data class VolunteerRequestDetailUiState(
     val errorMessage: String? = null,
 )
 
+/** 接单详情页导航事件。 */
 sealed interface VolunteerRequestDetailNavEvent {
     data class ToNavigating(val requestId: String) : VolunteerRequestDetailNavEvent
 }
 
+/**
+ * 接单详情页 ViewModel。
+ *
+ * 加载订单信息并实时更新本机定位，在地图上绘制志愿者→集合点的蓝色直线（非导航路线，仅方向感知）。
+ * [activeRequest] 订阅 Repository 单一数据源，用于拦截重复接单。
+ * onAccept 前端双重兜底：检查 activeRequest + 服务端 RequestConflictException（手慢了场景）。
+ */
 @HiltViewModel
 class VolunteerRequestDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,

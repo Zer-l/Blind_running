@@ -10,10 +10,12 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 
 /**
- * Wraps Fragment's registerForActivityResult for multiple permissions.
- * Must be instantiated in Fragment.onCreate() (before onStart).
+ * Fragment 多权限申请封装。
  *
- * Usage:
+ * 包装 [ActivityResultContracts.RequestMultiplePermissions]，简化"检查 → 申请 → 回调"流程。
+ * 必须在 Fragment.onCreate()（onStart 之前）实例化，确保 ActivityResultLauncher 注册在正确的生命周期节点。
+ *
+ * 使用示例：
  *   private lateinit var permissionHelper: PermissionHelper
  *   override fun onCreate(savedInstanceState: Bundle?) {
  *       super.onCreate(savedInstanceState)
@@ -49,6 +51,14 @@ class PermissionHelper(
     }
 }
 
+/**
+ * 项目中所有权限声明的集中管理。
+ *
+ * 双端权限分组：
+ * - [BLIND_CORE]：视障端启动时一次性申请（定位 + 录音 + 通知 + 拨号）
+ * - [VOLUNTEER_CORE]：志愿者端启动时一次性申请（定位 + 通知 + 拨号，不含录音）
+ * 后台定位（BACKGROUND_LOCATION）需用户单独授予，在 BlindRunning.onResume 单独申请。
+ */
 object AppPermissions {
     const val FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION
     const val COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION

@@ -11,7 +11,14 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
-/** Fallback for devices without Google Play Services (e.g. some Huawei models). */
+/**
+ * 纯系统 LocationManager 定位实现，作为 FusedLocation 不可用时的兜底。
+ *
+ * 适用场景：无 Google Play Services 的华为等设备。
+ * 同时注册 GPS_PROVIDER 和 NETWORK_PROVIDER，优先使用时间戳更新的来源。
+ * 注意：不做双源去重节流（由 [FusedLocationProviderImpl] 的 LocationDedupGate 负责），
+ * 此实现直接 trySend，下游 callbackFlow 缓冲区丢弃超量帧。
+ */
 class LegacyLocationProviderImpl(context: Context) : LocationProvider {
 
     private val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager

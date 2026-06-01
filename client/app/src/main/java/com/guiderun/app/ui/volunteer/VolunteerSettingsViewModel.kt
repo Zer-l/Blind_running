@@ -11,10 +11,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** 设置页 UI 状态：当前选中的主题 ID。 */
 data class SettingsUiState(
     val currentThemeId: String = "orange",
 )
 
+/**
+ * 志愿者设置页 ViewModel（同时服务主题选择页）。
+ *
+ * 通过 DataStore 持久化主题 ID，使用 [stateIn] + [SharingStarted.WhileSubscribed]
+ * 将 DataStore Flow 转为 StateFlow，UI 无订阅者时自动停止上游节省资源。
+ */
 @HiltViewModel
 class VolunteerSettingsViewModel @Inject constructor(
     private val userPreferences: UserPreferences,

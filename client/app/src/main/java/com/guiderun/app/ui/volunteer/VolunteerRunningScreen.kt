@@ -56,6 +56,15 @@ import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 import com.guiderun.app.util.PaceCalculator
 
+/**
+ * 志愿者跑步中页。
+ *
+ * 顶栏显示标题 + 暂停 Chip（自动暂停时 AnimatedVisibility 弹出）+ 拨号按钮。
+ * 三指标横排：距离/时长/配速（暂停时淡色保留，不归零）。
+ * 地图实时渲染轨迹折线（蓝色），cameraTarget 仅首次设置避免用户缩放后相机被拉回。
+ * "申请结束"走协商式：志愿者只能请求，视障端确认后服务端推 FINISHED WS，双方各自 ToReview。
+ * 按返回键弹 InterruptDialog，只允许留在页面或回首页（跑步在后台继续），不允许取消订单。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerRunningScreen(

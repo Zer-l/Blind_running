@@ -4,6 +4,14 @@ import androidx.room.*
 import com.guiderun.app.data.local.entity.RunTrackBufferEntity
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * GPS 轨迹缓冲区 DAO。
+ *
+ * 采集端（Service）实时将 GPS 点写入本地，周期性取出未上传的点批量 POST 到服务端。
+ * 上传成功后标记 [com.guiderun.app.data.local.entity.RunTrackBufferEntity.uploadedAt]，
+ * 最终调 [deleteUploaded] 释放磁盘空间。
+ * 双索引（requestId / uploadedAt）优化高频查询性能。
+ */
 @Dao
 interface RunTrackBufferDao {
 

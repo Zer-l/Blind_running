@@ -30,6 +30,17 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+/**
+ * 跑步请求核心业务：发起 / 匹配 / 出发 / 汇合 / 跑步 / 结束 / 评价 全生命周期编排。
+ *
+ * 设计要点：
+ * - 状态转移统一委托 [RunRequestStateMachine.validate]，禁止 Service 内直接改 status
+ * - `@Version` 乐观锁 + [OptimisticLockingFailureException] → 多志愿者抢单只放一个通过（409）
+ * - [IdempotencyStore] 防重复发单（客户端同一 `Idempotency-Key` 在 24h 内返回首次结果）
+ * - 每次状态变化追加 [RunRequestEventEntity] 形成审计流，同时通过 [GuideRunWebSocketHandler] 推送双方
+ * - 跑步统计（totalRuns / totalHoursMinutes）在 FINISHED 时落库，避免 CLOSED 时重复累加
+ * - 协商式 FINISHED：志愿者只能 `requestEndRun`（推送通知，不改状态），视障端调用 `endRun` 才真正终结
+ */
 @Service
 @Transactional
 class RunRequestService(

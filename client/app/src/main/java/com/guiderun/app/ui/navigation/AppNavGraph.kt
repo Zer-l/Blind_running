@@ -23,7 +23,7 @@ import com.guiderun.app.ui.volunteer.VolunteerReviewScreen
 import com.guiderun.app.ui.volunteer.VolunteerRunningScreen
 
 /**
- * 志愿者侧 + 公共（Login / RoleSelect）的 Compose 导航图。
+ * 志愿者侧 + 公共（Login / RoleSelect）的 Compose 导航图（志愿者端全部使用 Jetpack Compose）。
  *
  * 视障端**不**挂在本图里：[com.guiderun.app.MainActivity] 在 [com.guiderun.app.ui.StartTarget.BlindHome]
  * 分支会直接启动 [com.guiderun.app.ui.blind.BlindActivity] 并 finish 自身，

@@ -55,6 +55,19 @@ data class VolunteerTrackPlaybackUiState(
     val finalDurationSeconds: Int = 0,
 )
 
+/**
+ * 轨迹回放页 ViewModel（双端复用）。
+ *
+ * 核心设计：
+ * - 按 role 过滤后的轨迹点预计算累积距离（[cumDistanceM]）和累积运动时长（[cumDurationMs]），
+ *   避免每帧播放时重复计算，防止大轨迹重组卡顿。
+ * - 暂停状态机复刻采集端逻辑（PAUSE_SPEED_MPS / PAUSE_DURATION_MS 等常量必须与 RunTrackingService 对齐），
+ *   保证回放时长与实时显示一致。
+ * - 权威总量对齐（[alignCumulativesToAuthoritative]）：用本机 sessionStats（最精确）或服务端权威值
+ *   缩放 cum 数组，确保跨设备/清数据后时长/距离仍一致。
+ * - 配速着色（[buildPaceColoredSegments]）：按配速分段，快红慢绿，图例见 TrackLegendRow。
+ * - [playbackJob] 按点间实际时间戳差值（除以倍速）决定 delay，逼真还原节奏感。
+ */
 @HiltViewModel
 class VolunteerTrackPlaybackViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

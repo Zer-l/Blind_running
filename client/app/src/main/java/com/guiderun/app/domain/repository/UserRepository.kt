@@ -8,6 +8,12 @@ import com.guiderun.app.domain.model.User
 import com.guiderun.app.domain.model.UserRole
 import com.guiderun.app.domain.model.VolunteerStats
 
+/**
+ * 用户资料仓库接口（Domain 层）。
+ *
+ * 封装 /users/me、紧急联系人、统计数据等接口，
+ * 通过 Hilt 注入到 ViewModel/UseCase，避免直接依赖 Retrofit API 接口。
+ */
 interface UserRepository {
     suspend fun getMe(): Result<User>
     suspend fun updateRoles(roles: List<UserRole>): Result<User>

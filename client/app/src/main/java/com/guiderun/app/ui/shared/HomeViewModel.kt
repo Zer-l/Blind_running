@@ -24,6 +24,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 首页 UI 状态（双端共用：视障端 BlindHomeFragment、志愿者端 VolunteerHomeScreen 均使用 HomeViewModel）。
+ *
+ * loggedOut 是一次性事件标志，UI 层消费（onNavigated）后必须重置为 false，
+ * 防止旋屏/重订阅重复触发导航。
+ */
 data class HomeUiState(
     val nickname: String = "",
     val activeRole: String = "",
@@ -34,6 +40,16 @@ data class HomeUiState(
     val lastRequestSummary: String? = null,
 )
 
+/**
+ * 首页 ViewModel（双端共用）。
+ *
+ * 数据流：
+ * - [activeRequest] 直接暴露 RunRequestRepository.activeRequest（StateFlow），
+ *   WS 状态变更由 Repository 写入，此处 stateIn 转为生命周期感知流
+ * - WS 重连信号（reconnected）触发 loadUser，保证断网恢复后用户资料自动刷新
+ * - 一键发起能力（quickStartEnabled）依赖 LoadLastRequestUseCase，
+ *   每次回首页（onResume → refreshQuickStart）都重新计算，确保数据最新
+ */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

@@ -23,6 +23,12 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 紧急联系人编辑页（新增/编辑复用同一个 Fragment）。
+ *
+ * 通过 arguments["index"] 区分模式：index >= 0 = 编辑模式，index == -1 = 新增模式。
+ * 主按钮长按 2s+5s 确认保存，与视障端其他 Primary 按钮交互模型统一。
+ */
 @AndroidEntryPoint
 class BlindEmergencyContactEditFragment : Fragment() {
 

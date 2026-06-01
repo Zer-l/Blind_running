@@ -75,6 +75,13 @@ import com.guiderun.app.domain.model.RunRequestStatus
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
+/**
+ * 志愿者接单列表页。
+ *
+ * 进入时自动检查/申请定位权限并上线。
+ * 顶部 LazyColumn 含：进行中订单横幅（恢复）、在线开关卡片、半径筛选器（3/5/10km）、附近订单列表。
+ * 支持下拉刷新；离线态清空列表节省资源；权限被拒时自动下线并提示。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerOrderListScreen(

@@ -24,6 +24,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
 
+/** 评价页 UI 状态；默认评分 5 星（正向引导）。 */
 data class BlindReviewUiState(
     val selectedRating: Int = DEFAULT_RATING,
     val isSubmitting: Boolean = false,

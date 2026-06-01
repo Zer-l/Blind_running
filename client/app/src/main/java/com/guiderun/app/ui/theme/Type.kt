@@ -1,5 +1,13 @@
 package com.guiderun.app.ui.theme
 
+/**
+ * 应用全局 Material3 字体排版规格（志愿者 Compose 端使用）。
+ *
+ * 字阶遵循 Material3 Type Scale 规范（Display / Headline / Title / Body / Label），
+ * 均使用系统默认字体（FontFamily.Default），保证中文用户使用系统中文字体渲染。
+ * 视障端字号缩放通过 attachBaseContext 注入 Configuration.fontScale 实现，
+ * 不在此处修改，以保持两端字号系统独立。
+ */
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily

@@ -15,6 +15,20 @@ import com.guiderun.app.ui.navigation.ActiveOrderRouter
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+/**
+ * 视障端核心 Activity（XML View + Fragment Navigation）。
+ *
+ * 导航设计：
+ * - 整套视障流程（Home → CreateRequest → WaitingMatch → Matched → Running → Review → History）
+ *   均在本 Activity 内由 NavController（blind_nav_graph.xml）管理，不 finish 切换
+ * - 通过 intent extra（EXTRA_DESTINATION / EXTRA_RECOVERY_REQUEST_ID）在启动时切换起始目的地，
+ *   savedInstanceState != null 时跳过，由 NavHostFragment 自行恢复 back stack
+ * - onNewIntent 处理复用实例时（CLEAR_TOP）的订单恢复导航
+ *
+ * TTS 接力机制：
+ * 跨 Fragment 的"目标页才播"消息通过 pendingHomeTtsRes / pendingWaitingTtsRes 暂存，
+ * 目标 Fragment.onResume 消费，避免源 Fragment onPause→ttsManager.release() 清队列吞掉播报。
+ */
 @AndroidEntryPoint
 class BlindActivity : BaseBlindActivity() {
 

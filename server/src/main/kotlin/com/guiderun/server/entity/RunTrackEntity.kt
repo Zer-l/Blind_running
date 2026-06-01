@@ -6,6 +6,12 @@ import org.hibernate.annotations.Type
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * 跑步轨迹实体（`run_tracks` 表，按 requestId+userId 区分双方各自的轨迹流）。
+ *
+ * - 轨迹点存 JSON 列（[TrackPointJson]），避免一对多明细表带来的 N+1
+ * - 统计字段（distance/duration/pace/maxSpeed）由 [com.guiderun.server.service.RunTrackService] 重算 + 客户端权威值覆盖
+ */
 @Entity
 @Table(name = "run_tracks")
 class RunTrackEntity(
@@ -44,8 +50,10 @@ class RunTrackEntity(
     val createdAt: Instant = Instant.now(),
 )
 
+/** 轨迹归属角色：同一订单两端各持一条 RunTrackEntity。 */
 enum class TrackRole { BLIND, VOLUNTEER }
 
+/** 单个轨迹采样点：时间戳 + 经纬度 + 精度 + 瞬时速度。 */
 data class TrackPointJson(
     val t: Long,
     val lat: Double,

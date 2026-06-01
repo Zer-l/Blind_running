@@ -55,6 +55,13 @@ import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 import com.guiderun.app.util.DateFormat
 
+/**
+ * 志愿者历史记录页。
+ *
+ * 顶部统计卡 + 徽章区 + 历史跑步列表。
+ * 支持下拉刷新（PullToRefreshBox）；空态包在 LazyColumn 中保证下拉手势仍可触发。
+ * 点击条目跳轨迹回放，可补评订单跳评价页。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerHistoryScreen(

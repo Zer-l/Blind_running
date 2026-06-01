@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** 无障碍设置页 UI 状态，字段值与 DataStore 直接对齐。 */
 data class BlindAccessibilitySettingsUiState(
     val ttsSpeed: Float = UserPreferences.DEFAULT_TTS_SPEECH_RATE,
     val ttsVolume: Float = UserPreferences.DEFAULT_BLIND_TTS_VOLUME,
@@ -29,6 +30,17 @@ sealed interface BlindAccessibilitySettingsEvent {
     data object RecreateRequired : BlindAccessibilitySettingsEvent
 }
 
+/**
+ * 视障端无障碍设置 ViewModel。
+ *
+ * 立即写入策略：用户拖动 Slider 时 UI state 先同步更新（消除视觉/听觉延迟），
+ * 再异步写入 DataStore。TtsManager / HapticFeedback 均订阅 DataStore Flow，自动跟随生效。
+ *
+ * fontScale / contrastTheme 变化需要 BaseBlindActivity.recreate() 重建：
+ * - fontScale 在 attachBaseContext 注入 Configuration，必须 recreate 才能重新 inflate View
+ * - contrastTheme 在 BaseBlindActivity.onCreate 调 setTheme，同样要 recreate
+ * 通过 [BlindAccessibilitySettingsEvent.RecreateRequired] 事件通知 Fragment 调用 requireActivity().recreate()。
+ */
 @HiltViewModel
 class BlindAccessibilitySettingsViewModel @Inject constructor(
     private val userPreferences: UserPreferences,

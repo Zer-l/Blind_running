@@ -7,6 +7,10 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * 评价查询业务：分页拉取某用户收到的所有评价（按时间倒序）。
+ * 评价的写入由 [RunRequestService.createReview] 处理（涉及订单状态/双方评价完成判定）。
+ */
 @Service
 @Transactional(readOnly = true)
 class ReviewService(private val reviewRepo: ReviewJpaRepository) {

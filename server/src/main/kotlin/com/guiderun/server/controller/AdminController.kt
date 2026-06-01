@@ -7,6 +7,10 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
+/**
+ * 管理调试接口：仅在 `dev` Profile 下激活，生产环境不暴露。
+ * 当前提供手动触发 [OrderAutoCloseScheduler] 入口，便于本地验证定时任务逻辑。
+ */
 @RestController
 @RequestMapping("/api/v1/admin")
 @Profile("dev")

@@ -5,6 +5,9 @@ import com.guiderun.server.entity.TrackRole
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 
+/**
+ * 跑步轨迹数据访问：按订单/角色定位轨迹，附加用户总距离聚合用于个人统计。
+ */
 interface RunTrackJpaRepository : JpaRepository<RunTrackEntity, String> {
     fun findByRequestId(requestId: String): List<RunTrackEntity>
     fun findByRequestIdAndUserId(requestId: String, userId: String): RunTrackEntity?

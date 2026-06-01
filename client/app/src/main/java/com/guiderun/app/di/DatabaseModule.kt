@@ -14,6 +14,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Room 数据库依赖注入模块。
+ *
+ * - 数据库名 "guiderun.db"，添加 MIGRATION_2_3 历史迁移脚本，禁止生产环境降级破坏性重建
+ * - Dao 对象生命周期跟随数据库（AppScope），通过 @Provides（非 @Singleton）每次都从 db 取，
+ *   避免 Room 内部懒加载与 Singleton 作用域冲突
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {

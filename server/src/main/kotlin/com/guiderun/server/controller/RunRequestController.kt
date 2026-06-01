@@ -12,6 +12,18 @@ import jakarta.validation.Valid
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.*
 
+/**
+ * 跑步请求核心接口：覆盖 9 状态全生命周期 + 轨迹 + 评价 + 紧急事件。
+ *
+ * 路由组织：
+ * - 列表/查询：`POST /` 创建、`GET /available` 附近订单、`GET /active` 当前活跃订单（冷启动恢复用）
+ * - 状态推进：`/{id}/accept` `/depart` `/confirm-met` `/start-run` `/end-run` `/request-end-run`
+ * - 终止：`/cancel` `/abandon` `/emergency`（含状态机校验）
+ * - 实时上报：`/position` `/peer-metrics`
+ * - 轨迹与评价：`/tracks` `/reviews`
+ *
+ * 注意：`/available` 必须在 `/{id}` 之前声明，Spring MVC 字面路径优先级高于路径变量。
+ */
 @RestController
 @RequestMapping("/api/v1/run-requests")
 class RunRequestController(

@@ -12,6 +12,17 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 
+/**
+ * 跑步请求状态机（9 状态）：基于 `(from, action, role)` 三元组查表决定目标状态。
+ *
+ * 设计要点：
+ * - 所有状态转移必须显式登记在 [matrix]，缺失即拒绝（INVALID_STATE_TRANSITION）
+ * - `ABANDON` 动态分支：志愿者中途放弃，连续 3 次降级为 ABORTED，否则回 MATCHING 给他人接单
+ * - `END_RUN` 仅 BLIND 可触发：志愿者只能 `REQUEST_END_RUN`（不改状态）发起协商，由视障端最终确认
+ * - `CONFIRM_MET` 的幂等判断在 Service 层处理（已是 MET 时直接放过）
+ *
+ * 状态转换图见 `DESIGN.md §5` / `README.md` 状态机章节。
+ */
 @Component
 class RunRequestStateMachine {
 

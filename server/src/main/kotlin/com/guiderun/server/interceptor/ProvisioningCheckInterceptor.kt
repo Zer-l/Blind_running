@@ -13,6 +13,13 @@ import org.springframework.stereotype.Component
 import org.springframework.util.AntPathMatcher
 import org.springframework.web.servlet.HandlerInterceptor
 
+/**
+ * 注册流程守卫拦截器：账户 [ProvisioningStatus.PENDING_ROLE] 时禁止访问业务接口。
+ *
+ * 白名单放行 `/auth/` 前缀（登录/刷新）+ `/users/me` 前缀（PATCH 设置角色完成开通）+ `/ws/` 前缀。
+ * 命中其他业务路径且账号仍未选角色时抛 [ErrorCode.PROVISIONING_INCOMPLETE]（403），
+ * 客户端据此跳转到角色选择页。
+ */
 @Component
 class ProvisioningCheckInterceptor(
     private val userRepo: UserJpaRepository,

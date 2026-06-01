@@ -46,6 +46,13 @@ import com.guiderun.app.ui.shared.map.GuideRunMap
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
+/**
+ * 志愿者已汇合页（状态：MET）。
+ *
+ * 显示集合点地图（志愿者实时位置蓝点）+ 底部状态卡（含呼吸动画）。
+ * 等待视障端长按确认汇合后，服务端推 RUNNING WS，跳转至跑步页。
+ * 订单被取消时弹 InterruptDialog 提示后回首页；按返回键仅允许"留在此页"或"回首页"，不能取消订单。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerMetScreen(

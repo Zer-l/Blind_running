@@ -19,6 +19,15 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 志愿者端位置上报前台服务（已被 VolunteerRunTrackingService 整合，此类作为旧版保留或独立上报场景使用）。
+ *
+ * 以固定间隔（默认 5s）收集 GPS 位置并调用 RunRequestRepository.reportPosition，
+ * 让视障端和服务端实时看到志愿者位置。前台服务避免被系统后台杀死。
+ *
+ * START_REDELIVER_INTENT：服务被系统回收后，系统会重传最后一条 Intent 重启服务，
+ * 确保位置上报不会因内存压力长期中断。
+ */
 @AndroidEntryPoint
 class LocationUpdateService : Service() {
 

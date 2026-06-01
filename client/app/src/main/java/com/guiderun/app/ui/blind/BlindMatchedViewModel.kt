@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import android.content.Context
 import javax.inject.Inject
 
+/** 已匹配页 UI 状态；distanceMeters 由本机 GPS + 服务端 volunteerPosition 双源计算。 */
 data class BlindMatchedUiState(
     val volunteerName: String = "",
     val volunteerRating: Float? = null,

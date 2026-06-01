@@ -25,6 +25,14 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 视障端无障碍设置页 Fragment。
+ *
+ * 提供字号缩放（4档）、对比度主题（3套）、震动强度、TTS 语速/音量调节。
+ * 每项设置立即写入 DataStore，TtsManager/HapticFeedback 订阅 Flow 自动生效；
+ * 字号和主题变化触发 [BlindAccessibilitySettingsEvent.RecreateRequired] → requireActivity().recreate()。
+ * 语音指令支持 SPEED_FASTER/SLOWER、VOLUME_UP/DOWN、FONT_LARGER/SMALLER。
+ */
 @AndroidEntryPoint
 class BlindAccessibilitySettingsFragment : Fragment() {
 

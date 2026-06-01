@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** 个人资料编辑页 UI 状态；所有字段均为字符串方便直接绑定 EditText，转换在 save() 时进行。 */
 data class BlindProfileEditUiState(
     val nickname: String = "",
     val gender: Gender? = null,
@@ -32,11 +33,18 @@ data class BlindProfileEditUiState(
     val error: String? = null,
 )
 
+/** 保存操作结果事件；Error 状态已同步写入 uiState.error，Fragment 无需重复处理。 */
 sealed class BlindProfileEditEvent {
     data object Saved : BlindProfileEditEvent()
     data class Error(val message: String) : BlindProfileEditEvent()
 }
 
+/**
+ * 个人资料编辑 ViewModel。
+ *
+ * init 时拉取当前用户资料预填表单；save() 将字段校验、类型转换、组装 [UpdateProfileParams] 后提交。
+ * 空白可选字段传 null（不覆盖服务端已有值）。
+ */
 @HiltViewModel
 class BlindProfileEditViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

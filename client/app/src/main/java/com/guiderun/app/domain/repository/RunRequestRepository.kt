@@ -9,6 +9,17 @@ import com.guiderun.app.domain.model.RunTrack
 import com.guiderun.app.domain.model.TrackPoint
 import kotlinx.coroutines.flow.StateFlow
 
+/**
+ * 跑步订单仓库接口（Domain 层）。
+ *
+ * 职责：
+ * - 对上层（ViewModel/UseCase）暴露所有订单相关操作
+ * - activeRequest 作为全局活跃订单 StateFlow，WS 推送或 HTTP 轮询结果均写入此处，
+ *   UI 层订阅它驱动横幅显示和冷启动恢复
+ * - 所有方法返回 Result<T>，业务异常已在实现层映射为 DomainException，不向上抛 IOException
+ *
+ * 实现位于 data/repository/RunRequestRepositoryImpl，通过 Hilt RepositoryModule 绑定。
+ */
 interface RunRequestRepository {
 
     /** 当前用户的活跃订单（订单进入活跃态时被写入，进入终态时清空）。 */

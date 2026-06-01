@@ -26,6 +26,16 @@ import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 认证 Repository 实现。
+ *
+ * 职责：
+ * - 封装短信验证码登录全流程（发送验证码 → 登录 → 持久化 Token → 建立 WS 连接）
+ * - 登出时依次：best-effort 服务端 logout → 停止所有前台 Service → 断开 WS → 清空本地数据
+ * - HTTP 4xx/5xx 错误体解析后向 UI 层暴露友好文案，不暴露技术细节
+ *
+ * 数据流：AuthApi（网络）→ UserPreferences（Token 持久化）→ UserDao（用户缓存）
+ */
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,

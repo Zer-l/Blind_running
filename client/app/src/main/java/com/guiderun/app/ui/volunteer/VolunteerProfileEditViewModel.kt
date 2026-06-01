@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** 志愿者资料编辑页 UI 状态。 */
 data class VolunteerProfileEditUiState(
     val nickname: String = "",
     val gender: Gender? = null,
@@ -30,11 +31,19 @@ data class VolunteerProfileEditUiState(
     val error: String? = null,
 )
 
+/** 志愿者资料编辑页一次性事件（SharedFlow，replay=0）。 */
 sealed class VolunteerProfileEditEvent {
     data object Saved : VolunteerProfileEditEvent()
     data class Error(val message: String) : VolunteerProfileEditEvent()
 }
 
+/**
+ * 志愿者资料编辑页 ViewModel。
+ *
+ * 职责：初始化加载当前用户数据（getMe），持有可编辑字段的 StateFlow，
+ * save() 时拼装 [UpdateProfileParams] 调用 Repository。
+ * 保存结果通过 [events]（SharedFlow）通知 UI，避免 UiState 与导航逻辑耦合。
+ */
 @HiltViewModel
 class VolunteerProfileEditViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

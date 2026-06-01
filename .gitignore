@@ -29,6 +29,7 @@ keystore.properties
 
 # ========== 编译产物 ==========
 *.apk
+!apk/*.apk
 *.aab
 *.ap_
 *.dex

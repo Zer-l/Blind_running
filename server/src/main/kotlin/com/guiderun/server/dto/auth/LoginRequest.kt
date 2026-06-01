@@ -3,6 +3,7 @@ package com.guiderun.server.dto.auth
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 
+/** 登录请求体：手机号 + 6 位短信验证码（Mock 模式固定 123456）。 */
 data class LoginRequest(
     @field:NotBlank(message = "手机号不能为空")
     val phone: String,

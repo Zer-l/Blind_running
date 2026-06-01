@@ -29,6 +29,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
 
+/** 发起请求页 UI 状态；locationStatus 驱动页面头部图标和 TTS 定位提示。 */
 data class BlindCreateRequestUiState(
     val locationStatus: LocationStatus = LocationStatus.Loading,
     val locationDescription: String = "",
@@ -38,17 +39,31 @@ data class BlindCreateRequestUiState(
     val errorMessage: String? = null,
 )
 
+/** GPS 定位状态；Located 携带坐标供提交和正向地理编码偏置使用。 */
 sealed interface LocationStatus {
     data object Loading : LocationStatus
     data class Located(val lat: Double, val lng: Double) : LocationStatus
     data object Failed : LocationStatus
 }
 
+/** 发起请求页导航事件；Back 区分"pop 回上一页"和"finish Activity"（起始目的地场景）。 */
 sealed interface BlindCreateRequestNavEvent {
     data class ToWaitingMatch(val requestId: String) : BlindCreateRequestNavEvent
     data object Back : BlindCreateRequestNavEvent
 }
 
+/**
+ * 视障端发起跑步请求页 ViewModel。
+ *
+ * 数据流：
+ * 1. init → LoadLastRequestUseCase 预填上次偏好（本地 DataStore → 服务端最近订单兜底）
+ * 2. Fragment 授权后 → startLocationUpdates → 获取 GPS → 逆地理编码为地址文本
+ * 3. 用户确认（长按 2s / 语音 CONFIRM）→ submit → 若地址被手改则正向地理编码 → CreateRunRequestUseCase
+ * 4. 成功 → NavEvent.ToWaitingMatch + 保存偏好供下次一键发起使用
+ *
+ * TTS 生命周期：onScreenResumed 时 acquire（启动 TextToSpeech）；onScreenPaused 时 release，
+ * 避免与后台其他 Fragment 的 TTS 队列竞争。
+ */
 @HiltViewModel
 class BlindCreateRequestViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

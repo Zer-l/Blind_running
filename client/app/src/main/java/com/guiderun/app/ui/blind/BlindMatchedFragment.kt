@@ -25,6 +25,19 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 视障端已匹配页 Fragment（涵盖 ACCEPTED / EN_ROUTE / MET 三个状态）。
+ *
+ * UI 随状态切换语义：
+ * - ACCEPTED / EN_ROUTE：显示"志愿者已接单"+ 取消订单主按钮
+ * - MET（志愿者已到达）：header 标题切换为"志愿者已到达"+ 确认汇合主按钮
+ *
+ * 返回键分支：
+ * - MET 状态：服务端禁止 cancel，直接返回首页（TTS 接力）
+ * - 非 MET：弹 BlindConfirmDialogFragment（破坏性长按确认），短按"继续等待"留在此页
+ *
+ * peerPhone 在 onResume 注入 BaseBlindActivity.activeCallPeerPhone，支持音量+键三连击拨号。
+ */
 @AndroidEntryPoint
 class BlindMatchedFragment : Fragment() {
 

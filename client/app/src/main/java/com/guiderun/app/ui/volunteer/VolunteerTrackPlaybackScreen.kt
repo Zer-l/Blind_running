@@ -55,6 +55,13 @@ import com.guiderun.app.ui.shared.map.GuideRunMap
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
+/**
+ * 轨迹回放页（双端共用此 Screen，通过 role 参数区分视障/志愿者轨迹）。
+ *
+ * 布局：实时进度卡（距离/时长/配速）→ 图例（速度-颜色映射）→ 高德地图（配速着色折线 + 动画 marker）→ 播放控制栏。
+ * 播放倍速支持 1x/5x/10x/20x。seekToStart 重新构造 CameraTarget 使相机回到起点。
+ * requestId 和 role 由 ViewModel 通过 SavedStateHandle 读取；Screen 参数用于调用方编译期强制传值。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerTrackPlaybackScreen(

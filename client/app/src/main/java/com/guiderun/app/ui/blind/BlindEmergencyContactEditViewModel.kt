@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** 联系人编辑页 UI 状态；isEditMode 供 Fragment 决定入页 TTS 文案。 */
 data class BlindEmergencyContactEditUiState(
     val name: String = "",
     val phone: String = "",
@@ -27,11 +28,19 @@ data class BlindEmergencyContactEditUiState(
     val isEditMode: Boolean = false,
 )
 
+/** 保存操作结果事件：Saved = 成功，Error = 失败（含友好提示文案）。 */
 sealed class BlindEmergencyContactEditEvent {
     data object Saved : BlindEmergencyContactEditEvent()
     data class Error(val message: String) : BlindEmergencyContactEditEvent()
 }
 
+/**
+ * 紧急联系人编辑 ViewModel。
+ *
+ * 新增：[save] 直接调用 [UserRepository.addEmergencyContact]；
+ * 编辑：[initEditMode] 先拉取联系人列表定位到 [editIndex]，再由 [save] 调用 updateEmergencyContact。
+ * 服务端"已达上限"错误单独转为友好文案，其余失败统一用通用保存失败提示，避免技术性报错透传 TTS。
+ */
 @HiltViewModel
 class BlindEmergencyContactEditViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

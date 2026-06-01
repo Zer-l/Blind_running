@@ -18,6 +18,14 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 
+/**
+ * 用户业务：当前用户信息、资料更新、紧急联系人 CRUD。
+ *
+ * 设计要点：
+ * - 首次设置 roles 自动将 [ProvisioningStatus] 由 PENDING_ROLE 推进为 ACTIVE
+ * - blindProfile / volunteerProfile 以 JSON 嵌入 UserEntity，更新走 copy 语义
+ * - 紧急联系人上限 5 条，前端通过下标 (index) 定位增删改
+ */
 @Service
 @Transactional
 class UserService(private val userRepo: UserJpaRepository) {

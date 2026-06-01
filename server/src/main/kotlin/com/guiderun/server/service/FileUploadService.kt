@@ -12,6 +12,13 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
+/**
+ * 文件上传业务：当前用于评价语音留言，落本地磁盘按日期分目录组织。
+ *
+ * 安全要点：
+ * - MIME 白名单 + 512KB 上限（对应客户端 30s AAC 录音）
+ * - [resolveFile] 防路径穿越：归一化后必须以配置 baseDir 为前缀，越权返回 403
+ */
 @Service
 class FileUploadService(
     @Value("\${guiderun.upload.base-dir:uploads}") private val baseDir: String,

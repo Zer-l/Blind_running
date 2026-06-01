@@ -5,6 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
+/**
+ * 评价数据访问：按订单/收评方分页，附 `findReviewedRequestIds` 用于历史列表批量标记"是否已评价"。
+ */
 interface ReviewJpaRepository : JpaRepository<ReviewEntity, String> {
 
     fun findByRequestId(requestId: String): List<ReviewEntity>

@@ -5,6 +5,14 @@ import com.guiderun.server.dto.run.*
 import com.guiderun.server.entity.RunRequestEntity
 import com.guiderun.server.entity.UserEntity
 
+/**
+ * RunRequestEntity → 完整响应映射。
+ *
+ * 隐私控制：对方手机号仅在 [PEER_PHONE_VISIBLE_STATUSES]（ACCEPTED~FINISHED）内下发，
+ * MATCHING / CLOSED / ABORTED 阶段不暴露手机号。
+ *
+ * @param myReviewSubmitted 当前调用方是否已提交评价，由 Service 层注入用于"补充评价"入口判断。
+ */
 fun RunRequestEntity.toResponse(
     blindRunner: UserEntity?,
     volunteer: UserEntity?,
@@ -52,6 +60,7 @@ private val PEER_PHONE_VISIBLE_STATUSES = setOf(
     RunRequestStatus.FINISHED,
 )
 
+/** 用户摘要：在对方信息卡片/接单详情中展示，[includePhone] 控制是否下发手机号。 */
 fun UserEntity.toSummary(includePhone: Boolean = false) = UserSummaryDto(
     id = id,
     nickname = nickname,
@@ -62,6 +71,7 @@ fun UserEntity.toSummary(includePhone: Boolean = false) = UserSummaryDto(
     phone = if (includePhone) phone else null,
 )
 
+/** 附近订单列表项映射：携带视障用户摘要 + 与志愿者的实时距离（米）。 */
 fun RunRequestEntity.toAvailableItem(user: UserEntity, distanceMeters: Int) = AvailableRequestItemDto(
     id = id,
     blindRunner = BlindRunnerSummaryDto(

@@ -16,6 +16,15 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import kotlin.math.*
 
+/**
+ * 跑步轨迹业务：上传/合并轨迹点 + 服务端统计重算 + 客户端权威值覆盖。
+ *
+ * 关键策略：
+ * - 同一 (requestId, userId) 多次上传走增量合并（按时间戳去重），避免客户端断网回放
+ * - 服务端 [recalcStats] 基于墙钟跨度计算总时长，对暂停场景会偏大
+ * - [applyClientAuthoritative] 用客户端"已扣暂停"的实时值覆盖，最终展示与跑步页一致
+ * - 身份校验：BLIND/VOLUNTEER 角色必须匹配订单的 blindRunnerId/volunteerId
+ */
 @Service
 @Transactional
 class RunTrackService(
@@ -23,6 +32,7 @@ class RunTrackService(
     private val requestRepo: RunRequestJpaRepository,
 ) {
 
+    /** 上传轨迹：自动校验参与方身份 + 去重合并 + 重算统计 + 应用客户端权威值。 */
     fun uploadTracks(userId: String, requestId: String, dto: UploadTracksDto): RunTrackResponseDto {
         val request = requestRepo.findById(requestId).orElseThrow {
             AppException(ErrorCode.REQUEST_NOT_FOUND, "订单不存在", HttpStatus.NOT_FOUND)

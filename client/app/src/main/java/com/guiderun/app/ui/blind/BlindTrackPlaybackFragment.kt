@@ -18,6 +18,14 @@ import com.guiderun.app.ui.volunteer.VolunteerTrackPlaybackViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+/**
+ * 视障端轨迹回放页 Fragment（XML 容器，内容为 Compose）。
+ *
+ * 视障端使用与志愿者端相同的 VolunteerTrackPlaybackScreen（Compose），
+ * 通过 ComposeView 嵌入。role 固定传 "BLIND" 确保只回放视障端自己采集的轨迹。
+ * Fragment 持有 VolunteerTrackPlaybackViewModel 实例，使语音指令（播放/暂停/重播）
+ * 能直接调用 VM 方法而不需要事件总线跨 Compose 边界通信。
+ */
 @AndroidEntryPoint
 class BlindTrackPlaybackFragment : Fragment() {
 

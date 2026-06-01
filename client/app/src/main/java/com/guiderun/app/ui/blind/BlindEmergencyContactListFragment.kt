@@ -30,6 +30,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 紧急联系人列表页 Fragment。
+ *
+ * 显示已保存联系人（最多 5 位），支持编辑/删除；
+ * 达到上限时禁用 FAB 并 TTS 提示。
+ * onResume 每次刷新列表（从编辑页返回时数据同步）。
+ */
 @AndroidEntryPoint
 class BlindEmergencyContactListFragment : Fragment() {
 

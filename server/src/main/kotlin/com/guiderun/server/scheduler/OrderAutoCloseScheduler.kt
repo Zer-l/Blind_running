@@ -14,6 +14,18 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
+/**
+ * 订单自动关闭定时任务：每小时整点扫描超时 24h 仍处于 FINISHED 的订单，
+ * 推进至 CLOSED 终态并通过 WebSocket 广播 status_changed。
+ *
+ * 设计要点：
+ * - 23h 提醒：剩余 1 小时窗口内向双方推一次"待评价提醒"（isReminder=true）
+ * - 不重复累加跑步统计：totalRuns / totalHoursMinutes 已在 FINISHED 时计入
+ * - rating 仅由实际评价提交时累加，超时未评不补
+ *
+ * dev profile 下可通过 [com.guiderun.server.controller.AdminController.closeFinishedOrders]
+ * 调用 [triggerManually] 立即触发用于本地验证。
+ */
 @Component
 class OrderAutoCloseScheduler(
     private val requestRepo: RunRequestJpaRepository,

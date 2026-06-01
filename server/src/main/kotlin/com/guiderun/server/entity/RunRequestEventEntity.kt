@@ -4,6 +4,10 @@ import com.guiderun.server.common.TriggeredRole
 import jakarta.persistence.*
 import java.time.Instant
 
+/**
+ * 订单状态变更审计事件（`run_request_events` 表）。
+ * 每次状态转移落一条，便于回放排查与"志愿者放弃 3 次降级 ABORTED"等业务统计。
+ */
 @Entity
 @Table(name = "run_request_events")
 class RunRequestEventEntity(

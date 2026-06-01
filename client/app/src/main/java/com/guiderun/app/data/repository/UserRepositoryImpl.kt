@@ -21,6 +21,16 @@ import com.guiderun.app.util.runCatchingCancellable
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 用户资料 Repository 实现。
+ *
+ * 采用"网络优先"策略：所有读操作直接调 API，成功后同步写入 Room 缓存；
+ * 写操作（updateProfile / updateRoles）在服务端持久化后返回最新 User 对象，
+ * 同步更新本地缓存和 UserPreferences（activeRole），保证 UI 展示与服务端一致。
+ *
+ * 注意：读写均由 [com.guiderun.app.util.runCatchingCancellable] 包装，
+ * 保证 CancellationException 被正确重抛，不会被误吞。
+ */
 @Singleton
 class UserRepositoryImpl @Inject constructor(
     private val userApi: UserApi,

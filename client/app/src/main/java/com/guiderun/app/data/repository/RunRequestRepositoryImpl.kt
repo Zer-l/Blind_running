@@ -28,6 +28,19 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 跑步请求 Repository 实现，是整个订单系统的数据中枢。
+ *
+ * 核心职责：
+ * 1. 维护 [activeRequest] StateFlow —— UI 层订阅此流即可获得最新订单状态，无需手动轮询
+ * 2. WS 消息监听 —— 收到 status_changed 后自动拉取最新订单详情并更新 activeRequest
+ * 3. WS 重连后同步 —— 网络恢复时重新拉取活跃订单，防止断线期间错过的状态变更
+ * 4. HTTP 错误码映射 —— 将 4xx/5xx 转换为业务语义异常（InvalidStateTransition / Forbidden 等），
+ *    ViewModel 直接 catch 具体类型，不需要解析原始 HTTP 码
+ *
+ * [trackActive] 是状态一致性的关键：写入前校验 userId 所有权，防止志愿者浏览陌生订单时
+ * 误覆盖自己的活跃状态；终态订单触发清理逻辑。
+ */
 @Singleton
 class RunRequestRepositoryImpl @Inject constructor(
     private val api: RunRequestApi,
@@ -222,11 +235,26 @@ class RunRequestRepositoryImpl @Inject constructor(
 
     // ── 辅助方法 ──────────────────────────────────────────────────────────
 
+    /**
+     * 统一执行包装：runCatching → 重抛 CancellationException（协程取消不能被吞掉）→ 业务异常映射。
+     * 所有 suspend 操作都经过此方法，保证异常处理一致性。
+     */
     private inline fun <T> execute(block: () -> T): Result<T> =
         runCatching { block() }
             .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
             .recoverCatching { mapException(it) }
 
+    /**
+     * 将网络/HTTP 异常映射为 domain 层业务异常。
+     *
+     * 错误码语义：
+     * - 400 INVALID_STATE_TRANSITION：订单状态机不允许的操作（如重复接单）
+     * - 400 ALREADY_REVIEWED：已评价不可重复提交
+     * - 403 PROVISIONING_INCOMPLETE：用户资料未完善，需引导填写档案
+     * - 404：订单不存在（被他人抢先接单等竞争场景）
+     * - 409：请求冲突（如幂等 key 重复）
+     * - IOException：网络断开/超时
+     */
     private fun mapException(e: Throwable): Nothing {
         throw when (e) {
             is HttpException -> when (e.code()) {

@@ -6,10 +6,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * 5-second countdown before executing a dangerous action.
- * The user can cancel at any point during the countdown.
+ * 危险操作的倒计时确认框架（默认 5s）。
  *
- * Usage in a ViewModel:
+ * 倒计时期间用户可随时取消，防止误触高风险操作（取消订单、结束跑步等）。
+ * 初始有 1s 缓冲，给 TTS 播报提示语留出时间，再开始逐秒倒计时回调。
+ *
+ * 典型 ViewModel 用法：
  *   private val cancelAction = ConfirmableAction(
  *       scope = viewModelScope,
  *       onCountdown = { remaining -> _state.update { it.copy(cancelCountdown = remaining) } },

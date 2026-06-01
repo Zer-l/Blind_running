@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
 
+/** 轨迹采样点 DTO：时间戳 + WGS-84 坐标 + 精度 + 瞬时速度。 */
 data class TrackPointDto(
     @field:NotNull val t: Long,
     @field:NotNull val lat: Double,
@@ -12,6 +13,10 @@ data class TrackPointDto(
     val spd: Float? = null,
 )
 
+/**
+ * 轨迹上传请求：单次最多 1000 点，可附"已扣暂停"的权威累计值。
+ * 详细策略见 [com.guiderun.server.service.RunTrackService.applyClientAuthoritative]。
+ */
 data class UploadTracksDto(
     @field:NotNull val role: String,
     @field:NotEmpty @field:Size(max = 1000) val points: List<TrackPointDto>,
@@ -23,6 +28,7 @@ data class UploadTracksDto(
     val maxSpeed: Float? = null,
 )
 
+/** 轨迹查询响应：含完整轨迹点 + 汇总统计，用于历史回放页面。 */
 data class RunTrackResponseDto(
     val requestId: String,
     val userId: String,

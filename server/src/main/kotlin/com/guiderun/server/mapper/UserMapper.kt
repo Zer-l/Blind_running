@@ -5,6 +5,10 @@ import com.guiderun.server.dto.user.UserDto
 import com.guiderun.server.dto.user.VolunteerProfileDto
 import com.guiderun.server.entity.UserEntity
 
+/**
+ * UserEntity → UserDto 单向映射：rating 由 sum/count 当场计算，避免冗余字段同步。
+ * BlindProfile/VolunteerProfile JSON 子结构在此摊开为对应 DTO。
+ */
 fun UserEntity.toDto() = UserDto(
     id = id,
     phone = phone,

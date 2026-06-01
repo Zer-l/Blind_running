@@ -39,6 +39,13 @@ import com.guiderun.app.ui.shared.HomeViewModel
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
+/**
+ * 志愿者设置页。
+ *
+ * 包含：个人资料入口、主题配色入口、退出登录（危险操作，使用 error 色区分）。
+ * 退出登录通过 HomeViewModel 统一处理（清 Token + 更新 UiState.loggedOut），
+ * LaunchedEffect 监听 loggedOut 完成后执行 onLogout() 回调，避免 ViewModel 直接依赖导航。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerSettingsScreen(

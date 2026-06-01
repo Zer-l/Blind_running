@@ -23,6 +23,25 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 全局 TTS（文字转语音）管理器（Singleton）。本项目无障碍体验的核心组件。
+ *
+ * 核心机制：
+ * 1. **引用计数（acquire/release）**：Fragment.onResume 调 acquire，onPause 调 release。
+ *    最后一个 release 时调 engine.stop()，防止 Fragment 切换后后台播报被用户听到。
+ * 2. **4 档优先级 + INTERACTION 锁**：避免长按倒计时"5、4、3..."被异步状态更新打断。
+ *    CRITICAL 打断一切；INTERACTION 锁期间 HIGH/NORMAL 入队；HIGH 在锁外 FLUSH NORMAL。
+ * 3. **ASR 静音门（beginAsr/endAsr）**：讯飞 IAT 录音期间 mute 所有播报，
+ *    防止扬声器声音被麦克风录入污染识别结果。
+ * 4. **引擎自愈（reconnect + 指数退避重试）**：TTS 引擎初始化失败时最多重试 3 次，
+ *    彻底失败降级为 Degraded 状态，UI 可据此显示提示。
+ * 5. **音量倍率**：订阅 UserPreferences.getBlindTtsVolume()，实时跟随用户无障碍设置。
+ *
+ * 面试关键点：
+ * - pendingInteractionCount 为什么用 AtomicInteger？同步保证无锁（主线程 + onDone 可能跨线程）。
+ * - speakAndWait 为什么用 CompletableDeferred + withTimeoutOrNull？确保播报完成后才继续下一句，
+ *   同时防止 onDone 永远不回调导致协程挂死。
+ */
 @Singleton
 class TtsManager @Inject constructor(
     @ApplicationContext private val context: Context,

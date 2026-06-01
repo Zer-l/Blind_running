@@ -16,6 +16,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 登录页 UI 状态。
+ *
+ * step 字段驱动双步骤 UI（输入手机号 → 输入验证码），
+ * 避免维护两个独立状态对象，保证状态切换原子性（copy 不可变更新）。
+ */
 data class LoginUiState(
     val phone: String = "",
     val code: String = "",
@@ -32,6 +38,14 @@ enum class LoginStep {
     CODE,   // 输入验证码
 }
 
+/**
+ * 登录流程 ViewModel。
+ *
+ * 业务规则：
+ * - 手机号 11 位验证 → 发送短信 → 60s 倒计时防刷 → 6 位验证码 → 登录
+ * - 登录成功后根据 provisioningStatus 决定是否进入角色选择页（新用户）
+ * - 网络类异常（IOException）对用户展示友好文案，避免透露内部 URL/端口信息
+ */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

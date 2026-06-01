@@ -32,6 +32,10 @@ object WaitingMessageGenerator {
         "我们已经扩大了匹配范围，请再给我们一点时间",
     )
 
+    /**
+     * 根据等待时长返回对应情绪层级的随机文案。
+     * @param waitingSeconds 已等待秒数（从 MATCHING 状态开始计）
+     */
     fun getMessage(waitingSeconds: Long): String {
         val minutes = waitingSeconds / 60
         val pool = when {

@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+/** 前往集合点页 UI 状态。 */
 data class VolunteerNavigatingUiState(
     val request: RunRequest? = null,
     val isLoading: Boolean = false,
@@ -35,11 +36,24 @@ data class VolunteerNavigatingUiState(
     val errorMessage: String? = null,
 )
 
+/** 前往集合点页导航事件。 */
 sealed interface VolunteerNavigatingNavEvent {
     data class ToMet(val requestId: String) : VolunteerNavigatingNavEvent
     data object ToHome : VolunteerNavigatingNavEvent
 }
 
+/**
+ * 志愿者前往集合点页 ViewModel（AndroidViewModel，持有 Application 以启停 LocationUpdateService）。
+ *
+ * 状态机联动：
+ * - loadRequest 检测 ACCEPTED → 自动调 depart()（状态 ACCEPTED→EN_ROUTE），避免志愿者手动按"出发"
+ * - 本机 GPS 每 5s 上报一次位置 + 渲染地图上的蓝色直线方向指引（非真实路线）
+ * - WS ABORTED：selfAborting=true 时本人取消直接回首页，false 时弹"订单已被取消"通知弹窗
+ *
+ * 取消路径区分：
+ * - ACCEPTED → abandon（订单回 MATCHING，不直接 ABORTED）
+ * - EN_ROUTE → cancel（订单 ABORTED）
+ */
 @HiltViewModel
 class VolunteerNavigatingViewModel @Inject constructor(
     application: Application,

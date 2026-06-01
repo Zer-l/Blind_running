@@ -53,6 +53,13 @@ import com.guiderun.app.domain.model.Gender
 import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 
+/**
+ * 志愿者个人资料编辑页。
+ *
+ * 基本信息（昵称/性别）、跑步能力（配速/等级）、陪跑经验（开关）三张卡片。
+ * 表单字段通过 LaunchedEffect(uiState) 初始化（单向数据流），用户编辑后实时同步到 ViewModel。
+ * 保存成功时 ViewModel 通过 SharedFlow 发送 Saved 事件，触发 onSaved() 回调。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerProfileEditScreen(

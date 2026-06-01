@@ -6,6 +6,10 @@ import org.hibernate.annotations.Type
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * 评价实体（`reviews` 表）。reviewer/reviewee 区分双向评价，tags 用 JSON 列保存标签集合。
+ * 每个 (requestId, reviewerId) 唯一，重复提交由 Service 层 [ALREADY_REVIEWED] 拦截。
+ */
 @Entity
 @Table(name = "reviews")
 class ReviewEntity(

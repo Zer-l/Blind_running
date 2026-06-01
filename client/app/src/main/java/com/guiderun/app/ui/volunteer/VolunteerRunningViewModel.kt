@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+/** 志愿者跑步中页 UI 状态。 */
 data class VolunteerRunningUiState(
     val request: RunRequest? = null,
     val isLoading: Boolean = true,
@@ -49,11 +50,24 @@ data class VolunteerRunningUiState(
     val initialLocation: Pair<Double, Double>? = null,
 )
 
+/** 跑步中页导航事件。 */
 sealed interface VolunteerRunningNavEvent {
     data class ToReview(val requestId: String) : VolunteerRunningNavEvent
     data object ToHome : VolunteerRunningNavEvent
 }
 
+/**
+ * 志愿者端跑步中页 ViewModel（AndroidViewModel，持有 Application 以启停前台 Service）。
+ *
+ * 数据流与视障端对称，但各自独立：
+ * - 跑步指标由 [VolunteerRunTrackingService] 写入 Room，ViewModel 订阅 observe Flow 驱动 UI
+ * - 轨迹折线从 [RunTrackBufferDao] 实时订阅（每新写入一个点就更新地图折线）
+ * - WS FINISHED → 停止 Service → ToReview；WS ABORTED → showCancelledDialog
+ *
+ * 结束流程（协商式）：
+ * 1. 志愿者调 requestEndRun → 服务端推送 WS 给视障端（不改状态）
+ * 2. 视障端长按确认 → 服务端 RUNNING→FINISHED → WS 推送双方 → 各自 ToReview
+ */
 @HiltViewModel
 class VolunteerRunningViewModel @Inject constructor(
     application: Application,

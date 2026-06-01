@@ -55,6 +55,17 @@ private class CameraStateHolder {
     var lastApplied: CameraTarget? = null
 }
 
+/**
+ * 封装高德 MapView 的 Composable，供志愿者端各导航/跑步/回放页使用。
+ *
+ * 关键设计：
+ * - 坐标转换：业务层 GeoPoint 统一用 WGS-84，传入本组件时通过 [Wgs84ToGcj02Converter] 转 GCJ-02
+ *   才能与高德底图对齐，否则偏移约 300~500m（火星坐标问题）
+ * - 相机防抖：用 [CameraTarget] 引用判等——引用未变不调 moveCamera，
+ *   避免数据局部刷新（轨迹增量）时把用户手势缩放/平移强制拉回默认级别
+ * - 生命周期绑定：[rememberMapViewWithLifecycle] 在 DisposableEffect 里注册 LifecycleEventObserver，
+ *   正确转发 ON_RESUME / ON_PAUSE，并在组合离开时调 MapView.onDestroy 释放 GL 资源
+ */
 @Composable
 fun GuideRunMap(
     state: GuideRunMapState,

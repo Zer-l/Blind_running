@@ -15,6 +15,10 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
+/**
+ * 志愿者跑步统计聚合：总次数 / 总距离 / 总时长 / 本月/本年次数 / 评分 / 徽章列表。
+ * 徽章规则见 [buildBadges]：次数里程碑 + 距离里程碑 + 夜间陪跑（21:00-06:00）。
+ */
 @Service
 @Transactional(readOnly = true)
 class VolunteerStatsService(

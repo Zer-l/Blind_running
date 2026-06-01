@@ -6,6 +6,14 @@ import jakarta.persistence.*
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * 跑步请求实体（`run_requests` 表，9 状态生命周期）。
+ *
+ * - `@Version` 乐观锁：多志愿者抢单时数据库层只放一个通过，其余 409
+ * - 各阶段时间戳（matched/departed/met/runStarted/runEnded/closed）支撑历史回放与统计
+ * - 实际跑步指标（actualDistanceMeters/avgPaceSeconds）由轨迹上传时回写
+ * - volunteerLat/Lng + updatedAt 缓存志愿者最新位置，避免每次推送查 RunTrack
+ */
 @Entity
 @Table(name = "run_requests")
 class RunRequestEntity(

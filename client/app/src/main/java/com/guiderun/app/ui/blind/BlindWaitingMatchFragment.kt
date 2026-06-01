@@ -24,6 +24,14 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 视障端等待匹配页 Fragment。
+ *
+ * 显示已等待时长（1s tick 驱动）；主按钮长按 2s+5s 取消订单。
+ * onResume 消费 BlindActivity.consumePendingWaitingTts（来自 BlindMatchedViewModel MATCHING 分支
+ * 的"志愿者放弃接单"接力 TTS），串行播报后再播页面 title/hint，避免被 FLUSH 吞掉。
+ * 返回键弹 BlindConfirmDialogFragment；语音 CANCEL 直接执行取消。
+ */
 @AndroidEntryPoint
 class BlindWaitingMatchFragment : Fragment() {
 

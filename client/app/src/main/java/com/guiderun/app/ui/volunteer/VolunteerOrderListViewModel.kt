@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** 接单列表页 UI 状态。 */
 data class VolunteerOrderListUiState(
     val isOnline: Boolean = true,
     val isLoading: Boolean = false,
@@ -33,6 +34,15 @@ data class VolunteerOrderListUiState(
     val selectedRadiusMeters: Double = 3000.0,
 )
 
+/**
+ * 志愿者订单列表页 ViewModel。
+ *
+ * 核心逻辑：
+ * - 上线状态（isOnline）控制是否轮询附近订单；下线时列表清空，不消耗定位资源
+ * - 定位优先取缓存（getLastLocation，快），缓存失效则启动 Flow 等第一个新鲜定位（最多等 5s 超时）
+ * - 搜索半径（selectedRadiusMeters）变化时立即触发重新拉取，避免用户切换筛选后列表不刷新
+ * - WS 重连成功时重拉列表，保证断网恢复后附近订单状态实时更新
+ */
 @HiltViewModel
 class VolunteerOrderListViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

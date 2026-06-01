@@ -1,5 +1,14 @@
 package com.guiderun.app.domain.model
 
+/**
+ * 跑步请求核心领域模型（Domain 层，纯 Kotlin，无 Android 依赖）。
+ *
+ * 状态机：CREATED → MATCHING → ACCEPTED → EN_ROUTE → MET → RUNNING → FINISHED → CLOSED
+ * 任意非终态可跳转到 ABORTED（异常终止）。
+ *
+ * GeoPoint 内的 speedMps / speedAccuracyMps / realtimeMs 仅在跑步采集场景（RunTrackingService）使用，
+ * 业务逻辑不应依赖这些字段（它们在 Mapper / 手动构造时为默认值 0 / null）。
+ */
 data class RunRequest(
     val id: String,
     val status: RunRequestStatus,

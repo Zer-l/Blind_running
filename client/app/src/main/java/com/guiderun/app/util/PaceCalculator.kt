@@ -1,8 +1,10 @@
 package com.guiderun.app.util
 
 /**
- * 配速计算工具，使用5点滑动平均。
- * 配速单位：秒/公里。
+ * 配速 / 距离计算工具集（纯函数，无状态）。配速单位：秒/公里。
+ *
+ * 注意：瞬时配速的实时平滑由 [SpeedSmoother] 负责（时间窗口滑动均值，基于多普勒速度）；
+ * 本类的 [slidingAverage] 供历史回放等需要在外部维护样本列表的场景使用。
  */
 object PaceCalculator {
 

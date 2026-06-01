@@ -35,6 +35,13 @@ import com.guiderun.app.ui.theme.AppRadius
 import com.guiderun.app.ui.theme.AppSpacing
 import com.guiderun.app.ui.theme.PresetThemes
 
+/**
+ * 主题配色选择页。
+ *
+ * 列表展示 [PresetThemes] 中所有预设主题（颜色圆点 + 名称 + 气质描述），
+ * 当前选中项通过 VolunteerSettingsViewModel.uiState.currentThemeId 标记勾选状态。
+ * 点击即时通过 DataStore 持久化，App 主题在下次重组时随 collectAsStateWithLifecycle 刷新。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VolunteerThemeSelectionScreen(

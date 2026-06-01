@@ -5,6 +5,13 @@ import androidx.core.view.AccessibilityDelegateCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 
+/**
+ * View 无障碍属性快捷扩展。
+ *
+ * 封装 TalkBack 相关 API（AccessibilityDelegate / LiveRegion / importantForAccessibility），
+ * 使视障端 XML 页面不需要逐个写 ViewCompat 样板代码。
+ */
+
 /** TalkBack hint shown after content description when focused */
 fun View.setAccessibilityHint(hint: String) {
     ViewCompat.setAccessibilityDelegate(this, object : AccessibilityDelegateCompat() {

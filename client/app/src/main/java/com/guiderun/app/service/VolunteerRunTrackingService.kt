@@ -4,6 +4,12 @@ import android.content.Intent
 import com.guiderun.app.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 
+/**
+ * 志愿者端跑步轨迹追踪前台服务。
+ *
+ * 继承 [RunTrackingService] 通用实现，覆盖 role / 通知文案 / 点击 Intent 三个志愿者侧差异点。
+ * 通知点击回跳 MainActivity（带 EXTRA_RECOVERY_REQUEST_ID），由 MainActivity 路由到 VolunteerRunning 页。
+ */
 @AndroidEntryPoint
 class VolunteerRunTrackingService : RunTrackingService() {
 

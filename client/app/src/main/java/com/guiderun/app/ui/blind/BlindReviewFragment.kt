@@ -24,6 +24,13 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 视障端跑步评价页 Fragment。
+ *
+ * 5 张评分卡（1~5 星）单击选择；主按钮长按 2s+5s 提交，次按钮跳过。
+ * 从历史页进入（补评）：完成后 popBackStack 返回历史页；正常跑步结束流程：navigateToHome。
+ * 返回键走 skip 路径（评价可选，跳过即可），无需二次确认弹窗。
+ */
 @AndroidEntryPoint
 class BlindReviewFragment : Fragment() {
 

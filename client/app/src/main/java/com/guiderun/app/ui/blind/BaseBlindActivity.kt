@@ -35,6 +35,16 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
+/**
+ * 视障端 Activity 基类，抽取所有 Fragment 共享的无障碍基础设施：
+ *
+ * 1. 字号缩放：在 attachBaseContext 注入 Configuration.fontScale，优先于 super.onCreate
+ * 2. 对比度主题：setTheme() 必须在 super.onCreate/setContentView 之前，用 Hilt EntryPoint 同步读 DataStore
+ * 3. 音量键三路语义：[VolumeKeyDispatcher] 统一处理短按调音量 / 三连击拨号或 SOS / 长按语音指令
+ * 4. 权限：onCreate 批量申请核心权限（定位/麦克风/通知），tryStartVoiceListening 动态续申请 RECORD_AUDIO
+ * 5. VoiceCommandHost：声明导航/拨电话接口，由子类 BlindActivity 实现导航部分，Base 实现拨号部分
+ * 6. touchEventForwarder：允许当前 Fragment 通过回调转发 Activity 层的触摸事件（长按手势检测用）
+ */
 @AndroidEntryPoint
 abstract class BaseBlindActivity : AppCompatActivity(), VoiceCommandHost {
 

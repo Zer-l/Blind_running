@@ -19,6 +19,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.NoHandlerFoundException
 
+/**
+ * 全局异常处理：所有 Controller 抛出的异常在此转为统一 [ApiResponse] 错误响应。
+ *
+ * 关键映射：
+ * - [AppException] → 按携带的 [HttpStatus] 返回
+ * - 乐观锁失败（[OptimisticLockingFailureException] / [StaleObjectStateException]）→ 409 REQUEST_ALREADY_MATCHED
+ * - [TransactionSystemException] 解包后按根因再分发（事务提交阶段的 AppException 也能被还原）
+ * - 参数校验/类型/缺参/方法不支持/404 → 400/405/404 文案
+ * - 兜底 [Exception] → 500，dev profile 暴露异常类名+消息，prod 仅返回"服务器内部错误"
+ */
 @RestControllerAdvice
 class GlobalExceptionHandler(private val env: Environment) {
 

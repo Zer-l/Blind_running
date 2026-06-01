@@ -17,6 +17,19 @@ import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_prefs")
 
+/**
+ * 用户偏好持久化层，基于 Jetpack DataStore（Preferences API）。
+ *
+ * 存储内容：
+ * - Token（AES/GCM 加密存储，由 [TokenCipher] 处理）
+ * - 当前用户 ID、角色
+ * - 视障端无障碍配置：字号缩放、对比度主题、TTS 语速/音量、震动强度
+ * - 志愿者端主题 ID
+ * - 进行中订单 ID（用于冷启动恢复）
+ *
+ * 注意：[getBlindFontScaleOnce] / [getBlindContrastThemeOnce] 供 BaseBlindActivity.attachBaseContext
+ * 同步读取（runBlocking），其余配置项通过 Flow 异步观察，避免主线程阻塞。
+ */
 @Singleton
 class UserPreferences @Inject constructor(
     @ApplicationContext private val context: Context,

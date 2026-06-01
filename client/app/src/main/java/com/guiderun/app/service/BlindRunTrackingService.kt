@@ -4,6 +4,13 @@ import android.content.Intent
 import com.guiderun.app.ui.blind.BlindActivity
 import dagger.hilt.android.AndroidEntryPoint
 
+/**
+ * 视障端跑步轨迹追踪前台服务。
+ *
+ * 继承 [RunTrackingService] 通用实现，覆盖视障端差异：
+ * - role = "BLIND"（用于服务端区分轨迹来源）
+ * - 通知点击跳回 BlindActivity（带 EXTRA_RECOVERY_REQUEST_ID），由 BlindActivity.onNewIntent 路由到 BlindRunning 页
+ */
 @AndroidEntryPoint
 class BlindRunTrackingService : RunTrackingService() {
 

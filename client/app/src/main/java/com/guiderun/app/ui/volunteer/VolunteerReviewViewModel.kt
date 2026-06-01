@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** 志愿者评价页 UI 状态。 */
 data class VolunteerReviewUiState(
     val rating: Int = 5,
     val selectedTags: Set<String> = emptySet(),
@@ -26,10 +27,18 @@ data class VolunteerReviewUiState(
     val errorMessage: String? = null,
 )
 
+/** 评价页导航事件（replay=0，避免重复触发）。 */
 sealed interface VolunteerReviewNavEvent {
     data object ToHome : VolunteerReviewNavEvent
 }
 
+/**
+ * 志愿者端评价 ViewModel。
+ *
+ * 支持星级（1~5）+ 标签（多选，Set 去重）+ 文字评论三个维度，
+ * 跳过评价（skip）直接 ToHome，不调服务端接口，符合评价可选的产品决策。
+ * peerPhone 在 init 加载订单后填充，供顶栏拨号按钮（CallPeerButton）使用。
+ */
 @HiltViewModel
 class VolunteerReviewViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,

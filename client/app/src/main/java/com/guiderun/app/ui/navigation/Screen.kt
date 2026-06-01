@@ -1,5 +1,13 @@
 package com.guiderun.app.ui.navigation
 
+/**
+ * 志愿者端（Compose）所有路由定义。
+ *
+ * 带参数的路由（RequestDetail / Navigating / Met / VolunteerRunning / VolunteerReview / TrackPlayback）
+ * 通过 createRoute(id) 生成具体 URL，避免字符串拼接散落在各处调用方。
+ *
+ * 视障端路由不在此处：视障端使用 XML Fragment Navigation（blind_nav_graph.xml）。
+ */
 sealed class Screen(val route: String) {
     data object Login : Screen("login")
     data object RoleSelect : Screen("role_select")

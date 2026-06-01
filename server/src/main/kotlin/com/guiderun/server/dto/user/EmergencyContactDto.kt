@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 
+/** 紧急联系人 DTO：CRUD 共用，写入时强制手机号格式校验。 */
 data class EmergencyContactDto(
     @field:NotBlank(message = "姓名不能为空")
     @field:Size(max = 50, message = "姓名最多50个字符")

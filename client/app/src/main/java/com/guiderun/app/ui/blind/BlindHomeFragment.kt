@@ -104,7 +104,11 @@ class BlindHomeFragment : Fragment() {
         )
     }
 
-    /** 长按阈值达到时播报上次订单信息，等待播报完成后再进入倒计时 */
+    /**
+     * 长按阈值达到时播报上次订单信息，等待播报完成后再进入倒计时。
+     * 作为 onThresholdReached 传入 BlindLongPressGestureView.bind，
+     * 在 2s 阈值到达→5s 倒计时开始之间的过渡点同步播报，让用户边听边决定要不要松手撤销。
+     */
     private suspend fun speakLastRequestSummary() {
         val summary = viewModel.uiState.value.lastRequestSummary
         val msg = if (summary != null) {
